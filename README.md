@@ -2,7 +2,7 @@
 
 공공분야 업무종사자가 MCP 호환 AI 클라이언트에서 공식 자료 중심의 조사를 계획하고, 원문 근거를 검토·재사용하며, 감사 가능한 보고서를 만들 수 있게 하는 Evidence-First Research MCP입니다.
 
-> 상태: Foundation Core, MCP 계약, PostgreSQL durability, OAuth Resource Server를 구현했습니다. PostgreSQL 17.10 로컬 `G3`와 OAuth/Membership 로컬 `G4` 검증은 통과했으며 원격 Host 호환성 `G5`는 아직 열려 있습니다.
+> 상태: Foundation F0~F4 구현을 완료했습니다. PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, 공식 SDK와 MCP Inspector conformance는 통과했습니다. `G5`는 Codex Resource/Prompt 검증에 대한 보안 승인이 남아 `PARTIAL`이며 `G6`는 열려 있습니다.
 
 ## 왜 별도 저장소인가
 
@@ -27,6 +27,11 @@
 - [POSTGRESQL RUNBOOK](./docs/runbooks/postgresql.md): role·migration·backup·restore 운영 절차
 - [OAUTH G4 REPORT](./docs/validation/2026-07-16-oauth-g4.md): JWT·Membership·RFC 9728 검증
 - [OAUTH RUNBOOK](./docs/runbooks/oauth-resource-server.md): IdP 설정·key rotation·폐기·장애 대응
+- [REMOTE MCP RUNBOOK](./docs/runbooks/remote-mcp.md): TLS proxy·Host conformance·원격 장애 대응
+- [HOST MATRIX](./docs/compatibility/host-matrix.md): SDK·Inspector·Codex primitive별 실제 검증 결과
+- [THREAT MODEL](./docs/security/THREAT_MODEL.md): Foundation 위협·통제·잔여위험
+- [DATA DICTIONARY](./docs/data/DATA_DICTIONARY.md): 실제 PostgreSQL schema와 데이터 의미
+- [REMOTE G5 REPORT](./docs/validation/2026-07-16-remote-g5.md): F4 실행 증적과 미완료 gate
 - [ADR](./docs/adr/): 구현 결정을 고정하는 Architecture Decision Records
 
 ## 프로토콜 기준
@@ -55,6 +60,9 @@ Traceable, Reproducible, Reusable
 - production에서 static auth 또는 memory storage를 거부하는 fail-closed configuration
 - Psycopg 기반 PostgreSQL repository, tenant RLS, worker lease와 Alembic migration
 - OIDC JWT 검증, RFC 9728 metadata, tenant Membership binding과 least-privilege runtime role
+- bounded request size·timeout·rate limit, request ID, canonical Host/Origin policy
+- official SDK TCP/TLS reverse-proxy conformance와 `psrctl conformance`
+- OSV dependency audit, cross-platform license manifest, CI SBOM generation
 
 로컬 검증은 다음 명령으로 재현할 수 있습니다.
 
@@ -62,9 +70,11 @@ Traceable, Reproducible, Reusable
 uv sync --all-groups --frozen
 uv run --frozen ruff check .
 uv run --frozen mypy src tests scripts
+uv audit --preview-features audit --frozen
+uv run --frozen python scripts/dependency_licenses.py --check
 uv run --frozen pytest --cov=psr_mcp --cov-branch --cov-report=term-missing
 uv run --frozen psrctl doctor --json
 uv run --frozen psrctl serve mcp
 ```
 
-서버가 실행된 상태에서 별도 터미널의 `uv run --frozen python scripts/http_smoke.py`로 공식 Python SDK 기반 loopback HTTP smoke test를 실행할 수 있습니다. OAuth/PostgreSQL 모드는 [OAuth runbook](./docs/runbooks/oauth-resource-server.md)의 환경계약을 따릅니다. 실제 기관 IdP·두 종류 원격 MCP Host 검증 전에는 Foundation 전체 또는 production-ready로 선언하지 않습니다. 기존 crawler 코드의 이동·리팩터링은 Foundation 전체 gate 이후 작업 패키지에서 시작합니다.
+서버가 실행된 상태에서 `psrctl conformance` 또는 `scripts/http_smoke.py`로 공식 Python SDK 기반 검증을 실행할 수 있습니다. OAuth/PostgreSQL 모드는 [OAuth runbook](./docs/runbooks/oauth-resource-server.md), TLS/Host 검증은 [Remote MCP runbook](./docs/runbooks/remote-mcp.md)을 따릅니다. Codex Resource/Prompt, 실제 기관 IdP/gateway, owner 승인이 끝나기 전에는 Foundation 전체 또는 production-ready로 선언하지 않습니다. 기존 crawler 코드의 이동·리팩터링은 Foundation 전체 gate 이후 작업 패키지에서 시작합니다.

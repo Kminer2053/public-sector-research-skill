@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4 Remote Conformance
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4 구현 완료, G5 Host 승인 대기
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ROADMAP](./ROADMAP.md) · [ADR](./adr/)
 
@@ -37,7 +37,7 @@
 | F1 | MCP Contract | Tools·Resources·Prompt와 in-memory protocol test | 완료 (`G2`, loopback) |
 | F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 완료: PostgreSQL 17.10 local G3 |
 | F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 완료: local G4 |
-| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 진행 중 |
+| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 구현 완료 / G5 PARTIAL |
 | P0 | Planner Skeleton | Plan create/review workflow | Foundation 후 |
 | C0 | Collector Characterization | legacy behavior fixture와 adapter 판단 | Foundation 후 |
 
@@ -405,10 +405,12 @@ development static AuthContext를 실제 OAuth/OIDC 검증과 Membership resolut
 
 ### 완료 기준
 
-- PRD AC-080~085
+- PRD AC-080~083, AC-085. AC-084의 plan→run→evidence→report 전체 flow는 Evidence/Report가 구현되는 MVP end-to-end gate에서 판정한다.
 - `VALIDATION CRITERIA`의 `G5`
 - known compatibility matrix
 - unresolved P0/P1 0건
+
+**2026-07-16 결과:** commit `c7064cd`에서 real TCP, TLS terminating reverse proxy, request bound, operation/audit trace와 official client conformance를 구현했다. PostgreSQL 17을 포함한 158개 test, combined line+branch coverage 90.90%, OSV known vulnerability 0건을 확인했다. MCP Inspector 0.18.0은 Tool/Resource/Prompt와 새 process Run 재조회가 통과했고 Codex CLI 0.144.2는 실제 Tool call이 통과했다. Codex Resource/Prompt 호출은 로컬 내용을 외부 model service로 전송할 수 있어 명시적 보안 승인 전 `BLOCKED`다. 따라서 F4 code는 완료됐지만 strict G5는 `PARTIAL`이다. [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)와 [Host matrix](./compatibility/host-matrix.md)를 따른다.
 
 ## 10. P0 — Planner Skeleton
 
@@ -551,14 +553,14 @@ Next gate:
 
 ## 19. 현재 착수 범위
 
-`D0~F3`를 마쳤으며 현재 `F4 Remote Conformance`를 시작한다. OAuth/PostgreSQL production composition은 구현됐지만 실제 기관 IdP, TLS proxy와 목표 Host 2종을 검증하기 전 production-ready로 선언하지 않는다.
+`D0~F4` 구현을 마쳤다. local TLS proxy, official SDK와 MCP Inspector는 통과했고 Codex Tool도 실제 호출됐다. 다만 Codex Resource/Prompt 검증의 보안 승인, 실제 기관 IdP/gateway, G6 owner 승인이 남아 strict G5는 `PARTIAL`이다. 이 조건을 닫기 전 production-ready로 선언하지 않는다.
 
 ### 2026-07-16 인계 상태
 
 - 완료: D0, F0, F1, F2 local G3, F3 local G4, PostgreSQL CI workflow, DB/OAuth runbook
 - 검증됨: PostgreSQL 17.10 durability와 OIDC JWT·Membership·RFC 9728 인증 경계
 - 미구현·미검증: TLS proxy 정책, conformance CLI, 실제 remote Host 2종, 기관 IdP onboarding
-- 다음 change set: F4 remote transport harness와 conformance matrix
+- 다음 change set: G5 Codex Host 승인 결과 반영 또는 승인기준 결정, 이후 G6 owner review
 
 ---
 

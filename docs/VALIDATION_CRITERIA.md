@@ -65,7 +65,7 @@ uv run psrctl conformance --json
 | G5 | Interoperable | Streamable HTTP, 2 Hosts |
 | G6 | Foundation Exit | G0~G5 + docs/runbook/no P0/P1 |
 
-현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`를 통과했다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md)에 있다. G5와 G6 release gate는 open이다.
+현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`를 통과했다. F4 code와 SDK/Inspector remote conformance는 완료됐지만 Codex Resource/Prompt 보안 승인이 남아 `G5 PARTIAL`, `G6 OPEN`이다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md), [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)에 있다.
 
 ## 5. Build와 Dependency
 
