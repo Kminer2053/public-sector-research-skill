@@ -148,7 +148,9 @@ class EvidenceComposer:
             "cit-"
             + hashlib.sha256(
                 (
-                    document.collected.final_url
+                    document.candidate.track_id
+                    + "\0"
+                    + document.collected.final_url
                     + "\0"
                     + document.collected.sha256
                     + "\0"

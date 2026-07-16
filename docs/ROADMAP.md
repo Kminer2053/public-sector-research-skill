@@ -232,8 +232,9 @@ MIME sniff, HTML·JSON·text locator와 subprocess PDF parser를 구현했다. �
 **상태:** 로컬 수직 슬라이스와 고정 URL Evidence 선택, no-key curated 실제 quick smoke 완료.
 component score, track-aware URL/passage/document hash dedup, citation `track_id`, 한·영 passage
 선택, shared URL single fetch, Markdown/JSON, partial failure와 purge-after-quick을 구현했다.
-공공업무 담당자의 초안 유용성, live Search recall과 conflict/recommendation 품질은 아직
-승인되지 않았다.
+anchor-complete track에만 조달 원칙 후보를 만드는 deterministic Writer도 구현했다.
+공공업무 담당자의 초안 유용성, live Search recall과 conflict/recommendation 표현 품질은
+아직 승인되지 않았다.
 
 ### R2 종료 게이트
 

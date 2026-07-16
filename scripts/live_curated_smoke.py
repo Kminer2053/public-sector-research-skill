@@ -55,6 +55,7 @@ async def _run() -> int:
         finally:
             await container.close()
 
+        track_by_citation = {citation.id: citation.track_id for citation in output.citations}
         print(
             json.dumps(
                 {
@@ -62,7 +63,28 @@ async def _run() -> int:
                     "source_discovery": output.scope.source_discovery,
                     "tracks": output.scope.source_tracks,
                     "citation_count": len(output.citations),
+                    "finding_counts": {
+                        kind: sum(finding.kind == kind for finding in output.findings)
+                        for kind in ("FACT", "INFERENCE", "RECOMMENDATION")
+                    },
+                    "recommendation_tracks": sorted(
+                        {
+                            track_by_citation[citation_id]
+                            for finding in output.findings
+                            if finding.kind == "RECOMMENDATION"
+                            for citation_id in finding.citation_ids
+                            if citation_id in track_by_citation
+                        }
+                    ),
                     "citation_tracks": sorted({citation.track_id for citation in output.citations}),
+                    "citation_locators": {
+                        track: [
+                            citation.locator
+                            for citation in output.citations
+                            if citation.track_id == track
+                        ]
+                        for track in output.scope.source_tracks
+                    },
                     "source_hosts": sorted(
                         {urlsplit(str(citation.url)).hostname for citation in output.citations}
                     ),

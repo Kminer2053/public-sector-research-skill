@@ -33,17 +33,18 @@
 - 완료: robots 선검사와 source access typed policy
 - 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
 - 완료: document quality, URL/hash dedup, component Evidence Score와 citation composer
+- 완료: anchor가 모두 확인된 경우에만 조달 원칙 후보를 만드는 citation-constrained Writer
 - 완료: track별 한·영 passage 선택어, 관련구간 excerpt, cross-track provenance 보존
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 410 tests
-- coverage gate: raw 94.92%, normalized statement 96.09%, branch 90.31%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 415 tests
+- coverage gate: raw 95.03%, normalized statement 96.16%, branch 90.54%,
   critical module 95% 이상
 - supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
 - 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
 - 검증: curated 실제 quick에서 7개 track·12 citation·failure 0·purge 완료
-- 남음: 공공업무 담당자 QA, 법령 source adapter, domain claim/writer QA, 선택형 live Search
+- 남음: 공공업무 담당자 QA, 법령 source adapter, Writer 표현·적용범위 QA, 선택형 live Search
   비교검증, edge IP normalization, async flow
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
@@ -488,8 +489,9 @@ identity encoding, header allowlist와 typed partial failure를 적용했다. pr
 score component를 반환한다. URL·동일 passage·동일 document hash를 중복 제거하고 track별
 citation을 우선 확보한다. 동일 원문이 여러 track을 지지하는 관계를 보존하고, Government
 Profile의 한·영 selection term으로 관련 구간 주변 excerpt를 만든다. 현재 자동 finding은
-원문 발췌 중심의 보수적 문장이고, 실제 업무 판단 문장과 conflict synthesis는 사람 QA 뒤
-고도화한다.
+원문 발췌 FACT와 사전 검토된 anchor group을 모두 만족한 조달 원칙 후보를 구분해 만든다.
+anchor가 부족한 track에는 recommendation을 생성하지 않으며, 적용범위와 conflict synthesis는
+사람 QA 뒤 고도화한다.
 
 ### CH-P1.7 Quick Research Tool
 
@@ -547,6 +549,7 @@ validate
 - fixed official URL 5종으로 7개 track의 실제 citation/locator 선택은 PASS
 - `CuratedOfficialSourceProvider`와 `PSR_SEARCH_PROVIDER=curated` 구현
 - 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation gap 1
+- Writer는 12개 FACT와 근거 anchor가 충족된 4개 RECOMMENDATION을 생성
 - 동일 PIPC·WEF URL은 각 1회만 수집하고 여러 track provenance를 보존
 - 결과 전달 뒤 `server_saved=false`, `PURGED`, ephemeral directory empty 확인
 - 개인정보위 PDF `pdf:page:40`, NIST AI RMF `pdf:page:20`,
@@ -664,7 +667,7 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 | FR-PUB-001~004 | S0.1~S0.2 | VAL-PUB-MODE, MCP |
 | FR-PUB-010~016 | P1.2, P1.8 | VAL-PUB-PLAN, SOURCE DISCOVERY |
 | FR-PUB-020~025 | P1.3~P1.5 | VAL-PUB-NET, PARSE |
-| FR-PUB-030~037 | P1.6~P1.8 | VAL-PUB-EVIDENCE, QUALITY |
+| FR-PUB-030~039 | P1.6~P1.9 | VAL-PUB-EVIDENCE, QUALITY |
 | FR-PUB-040~046 | S0.4~S0.5, P2 | VAL-PUB-RETENTION |
 | FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
 | FR-PUB-060~062 | P3.2 | VAL-PUB-FEEDBACK |

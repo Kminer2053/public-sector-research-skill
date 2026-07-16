@@ -4,6 +4,7 @@ from psr_mcp.evidence.composer import EvidenceComposer
 from psr_mcp.evidence.models import (
     EvidenceCitation,
     EvidenceDocument,
+    EvidenceFinding,
     EvidencePack,
     EvidenceScore,
     ScoreComponent,
@@ -13,14 +14,17 @@ from psr_mcp.evidence.quality import (
     DocumentQualityAssessor,
     DocumentQualityStatus,
 )
+from psr_mcp.evidence.writer import CitationConstrainedWriter
 
 __all__ = [
+    "CitationConstrainedWriter",
     "DocumentQuality",
     "DocumentQualityAssessor",
     "DocumentQualityStatus",
     "EvidenceCitation",
     "EvidenceComposer",
     "EvidenceDocument",
+    "EvidenceFinding",
     "EvidencePack",
     "EvidenceScore",
     "ScoreComponent",

@@ -298,6 +298,7 @@ def test_composer_preserves_same_passage_for_different_tracks() -> None:
         "data-rights",
         "privacy",
     }
+    assert len({citation.id for citation in pack.citations}) == 2
     assert pack.deduplicated_count == 0
 
 

@@ -79,6 +79,7 @@ reviewed seed→robots→수집→파싱→Evidence→Markdown/JSON→purge 전�
   `DYNAMIC_CONTENT_MISSING`으로 제외
 - NIST 공식 publication 경로와 NIST가 단순 호스팅한 저자 미확인 문서를 보수적으로 구분
 - citation 없는 FACT를 만들지 않는 output contract
+- 사전 검토된 anchor group이 모두 있을 때만 조달 원칙 후보를 만드는 Writer
 - Markdown/JSON에 동일 citation ID, `track_id`와 score
 - workspace purge 확인 뒤 quick 결과 반환
 
@@ -140,6 +141,8 @@ status: PARTIAL
 source_discovery: curated_seed
 tracks: 7
 citations: 12
+findings: FACT 12, RECOMMENDATION 4, INFERENCE 0
+recommendation tracks: privacy, data-rights, international-standards, vendor-lock-in
 citation track recall: 7/7
 source hosts: law.go.kr, pipc.go.kr, nist.gov, tsapps.nist.gov
 failure codes: 0
@@ -151,14 +154,15 @@ ephemeral directory empty: true
 
 `PARTIAL`은 수집 실패가 아니라 curated mode가 실시간·범용 검색이 아니라는 의도적 limitation
 때문이다. 개인정보위 PDF와 WEF PDF는 각각 두 track에 쓰였지만 실제 network fetch는 URL당
-한 번만 수행했다.
+한 번만 수행했다. 법령·정부정책·조달 track은 이번에 선택된 excerpt가 Writer의 모든 anchor를
+충족하지 않아 권고안을 만들지 않고 FACT만 보존했다.
 
 ## 5. 자동 검증 결과
 
 ### 전체 회귀
 
 ```text
-410 passed (385 non-PostgreSQL + 25 PostgreSQL)
+415 passed (390 non-PostgreSQL + 25 PostgreSQL)
 ```
 
 여기에는 PostgreSQL 17 로컬 클러스터를 사용하는 25개 test가 포함된다. Public code 추가 뒤에도
@@ -167,9 +171,9 @@ OAuth, tenant RLS, durable Job과 Foundation contract가 유지됐다.
 ### Coverage
 
 ```text
-pytest raw total coverage: 94.92%
-coverage gate normalized statement: 96.09%
-coverage gate branch: 90.31%
+pytest raw total coverage: 95.03%
+coverage gate normalized statement: 96.16%
+coverage gate branch: 90.54%
 critical module statement minimum: 95.0%
 status: pass
 ```
@@ -182,11 +186,12 @@ parent/worker 성공·timeout·exit·malformed payload와 PDF core failure는 �
 ```text
 ruff check: PASS
 ruff format --check: PASS
-mypy strict: PASS (138 checked Python files)
+mypy strict: PASS (140 checked Python files)
 uv lock --check: PASS
 dependency license manifest: PASS
 uv audit: 53 packages, known vulnerability 0
 uv build: wheel + source distribution PASS
+clean wheel install + `psrctl --help` + Writer import: PASS
 CycloneDX 1.5 SBOM: PASS (41 runtime components)
 ```
 
@@ -220,6 +225,7 @@ repository에 고정하지 않고 release build에서 다시 생성한다.
 | purge | quick workspace 접근 차단·삭제 뒤 결과 반환 | PASS/local |
 | 실제 공식 웹 | 고정 공식 URL 5종의 snapshot 수집·파싱·선택 | PASS/fixed-source |
 | curated discovery | no-key 실제 quick, 7 track·12 citation·purge | PASS/live |
+| constrained writer | anchor 충족 track만 recommendation 4건, citation 모두 연결 | PASS/baseline |
 | 실제 검색 | production live Search credential로 실행하지 않음 | PENDING |
 | 업무 답변 유용성 | 보수적 evidence bundle까지만 검증, domain synthesis human QA 없음 | PENDING |
 | site terms | robots 외 사이트별 약관 자동판정 없음 | PENDING/operational |
@@ -243,8 +249,8 @@ provider 결과 자체를 persistent index나 재배포 bundle에 저장하지 �
 
 1. 실제 Search provider가 위 고정 URL과 동등한 source를 안정적으로 찾는지는 검증 전이다.
 2. 국가법령정보센터 법령 본문/조문 URL을 일반화해 발견하는 adapter는 아직 없다.
-3. 현재 finding은 관련 원문 발췌를 보여주는 보수적 문장이다. 정책 초안으로 바로 쓸 수 있는
-   claim/recommendation synthesis는 아직 품질검증하지 않았다.
+3. 현재 Writer는 anchor 기반 조달 원칙 후보 4건을 만들지만 표현·적용범위의 사람 품질검증은
+   아직 완료하지 않았다.
 4. 의미 기반 conflict, 법령 현행성·법적 성격 판정은 구현되지 않았다.
 5. site별 Terms/저작권 허용범위는 robots만으로 해결되지 않는다.
 6. trusted edge IP, 일일 비용상한, multi-replica quota가 없다.

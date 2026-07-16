@@ -14,12 +14,18 @@ from psr_mcp.collectors.access_policy import SourceAccessPolicy
 from psr_mcp.collectors.safe import CollectionError, SafeCollector
 from psr_mcp.collectors.url_policy import UrlPolicyError
 from psr_mcp.evidence import (
+    CitationConstrainedWriter,
     DocumentQualityAssessor,
     EvidenceComposer,
     EvidenceDocument,
     EvidencePack,
 )
-from psr_mcp.evidence.models import EvidenceCitation, EvidenceScore, ScoreComponent
+from psr_mcp.evidence.models import (
+    EvidenceCitation,
+    EvidenceFinding,
+    EvidenceScore,
+    ScoreComponent,
+)
 from psr_mcp.parsers import DocumentParser, ParseError
 from psr_mcp.planner.models import ResearchPlan
 from psr_mcp.public.schemas import (
@@ -54,6 +60,7 @@ class PublicResearchPipeline:
         evidence: EvidenceComposer,
         source_policy: SourceAccessPolicy,
         quality: DocumentQualityAssessor | None = None,
+        writer: CitationConstrainedWriter | None = None,
         max_collection_concurrency: int = 4,
         source_discovery: SourceDiscoveryMode = "test_static",
     ) -> None:
@@ -66,6 +73,7 @@ class PublicResearchPipeline:
         self._evidence = evidence
         self._source_policy = source_policy
         self._quality = quality or DocumentQualityAssessor()
+        self._writer = writer or CitationConstrainedWriter()
         self._collection_semaphore = asyncio.Semaphore(max_collection_concurrency)
         self._source_discovery = source_discovery
 
@@ -125,7 +133,9 @@ class PublicResearchPipeline:
             terms_by_track={track.id: track.selection_terms for track in plan.tracks},
         )
         citations = tuple(_citation(citation) for citation in evidence_pack.citations)
-        findings = tuple(_finding(citation) for citation in evidence_pack.citations)
+        findings = tuple(
+            _finding(finding) for finding in self._writer.write(evidence_pack.citations)
+        )
         gaps = _gaps(plan, evidence_pack)
         if self._source_discovery == "curated_seed":
             gaps = (
@@ -148,10 +158,12 @@ class PublicResearchPipeline:
             citation.source_tier is SourceTier.OFFICIAL_PRIMARY
             for citation in evidence_pack.citations
         )
+        recommendation_count = sum(finding.kind == "RECOMMENDATION" for finding in findings)
         summary = (
             f"공식자료 우선 조사에서 인용 가능한 원문 구간 {len(citations)}건을 확인했습니다. "
             f"그중 공식 1차자료는 {official_primary}건입니다. "
-            "도메인 판단을 자동 생성하지 않고 확인된 원문과 미확인 범위를 분리했습니다."
+            f"근거 anchor가 충족된 조달 원칙 검토안은 {recommendation_count}건입니다. "
+            "확정적 법률·적용 판단은 자동 생성하지 않고 확인된 원문과 미확인 범위를 분리했습니다."
         )
         return ResearchDraft(
             status=status,
@@ -440,17 +452,12 @@ def _citation(citation: EvidenceCitation) -> Citation:
     )
 
 
-def _finding(citation: EvidenceCitation) -> Finding:
-    excerpt = " ".join(citation.excerpt.split())
-    if len(excerpt) > 220:
-        excerpt = f"{excerpt[:219]}…"
+def _finding(finding: EvidenceFinding) -> Finding:
     return Finding(
-        claim=(
-            f"{citation.publisher}의 「{citation.title}」 {citation.locator} 관련 원문: {excerpt}"
-        ),
-        kind="FACT",
-        citation_ids=[citation.id],
-        confidence=_confidence(citation.score.overall),
+        claim=finding.claim,
+        kind=finding.kind,
+        citation_ids=list(finding.citation_ids),
+        confidence=finding.confidence,
     )
 
 

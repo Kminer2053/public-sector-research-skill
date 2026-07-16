@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 
 from psr_mcp.collectors.models import CollectedDocument
 from psr_mcp.parsers.models import ParsedDocument
@@ -55,3 +56,11 @@ class EvidencePack:
     citations: tuple[EvidenceCitation, ...]
     gaps: tuple[str, ...]
     deduplicated_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceFinding:
+    claim: str
+    kind: Literal["FACT", "INFERENCE", "RECOMMENDATION"]
+    citation_ids: tuple[str, ...]
+    confidence: Literal["HIGH", "MEDIUM", "LOW"]

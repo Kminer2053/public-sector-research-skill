@@ -246,6 +246,8 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-035 | Markdown과 JSON을 지원한다. | Must | 두 형식의 핵심 claim/citation ID 일치 |
 | FR-PUB-036 | 하나의 원문이 여러 조사 track을 지지하면 중복 원문 판정과 별개로 track 연결을 보존한다. | Must | citation에 `track_id`, 동일 PDF의 cross-track recall 유지 |
 | FR-PUB-037 | 같은 URL이 여러 track을 지지하더라도 원문 network fetch는 Run당 한 번만 수행한다. | Must | 두 track·한 URL fixture의 fetch count가 1 |
+| FR-PUB-038 | 업무용 권고안은 사전 검토된 anchor group이 모두 근거 excerpt에 있을 때만 생성한다. | Must | anchor 하나가 빠진 fixture에서 recommendation 0 |
+| FR-PUB-039 | 자동 권고안은 FACT가 아니라 `RECOMMENDATION`이며 사용한 citation ID를 모두 노출한다. | Must | citation 없는 recommendation 0 |
 
 ### 8.5 Ephemeral Lifecycle
 
@@ -426,6 +428,8 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 - `AC-PUB-044`: API key 없는 curated mode가 지원 질문에서 7개 track citation을 반환하고
   `source_discovery=curated_seed`를 표시한다.
 - `AC-PUB-045`: 같은 PIPC·WEF 문서를 여러 track에 재사용해도 각 원문은 한 번만 수집한다.
+- `AC-PUB-046`: curated GR-001에서 근거가 충분한 track만 조달 원칙 후보를 만들고, 부족한
+  track은 원문 FACT만 반환한다.
 
 ## 15. Stage B 진입 기준
 

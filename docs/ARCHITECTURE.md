@@ -98,7 +98,7 @@ Public Preview 구현 완료:
 - official query builder, source registry, 제한적 curated seed와 선택형 Brave Search adapter
 - SSRF-safe SafeCollector와 robots source policy
 - HTML·JSON·text parser와 subprocess-isolated PDF parser
-- component Evidence Score, citation/result composer와 최소 dedup
+- component Evidence Score, citation/result composer, citation-constrained Writer와 최소 dedup
 - IP+anonymous bucket quota
 
 Public Preview 후속 구현:
@@ -531,9 +531,11 @@ FACT는 citation이 없으면 finding으로 확정하지 않고 gap 또는 infer
   `freshness`, `independence`를 0..1 값과 설명으로 반환
 - 관련 구문 주변 excerpt 500자 상한, `track_id`, locator와 document SHA-256 필수
 
-현재 자동 finding은 과잉해석을 막기 위해 “어느 원문의 어느 구간을 확인했다”는 보수적 사실만
-만든다. 실제 정책 claim, recommendation, conflict와 법적 적용 판단은 live official-source
-검증과 citation-constrained Writer의 후속 범위다.
+현재 `CitationConstrainedWriter`는 모든 citation을 extractive FACT로 남기고, 사전 검토된
+track별 anchor group이 모두 excerpt에서 확인될 때만 “조달 원칙 검토안”을
+`RECOMMENDATION`으로 추가한다. recommendation은 citation ID를 필수로 가지며, anchor가 하나라도
+없으면 생성하지 않는다. 이는 적용대상·법적 의무 여부를 판정하는 법률 Writer가 아니고,
+conflict synthesis와 최종 규정문 생성은 여전히 사람 QA 후속 범위다.
 
 ## 13. MCP Contract
 
@@ -764,7 +766,7 @@ Public Tool Catalog
 4. legacy `crawlkit.py` characterization과 SafeCollector 이식 판단 — 완료
 5. Search/robots/Collector/Parser/Evidence quick 수직 슬라이스 — 완료
 6. 실제 official-source golden scenario와 human usefulness review — 다음
-7. 필요 시 citation-constrained Writer, 이후 async lifecycle과 public edge — 후속
+7. Writer 사람 QA와 conflict 보강, 이후 async lifecycle과 public edge — 후속
 
 ## 21. Extension Points
 

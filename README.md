@@ -5,9 +5,10 @@
 > 현재 상태: OAuth·PostgreSQL·Tenant 기반 Foundation과 Public Safety Core에 이어,
 > official-first Search port, API key가 필요 없는 제한적 curated source mode, 선택형 Brave
 > adapter, robots 정책, SafeCollector, HTML·JSON·PDF parser, Evidence Composer와 실제 quick
-> pipeline까지 연결됐습니다. curated mode의 실제 검토 원문 5종·7개 track smoke와 즉시 purge는
-> 통과했지만 사람 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았으므로
-> 공개 완성품으로 표현하거나 배포하면 안 됩니다.
+> pipeline, citation-constrained Writer까지 연결됐습니다. curated mode의 실제 검토 원문
+> 5종·7개 track smoke, 근거 anchor 기반 조달 원칙 후보 4건과 즉시 purge는 통과했지만 사람
+> 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았으므로 공개
+> 완성품으로 표현하거나 배포하면 안 됩니다.
 
 ## 제품 성장 순서
 
@@ -92,6 +93,7 @@ Enterprise
 - URL·document hash 중복 제거와 track-balanced citation 선택
 - 동일 원문을 여러 track에 연결하되 네트워크 수집은 한 번만 수행
 - authority·primary·directness·freshness·snapshot·specificity·independence 점수 설명
+- 원문 anchor를 모두 확인한 경우에만 `RECOMMENDATION`을 만드는 deterministic Writer
 - Search→Collect→Parse→Evidence→Markdown/JSON quick vertical slice
 - 일부 Search·수집·파싱 실패를 보존하는 `PARTIAL` 결과
 
@@ -108,7 +110,7 @@ Planner·SafeCollector 기반 검증을 기록했습니다.
 
 1. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
 2. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
-3. 실제 법령·가이드의 citation-constrained claim 작성 품질과 conflict/gap 검증
+3. citation-constrained 조달 원칙 후보의 표현·적용범위와 conflict/gap 검증
 4. 선택형 live Search provider의 recall·비용·보존경계 비교검증
 5. edge client IP normalization과 end-to-end content leakage scan
 6. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal

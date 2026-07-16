@@ -252,6 +252,16 @@ async def test_pipeline_collects_shared_source_once_and_preserves_track_links() 
         "privacy",
         "data-rights",
     }
+    assert len({citation.id for citation in draft.citations}) == 2
+    track_by_citation = {citation.id: citation.track_id for citation in draft.citations}
+    recommendation_tracks = {
+        track_by_citation[citation_id]
+        for finding in draft.findings
+        if finding.kind == "RECOMMENDATION"
+        for citation_id in finding.citation_ids
+    }
+    assert recommendation_tracks == {"privacy", "data-rights"}
+    assert "조달 원칙 검토안은 2건" in draft.summary
     assert "SOURCE_LIMIT_REACHED" not in {failure.code for failure in draft.failures}
 
 
