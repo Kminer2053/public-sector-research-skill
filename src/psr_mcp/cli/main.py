@@ -18,6 +18,7 @@ from psr_mcp.bootstrap import build_container
 from psr_mcp.config import SearchProviderMode, ServiceMode, Settings
 from psr_mcp.conformance import ConformanceError, ConformanceOptions, run_conformance
 from psr_mcp.mcp.server import create_http_app
+from psr_mcp.public.readiness import evaluate_public_readiness
 from psr_mcp.storage.migrations.runner import current as migration_current
 from psr_mcp.storage.migrations.runner import downgrade as migration_downgrade
 from psr_mcp.storage.migrations.runner import upgrade as migration_upgrade
@@ -29,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     doctor = commands.add_parser("doctor", help="validate and print redacted configuration")
     doctor.add_argument("--json", action="store_true", dest="as_json")
+    doctor.add_argument("--require-public-ready", action="store_true")
     serve_parser = commands.add_parser("serve", help="run the configured MCP server")
     serve_parser.add_argument("service", choices=["mcp"])
     database = commands.add_parser("db", help="run operator-only PostgreSQL migrations")
@@ -72,17 +74,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         settings = Settings.from_env()
         if args.command == "doctor":
+            readiness = (
+                evaluate_public_readiness(settings, environ=os.environ)
+                if settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
+                else None
+            )
             payload = {
                 "status": "ok",
                 "version": __version__,
                 "settings": settings.diagnostics(),
                 "limitations": _limitations(settings),
+                "public_readiness": readiness.to_dict() if readiness else None,
             }
             if args.as_json:
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
             else:
                 print(f"PSR MCP {settings.service_mode.value} configuration: OK")
                 print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+            if args.require_public_ready and (
+                readiness is None or not readiness.public_deployment_config_ready
+            ):
+                return 5
             return 0
         if args.command == "serve":
             _serve(settings)
@@ -148,11 +160,18 @@ def _limitations(settings: Settings) -> list[str]:
             limitations.append("development fixture is not external research evidence")
         elif settings.search_provider is SearchProviderMode.DISABLED:
             limitations.append("public research backend is disabled")
+        elif settings.search_provider is SearchProviderMode.CURATED:
+            limitations.append("curated source discovery is limited and is not live web search")
+            limitations.append("public usefulness human review is still pending")
         else:
             limitations.append("live official-source usefulness is not yet validated")
             limitations.append(
                 "external search provider retention is separate from PSR server retention"
             )
+        if settings.public_daily_quick_budget == 0:
+            limitations.append("daily quick budget is disabled")
+        if settings.public_pause_file is None:
+            limitations.append("operator runtime pause file is not configured")
         limitations.append("Public Preview PG0 through PG3 are not yet fully validated")
         return limitations
     limitations.append("public collector and reporting are not exposed in Foundation mode")

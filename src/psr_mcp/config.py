@@ -388,6 +388,7 @@ class Settings:
         values["database_url_ref"] = bool(self.database_url_ref)
         values["abuse_hmac_key_ref"] = bool(self.abuse_hmac_key_ref)
         values["search_api_key_ref"] = bool(self.search_api_key_ref)
+        values["public_pause_file"] = bool(self.public_pause_file)
         return values
 
 

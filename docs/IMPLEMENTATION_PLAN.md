@@ -652,6 +652,11 @@ validate
 - known limitation, provider/privacy/copyright notice
 - `psrctl doctor` stale limitation 수정
 
+**현재:** doctor는 `local_smoke_ready`, `public_deployment_config_ready`,
+`accepting_new_research`, check별 pass/warn/fail과 외부 pending gate를 출력한다.
+`--require-public-ready`는 미달 시 exit 5이며 secret 값은 출력하지 않는다. 실제 Host 2종과
+gateway staging rehearsal은 여전히 외부 검증 대상이다.
+
 ### CH-P3.4 Public Release Rehearsal
 
 - load/cost test

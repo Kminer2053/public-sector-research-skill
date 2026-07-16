@@ -77,6 +77,7 @@ Enterprise
 - workspace·외부 수집 전에 적용하고 성공·실패·취소 뒤 반환하는 process active quick 상한
 - production에서 명시해야 하며 UTC 일자별로 새 조사 진입을 막는 process daily quick budget
 - 서버 재시작 없이 새 조사만 멈추고 기존 purge는 유지하는 operator pause-file signal
+- local smoke와 production 공개 설정 준비를 분리하고 CI gate를 제공하는 `psrctl doctor`
 - public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
 - random workspace ID, directory `0700`, file `0600`
 - path traversal·symlink·만료 workspace 접근 차단

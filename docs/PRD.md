@@ -273,6 +273,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-055 | 동시에 실행할 수 있는 quick 조사를 프로세스별 설정값으로 제한한다. | Must | 상한 초과 요청은 workspace·외부 network 생성 전에 `PUBLIC_LIMIT_REACHED`, 완료·실패·취소 뒤 slot 반환 |
 | FR-PUB-056 | production 공개 mode는 UTC 일자별 quick 진입 budget을 명시하고 소진 시 새 조사를 중단한다. | Must | 잘못된 입력·active 초과는 미차감, 시작된 성공·실패는 차감, workspace·network 전 `PUBLIC_DAILY_BUDGET_EXHAUSTED` |
 | FR-PUB-057 | 운영자는 서버 재시작이나 관리 MCP Tool 없이 새 quick을 즉시 pause/resume할 수 있어야 한다. | Must | operator file 생성 시 새 quick 거부·policy 반영, 기존 실행 purge 유지, 제거 시 resume |
+| FR-PUB-058 | operator doctor는 local smoke 가능 여부와 production 공개 설정 준비 여부를 분리해 판정해야 한다. | Must | backend·ephemeral root·secret·proxy·daily budget·runtime pause check, CI gate exit 0/5 |
 
 ### 8.7 Feedback
 
@@ -354,6 +355,18 @@ stateDiagram-v2
 | NFR-PUB-009 | 서비스 정책과 실제 TTL config가 자동 비교된다. | startup fail on mismatch |
 | NFR-PUB-010 | 한국어 결과를 기본으로 하고 원문 의미를 과도하게 의역하지 않는다. | golden QA |
 | NFR-PUB-011 | PSR server 무보관과 외부 provider ZDR 여부를 구분해 표현한다. | 정책·문서 표현 검토 |
+| NFR-PUB-012 | doctor와 service policy는 secret 값을 출력하지 않고 현재 구성과 제한을 일관되게 표시한다. | secret canary 0, config contract test |
+
+### 11.1 Operator CLI
+
+| Command | 출력/종료코드 | 의미 |
+|---|---|---|
+| `psrctl doctor --json` | valid config면 0 | redacted settings, limitations, public readiness checks |
+| `psrctl doctor --json --require-public-ready` | production 공개 설정 준비 시 0, 미달 시 5 | CI/pre-deploy configuration gate |
+
+`public_deployment_config_ready=true`는 source mode, ephemeral root, secret 존재, trusted proxy,
+daily quick budget과 runtime pause control이 준비됐다는 뜻이다. 실제 gateway spoof rehearsal,
+provider 비용 hard cap, staging purge game day와 사용자 효용 검증을 승인한다는 뜻은 아니다.
 
 ## 12. 관찰가능성과 개인정보
 

@@ -347,6 +347,7 @@ Live QA는 다음을 추가로 충족해야 한다.
 | VAL-PUB-EDGE-006 | Host 2종 | anonymous quick 실제 호출 |
 | VAL-PUB-EDGE-007 | disconnect/reconnect | async result 조회 |
 | VAL-PUB-EDGE-008 | service policy | 배포 config와 자동 일치 |
+| VAL-PUB-EDGE-009 | operator doctor | local smoke/public config 분리, secret 미노출, 미달 시 exit 5 |
 
 ### 8.2 Load와 Cost
 

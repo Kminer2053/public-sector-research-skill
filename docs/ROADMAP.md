@@ -148,6 +148,18 @@ overwrite, provider billing hard cap과 multi-replica 공유 quota는 R4에서 �
 **난이도:** 중간
 **완료 기준:** 정상·오류·crash 경로 canary 잔존 0건
 
+#### WP-R1.5 Operator Readiness Gate
+
+- read-only `psrctl doctor`가 backend, ephemeral root, secret availability, trusted proxy,
+  daily budget과 runtime pause를 check별 pass/warn/fail로 표시
+- local smoke와 production 공개 설정 준비를 분리
+- CI/pre-deploy용 `--require-public-ready` exit 5
+- gateway·provider·staging·사용자 검증은 external pending gate로 유지
+
+**현재:** local implementation PASS. 실제 배포환경 preflight 실행은 R4에서 검증한다.
+
+**완료 기준:** `VAL-PUB-EDGE-009` local PASS와 staging 증적
+
 ### R1 종료 게이트
 
 - 익명 endpoint의 IP quota 우회가 불가능하다.

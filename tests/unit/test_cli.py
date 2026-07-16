@@ -20,6 +20,7 @@ def test_doctor_json_is_redacted(
     assert exit_code == 0
     assert payload["status"] == "ok"
     assert payload["settings"]["cursor_signing_key"] == "***"
+    assert payload["public_readiness"] is None
     assert "in-memory storage" in payload["limitations"]
     assert all("remote Host conformance" not in value for value in payload["limitations"])
 
@@ -42,10 +43,59 @@ def test_public_doctor_reports_backend_state_without_treating_ephemeral_mode_as_
     payload = json.loads(capsys.readouterr().out)
 
     assert "development fixture is not external research evidence" in payload["limitations"]
+    assert payload["public_readiness"]["local_smoke_ready"] is True
+    assert payload["public_readiness"]["public_deployment_config_ready"] is False
     assert "Public Preview PG0 through PG3 are not yet fully validated" in payload["limitations"]
     assert "development static authentication" not in payload["limitations"]
     assert "in-memory storage" not in payload["limitations"]
     assert all("not implemented" not in value for value in payload["limitations"])
+
+
+def test_doctor_can_fail_ci_when_public_deployment_configuration_is_not_ready(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("PSR_SERVICE_MODE", "public_ephemeral")
+    monkeypatch.setenv("PSR_EPHEMERAL_ROOT", str(tmp_path / "ephemeral"))
+    monkeypatch.setenv("PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED", "true")
+
+    assert cli.main(["doctor", "--json", "--require-public-ready"]) == 5
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "ok"
+    assert payload["public_readiness"]["public_deployment_config_ready"] is False
+
+
+def test_doctor_public_ready_gate_passes_complete_production_configuration(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "ephemeral"
+    root.mkdir(mode=0o700)
+    root.chmod(0o700)
+    values = {
+        "PSR_ENV": "production",
+        "PSR_SERVICE_MODE": "public_ephemeral",
+        "PSR_PUBLIC_URL": "https://research.example.gov",
+        "PSR_RESOURCE_SERVER_URL": "https://research.example.gov/mcp",
+        "PSR_EPHEMERAL_ROOT": str(root),
+        "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+        "PSR_ABUSE_KEY": "production-public-abuse-key-0001",
+        "PSR_SEARCH_PROVIDER": "curated",
+        "PSR_TRUSTED_PROXY_CIDRS": "10.0.0.0/8",
+        "PSR_PUBLIC_DAILY_QUICK_BUDGET": "500",
+        "PSR_PUBLIC_PAUSE_FILE": str(tmp_path / "public.pause"),
+    }
+    for name, value in values.items():
+        monkeypatch.setenv(name, value)
+
+    assert cli.main(["doctor", "--json", "--require-public-ready"]) == 0
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+    assert payload["public_readiness"]["public_deployment_config_ready"] is True
+    assert payload["settings"]["public_pause_file"] is True
+    assert values["PSR_ABUSE_KEY"] not in output
 
 
 def test_configuration_error_uses_exit_code_2(

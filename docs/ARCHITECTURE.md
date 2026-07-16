@@ -618,6 +618,21 @@ fixture와 curated/Brave를 동시에 켜면 startup이 실패한다. `curated`�
 않고, `brave`는 Search key가 없으면 startup이 실패한다. public production은 fixture를
 금지한다. Search key와 abuse key는 diagnostic에 값이 아니라 설정 여부만 나타난다.
 
+### 14.1 Read-only Doctor
+
+`psrctl doctor`는 server를 시작하거나 workspace를 만들지 않고 public 설정을 점검한다.
+
+- `local_smoke_ready`: fixture를 포함해 로컬 lifecycle smoke를 실행할 최소 조건
+- `public_deployment_config_ready`: production 환경, 실제 source mode, restricted ephemeral
+  root, 사용 가능한 secret, trusted proxy, daily budget, runtime pause 경계가 모두 준비된 상태
+- `accepting_new_research`: config가 실행 가능하고 static/runtime pause가 열려 있는 상태
+- `external_gates_pending`: gateway, multi-replica quota, provider hard cap, staging retention과
+  실제 사용자 검증처럼 로컬 설정만으로 승인할 수 없는 항목
+
+secret은 `env://` reference가 가리키는 값의 존재와 최소 길이만 확인하고 값이나 환경변수명을
+출력하지 않는다. `--require-public-ready`는 configuration gate 미달 시 exit 5를 반환한다.
+이는 PG3 release approval이 아니라 배포 전 정적·로컬 운영설정 gate다.
+
 Fail-closed rules:
 
 - public mode에서 ephemeral root가 없으면 startup 실패

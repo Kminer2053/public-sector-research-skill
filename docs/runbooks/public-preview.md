@@ -165,6 +165,26 @@ pause 파일은 application이 만들거나 삭제하지 않는다. control plan
 운영자가 관리하고, 외부 사용자가 해당 경로를 쓸 수 없어야 한다. file 내용은 읽지 않으므로
 운영 메모나 사용자 content를 넣지 않는다.
 
+## 6.2 Pre-deploy doctor
+
+일반 진단:
+
+```bash
+psrctl doctor --json
+```
+
+CI 또는 배포 직전 configuration gate:
+
+```bash
+psrctl doctor --json --require-public-ready
+```
+
+종료코드 0은 production 공개 설정에 필요한 source mode, restricted ephemeral root, 실제
+secret 존재, trusted proxy, daily quick budget과 runtime pause control이 준비됐다는 뜻이다.
+미달이면 종료코드 5다. 출력의 `external_gates_pending`은 이 명령이 확인할 수 없는 실제
+gateway spoof rehearsal, shared quota/provider hard cap, staging purge와 사용자 효용 검증을
+나열한다. 따라서 exit 0만으로 Public Preview 배포 승인을 선언하지 않는다.
+
 ## 7. 품질 검증
 
 ```bash
