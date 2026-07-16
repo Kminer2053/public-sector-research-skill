@@ -115,7 +115,7 @@ flowchart LR
 | TM-022 | Host disconnect 상태 상실 | stateless HTTP, durable explicit Run ID | TCP/TLS/Inspector reconnect | Host retry behavior 차이 |
 | TM-023 | vulnerable dependency | locked dependencies, `uv audit`, SBOM | CI + 2026-07-16 audit | advisory feed 한계 |
 | TM-024 | incompatible dependency license | versioned cross-platform manifest | manifest check | project 자체 license 미결정 |
-| TM-025 | MCP source content 외부 전송 | 수동 Host test approval boundary | Codex Resource/Prompt 실행 차단 | 사용자/보안 결정 필요 |
+| TM-025 | MCP source content 외부 전송 | 수동 Host test approval boundary, capability-aware gate | Codex Resource/Prompt 실행 중단·미필수화 | 향후 opt-in 검증 시 별도 승인 |
 
 ## 7. 보안 검토 결과
 
@@ -136,7 +136,6 @@ flowchart LR
 |---|---|---|
 | 실제 기관 IdP/JWKS/폐기 전파 | 환경 미검증 | Pilot IdP owner와 integration test |
 | 실제 gateway/WAF/TLS cipher | 환경 미검증 | 운영 topology review + penetration test |
-| Codex Resource/Prompt 외부 전송 | Security decision | 사용자가 전송 범위를 승인하거나 G5 지원 범위 변경 |
 | project distribution license | Product/Legal decision | 배포 전에 LICENSE와 NOTICE 결정 |
 | global rate limit | 아키텍처 후속 | multi-replica 전에 gateway/Redis 정책 결정 |
 | security owner sign-off | G6 approval | 본 문서와 validation report 서명 |
@@ -170,5 +169,7 @@ Security owner는 다음을 확인하고 문서 하단에 결정 기록을 추�
 Security owner: PENDING
 Decision: PENDING
 Date: PENDING
-Conditions: Codex Host primitive 검증, 실제 기관 IdP/gateway 검증, project license 결정
+Conditions: 실제 기관 IdP/gateway 검증, project license 결정
 ```
+
+Codex Host의 Foundation 지원 범위는 [ADR-0008](../adr/0008-capability-aware-host-conformance.md)에 따라 Tool-first로 확정했다. Resource/Prompt model-mediated 검증은 release gate가 아니며, 향후 제품 필요가 생기면 비민감 fixture와 외부 전송 범위를 별도로 승인한다.

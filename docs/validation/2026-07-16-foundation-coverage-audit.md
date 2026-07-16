@@ -23,7 +23,7 @@ commit `952e173`에서 security/configuration, OIDC/JWKS, cursor integrity, Run/
 | critical module statements | 각 ≥ 95% | 최소 95.00% | PASS |
 | 전체 test | 모두 성공 | 185 passed | PASS |
 
-이 보고서는 coverage 품질 기준만 닫는다. Codex Resource/Prompt 승인 대기로 인한 `G5 PARTIAL`, 실제 기관 IdP/gateway, G6 owner 승인은 그대로 열린다.
+이 보고서는 coverage 품질 기준만 닫는다. 이후 [ADR-0008](../adr/0008-capability-aware-host-conformance.md)로 capability-aware `G5`가 통과했으며, 실제 기관 IdP/gateway와 G6 owner 승인은 그대로 열린다.
 
 ## 2. 보강 범위
 

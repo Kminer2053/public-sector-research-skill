@@ -180,7 +180,7 @@ Host가 보여주는 일반적인 Tool confirmation만으로 조직의 업무 �
 
 다음 중 하나라도 실패하면 feature 확장을 시작하지 않는다.
 
-- 목표 Host에서 Tool/Resource/Prompt contract가 불안정하다.
+- 전체 Tool/Resource/Prompt server contract 또는 목표 Host의 필수 primitive contract가 불안정하다.
 - token audience 또는 Project authorization을 우회할 수 있다.
 - Job retry가 중복 Snapshot을 만든다.
 - protocol session loss가 application Job loss로 이어진다.
@@ -364,7 +364,7 @@ MVP는 공개 서비스가 아니다. 다중 Tenant 구조는 구현하지만 �
 - 공식 원문 미확보·부분실패·추론을 report가 숨기지 않는다.
 - Plan과 Report publish에 authenticated human Review가 있다.
 - worker crash와 duplicate start에서 성공 Snapshot이 손실·중복되지 않는다.
-- 지원 Host 2종에서 같은 Project를 조회하고 core flow를 완료한다.
+- 지원 Host 2종에서 각 Host의 필수 primitive로 같은 Project를 조회하고 core flow를 완료한다.
 - restore drill로 DB와 object manifest consistency를 복구한다.
 - 코드, 운영문서, threat model, data dictionary가 함께 release tag에 포함된다.
 

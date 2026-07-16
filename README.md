@@ -2,7 +2,7 @@
 
 공공분야 업무종사자가 MCP 호환 AI 클라이언트에서 공식 자료 중심의 조사를 계획하고, 원문 근거를 검토·재사용하며, 감사 가능한 보고서를 만들 수 있게 하는 Evidence-First Research MCP입니다.
 
-> 상태: Foundation F0~F4 구현을 완료했습니다. PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, 공식 SDK와 MCP Inspector conformance는 통과했습니다. `G5`는 Codex Resource/Prompt 검증에 대한 보안 승인이 남아 `PARTIAL`이며 `G6`는 열려 있습니다.
+> 상태: Foundation F0~F4 구현을 완료했습니다. PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, 공식 SDK·MCP Inspector 전체 conformance와 Codex Tool 호환성을 검증해 capability-aware `G5`를 통과했습니다. 실제 기관 환경과 독립 owner 승인이 필요한 `G6`는 열려 있습니다.
 
 ## 왜 별도 저장소인가
 
@@ -31,7 +31,7 @@
 - [HOST MATRIX](./docs/compatibility/host-matrix.md): SDK·Inspector·Codex primitive별 실제 검증 결과
 - [THREAT MODEL](./docs/security/THREAT_MODEL.md): Foundation 위협·통제·잔여위험
 - [DATA DICTIONARY](./docs/data/DATA_DICTIONARY.md): 실제 PostgreSQL schema와 데이터 의미
-- [REMOTE G5 REPORT](./docs/validation/2026-07-16-remote-g5.md): F4 실행 증적과 미완료 gate
+- [REMOTE G5 REPORT](./docs/validation/2026-07-16-remote-g5.md): F4 실행 증적과 capability-aware G5 판정
 - [COVERAGE GATE AUDIT](./docs/validation/2026-07-16-foundation-coverage-audit.md): statement·branch·critical module 독립 기준 검증
 - [ADR](./docs/adr/): 구현 결정을 고정하는 Architecture Decision Records
 
@@ -52,7 +52,7 @@ Traceable, Reproducible, Reusable
 
 ## 현재 범위
 
-저장소 분리와 제품설계를 마치고 Foundation의 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`를 통과했습니다. 현재 구현은 다음을 포함합니다.
+저장소 분리와 제품설계를 마치고 Foundation의 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, capability-aware Host conformance `G5`를 통과했습니다. 현재 구현은 다음을 포함합니다.
 
 - Organization 범위의 Project 조회와 authorization policy
 - 승인된 Plan fixture를 통한 idempotent ResearchRun 생성·조회·취소
@@ -80,4 +80,4 @@ uv run --frozen psrctl doctor --json
 uv run --frozen psrctl serve mcp
 ```
 
-서버가 실행된 상태에서 `psrctl conformance` 또는 `scripts/http_smoke.py`로 공식 Python SDK 기반 검증을 실행할 수 있습니다. OAuth/PostgreSQL 모드는 [OAuth runbook](./docs/runbooks/oauth-resource-server.md), TLS/Host 검증은 [Remote MCP runbook](./docs/runbooks/remote-mcp.md)을 따릅니다. Codex Resource/Prompt, 실제 기관 IdP/gateway, owner 승인이 끝나기 전에는 Foundation 전체 또는 production-ready로 선언하지 않습니다. 기존 crawler 코드의 이동·리팩터링은 Foundation 전체 gate 이후 작업 패키지에서 시작합니다.
+서버가 실행된 상태에서 `psrctl conformance` 또는 `scripts/http_smoke.py`로 공식 Python SDK 기반 검증을 실행할 수 있습니다. OAuth/PostgreSQL 모드는 [OAuth runbook](./docs/runbooks/oauth-resource-server.md), TLS/Host 검증은 [Remote MCP runbook](./docs/runbooks/remote-mcp.md)을 따릅니다. Codex는 [ADR-0008](./docs/adr/0008-capability-aware-host-conformance.md)에 따라 Tool-first 지원 대상으로 판정합니다. 실제 기관 IdP/gateway와 독립 owner 승인이 끝나기 전에는 Foundation 전체 또는 production-ready로 선언하지 않습니다. 기존 crawler 코드의 이동·리팩터링은 Foundation 전체 gate 이후 작업 패키지에서 시작합니다.

@@ -240,8 +240,9 @@ OAuth→MCP→PostgreSQL integration test는 `run.start` 응답의 `operation_id
 
 - 실제 기관 IdP와 기관 CA onboarding
 - gateway/WAF 제품 설정 review와 penetration test
-- Codex Resource/Prompt 외부 model 전송 범위에 대한 사용자·보안 승인
 - Project source license와 distribution policy 결정
 - Product, Architecture, Security owner의 G6 서명
 
 이 항목이 닫히기 전에는 `production-ready` 또는 `public-sector deployment-ready`로 표현하지 않는다.
+
+Codex Resource/Prompt model-mediated 검증은 [ADR-0008](../adr/0008-capability-aware-host-conformance.md)에 따라 Foundation release gate가 아니다. 제품 필요가 생길 때만 별도 데이터 전송 범위와 test fixture를 승인받아 opt-in으로 실행한다.

@@ -67,7 +67,7 @@ uv run psrctl conformance --json
 | G5 | Interoperable | Streamable HTTP, 2 Hosts |
 | G6 | Foundation Exit | G0~G5 + docs/runbook/no P0/P1 |
 
-현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`를 통과했다. F4 code와 SDK/Inspector remote conformance는 완료됐지만 Codex Resource/Prompt 보안 승인이 남아 `G5 PARTIAL`, `G6 OPEN`이다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md), [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)에 있다.
+현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, capability-aware Host conformance `G5`를 통과했다. G5는 전체 server primitive를 SDK·Inspector로 검증하고 Codex의 필수 primitive인 Tool을 실제 호출하는 [ADR-0008](./adr/0008-capability-aware-host-conformance.md)을 따른다. 실제 기관 환경과 독립 owner 승인이 필요한 `G6`는 `OPEN`이다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md), [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)에 있다.
 
 ## 5. Build와 Dependency
 
@@ -377,10 +377,12 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 
 ### G5 Interoperable
 
-- MCP current stable conformance
-- 목표 Host 2종에서 Tool/Resource/Prompt
+- MCP current stable Tool/Resource/Prompt server conformance
+- 목표 Host 2종에서 각 Host가 노출하는 필수 primitive 실제 호출
+- Codex Foundation 지원 기준은 Tool 실제 호출
+- Resource/Prompt를 노출하는 Host에서는 해당 primitive도 실제 호출
 - disconnect/reconnect
-- compatibility matrix
+- primitive별 compatibility matrix
 
 ### G6 Foundation Exit
 
@@ -391,9 +393,9 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 
 ## 22. 현재 완료 선언 규칙
 
-현재 환경에서 F0~F3를 완료하면 다음 표현만 사용한다.
+현재 검증 상태에서는 다음과 같이 범위를 한정해 표현한다.
 
-> Foundation Core, MCP contract, PostgreSQL 17.10 local durability/RLS와 OAuth/Membership local integration이 검증됐다. 실제 기관 IdP와 remote Host conformance는 아직 검증되지 않았다.
+> Foundation G0~G5가 local·reference·capability-aware Host 범위에서 검증됐다. Codex Tool과 Inspector 전체 primitive는 표시된 version에서 호환된다. 실제 기관 IdP/gateway와 독립 owner 승인은 아직 검증되지 않았다.
 
 다음 표현은 G6 전 금지한다.
 
@@ -401,7 +403,7 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 - public-sector deployment ready
 - production durable queue verified
 - secure multi-tenant service verified
-- MCP Host compatible
+- 범위·Host·version을 생략한 “MCP Host compatible”
 
 ## 23. 검증 결과 기록 양식
 

@@ -1,6 +1,6 @@
 # MCP Host Compatibility Matrix
 
-> 기준일: 2026-07-16 · 구현 기준: `c7064cd` · Protocol: `2025-11-25`
+> 기준일: 2026-07-16 · 구현 기준: `c7064cd` · 지원정책: ADR-0008 · Protocol: `2025-11-25`
 
 [Remote MCP Runbook](../runbooks/remote-mcp.md) · [G5 Validation Report](../validation/2026-07-16-remote-g5.md) · [Validation Criteria](../VALIDATION_CRITERIA.md)
 
@@ -10,6 +10,7 @@
 - `AUTOMATED`: repository test가 재현한다.
 - `MANUAL`: version과 명령을 고정한 수동 실행 증적이다.
 - `NOT EXPOSED`: server 결함이 아니라 해당 Host의 현재 사용자 표면에서 primitive를 직접 선택할 수 없거나 확인하지 못했다.
+- `NOT REQUIRED`: 해당 Host의 Foundation 지원 계약에서 필수 primitive가 아니다.
 - `BLOCKED`: 검증하려면 명시적인 보안 승인이나 외부 환경이 필요하다.
 - 지원 판정은 Host가 실제로 노출하는 primitive별로 한다. 확인하지 않은 칸을 `PASS`로 추론하지 않는다.
 
@@ -19,9 +20,9 @@
 |---|---:|---|---|---|---|---|---|---|
 | MCP Python SDK reference client | `mcp 1.28.1` | Streamable HTTP | PASS | PASS | PASS | PASS | PASS | PASS/AUTOMATED |
 | MCP Inspector CLI | `0.18.0` | Streamable HTTP | PASS | PASS | PASS | PASS | 미실행 | PASS/MANUAL |
-| Codex CLI bundled Host | `0.144.2` | Streamable HTTP | PASS | BLOCKED | BLOCKED | 미실행 | 미실행 | PARTIAL/MANUAL |
+| Codex CLI bundled Host | `0.144.2` | Streamable HTTP | PASS | NOT REQUIRED | NOT REQUIRED | 미실행 | 미실행 | PASS/MANUAL |
 
-엄격한 `G5`는 “목표 Host 2종에서 Tool/Resource/Prompt”를 요구한다. Reference client와 Inspector에서는 세 primitive가 모두 통과했지만, 목표 AI Host인 Codex의 Resource/Prompt 재검증은 로컬 MCP 내용을 외부 model service에 전송하는 별도 보안 승인이 없어 중단됐다. 따라서 현재 `G5`는 **PARTIAL**이며, 이 칸을 닫거나 승인 기준을 변경하기 전에는 Foundation exit를 선언하지 않는다.
+[ADR-0008](../adr/0008-capability-aware-host-conformance.md)에 따라 전체 server Tool/Resource/Prompt 계약은 Reference client와 Inspector로 검증하고, 목표 AI Host는 실제 노출하는 필수 primitive로 판정한다. Codex Foundation 지원 계약은 Tool-first이며 실제 Tool call이 통과했다. 따라서 capability-aware `G5`는 **PASS**다. Codex Resource/Prompt는 검증하지 않았으며 PASS로 추론하지 않는다.
 
 ## 3. Reference Client
 
@@ -79,7 +80,7 @@ tools/call psr.research.run.start
 - structured/text 결과를 받은 뒤 `project-public-ai` 반환
 - exit code `0`
 
-Resource와 Prompt를 model-controlled Codex session에서 재검증하려는 실행은 로컬 내용을 외부 service로 보낼 수 있다는 approval review에 의해 거부됐다. 이 거부를 우회하지 않았으며, 명시적인 사용자 보안 승인 전까지 `BLOCKED`로 유지한다.
+Resource와 Prompt를 model-controlled Codex session에서 재검증하려는 실행은 로컬 내용을 외부 service로 보낼 수 있다는 approval review에 의해 거부됐다. 이 거부를 우회하지 않았다. ADR-0008 이후 두 primitive는 Codex Foundation 지원 계약의 필수 조건이 아니며 `NOT REQUIRED`로 기록한다. 향후 제품 필요가 생기면 별도 opt-in 보안 검토 후 검증한다.
 
 ## 6. 알려진 호환성 제한
 

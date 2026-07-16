@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4 구현 완료, G5 Host 승인 대기
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4/G5 완료, G6 owner review 대기
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ROADMAP](./ROADMAP.md) · [ADR](./adr/)
 
@@ -37,11 +37,11 @@
 | F1 | MCP Contract | Tools·Resources·Prompt와 in-memory protocol test | 완료 (`G2`, loopback) |
 | F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 완료: PostgreSQL 17.10 local G3 |
 | F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 완료: local G4 |
-| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 구현 완료 / G5 PARTIAL |
+| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 완료 / G5 PASS |
 | P0 | Planner Skeleton | Plan create/review workflow | Foundation 후 |
 | C0 | Collector Characterization | legacy behavior fixture와 adapter 판단 | Foundation 후 |
 
-`F0~F4`가 모두 끝나야 Roadmap의 Foundation exit gate를 통과한다.
+`F0~F4` 완료는 Roadmap의 Foundation exit gate 선행조건이다. 최종 `G6`에는 운영문서와 독립 Product·Architecture·Security owner 승인이 추가로 필요하다.
 
 ## 4. D0 — Detailed Design
 
@@ -410,7 +410,7 @@ development static AuthContext를 실제 OAuth/OIDC 검증과 Membership resolut
 - known compatibility matrix
 - unresolved P0/P1 0건
 
-**2026-07-16 결과:** commit `c7064cd`에서 real TCP, TLS terminating reverse proxy, request bound, operation/audit trace와 official client conformance를 구현했다. PostgreSQL 17을 포함한 158개 test, combined line+branch coverage 90.90%, OSV known vulnerability 0건을 확인했다. MCP Inspector 0.18.0은 Tool/Resource/Prompt와 새 process Run 재조회가 통과했고 Codex CLI 0.144.2는 실제 Tool call이 통과했다. Codex Resource/Prompt 호출은 로컬 내용을 외부 model service로 전송할 수 있어 명시적 보안 승인 전 `BLOCKED`다. 따라서 F4 code는 완료됐지만 strict G5는 `PARTIAL`이다. [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)와 [Host matrix](./compatibility/host-matrix.md)를 따른다.
+**2026-07-16 결과:** commit `c7064cd`에서 real TCP, TLS terminating reverse proxy, request bound, operation/audit trace와 official client conformance를 구현했다. PostgreSQL 17을 포함한 158개 test, combined line+branch coverage 90.90%, OSV known vulnerability 0건을 확인했다. MCP Inspector 0.18.0은 Tool/Resource/Prompt와 새 process Run 재조회가 통과했고 Codex CLI 0.144.2는 실제 Tool call이 통과했다. Product owner는 [ADR-0008](./adr/0008-capability-aware-host-conformance.md)에서 Codex Foundation 지원 기준을 Tool-first로 확정했다. 전체 server primitive contract와 Host별 필수 primitive를 모두 검증했으므로 F4와 G5는 `PASS`다. [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)와 [Host matrix](./compatibility/host-matrix.md)를 따른다.
 
 **2026-07-16 완료 감사:** combined coverage가 별도 branch 85% 기준을 증명하지 못하는 공백을 발견했다. commit `952e173`에서 security/config/OAuth/cursor/worker negative case와 CI의 독립 threshold gate를 추가했다. PostgreSQL 17.10을 포함한 185개 test가 통과했고 statement 95.02%, branch 87.10%, critical module 최소 95.00%를 확인했다. [Coverage Gate 감사 보고서](./validation/2026-07-16-foundation-coverage-audit.md)를 따른다.
 
@@ -555,14 +555,15 @@ Next gate:
 
 ## 19. 현재 착수 범위
 
-`D0~F4` 구현을 마쳤다. local TLS proxy, official SDK와 MCP Inspector는 통과했고 Codex Tool도 실제 호출됐다. 다만 Codex Resource/Prompt 검증의 보안 승인, 실제 기관 IdP/gateway, G6 owner 승인이 남아 strict G5는 `PARTIAL`이다. 이 조건을 닫기 전 production-ready로 선언하지 않는다.
+`D0~F4` 구현과 `G0~G5` 검증을 마쳤다. local TLS proxy, official SDK와 MCP Inspector 전체 primitive, Codex Tool을 실제 호출했다. 실제 기관 IdP/gateway와 G6 독립 owner 승인은 남아 있다. 이 조건을 닫기 전 production-ready로 선언하지 않는다.
 
 ### 2026-07-16 인계 상태
 
 - 완료: D0, F0~F4 code, PostgreSQL CI workflow, DB/OAuth/Remote runbook
 - 검증됨: PostgreSQL 17.10 durability, OIDC JWT·Membership·RFC 9728, TCP/TLS, SDK·Inspector, Codex Tool, 독립 coverage gate
-- 미검증: Codex Resource/Prompt, 실제 기관 IdP/gateway, 독립 owner review
-- 다음 change set: G5 Codex Host 승인 결과 반영 또는 지원기준 결정, 이후 G6 owner review
+- 미검증: 실제 기관 IdP/gateway, 독립 owner review
+- 선택 검증: Codex Resource/Prompt는 제품 필요와 별도 보안 승인이 있을 때만 수행
+- 다음 change set: G6 owner review와 배포 정책 결정
 
 ---
 
