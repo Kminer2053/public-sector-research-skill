@@ -566,6 +566,28 @@ track별 anchor group이 모두 excerpt에서 확인될 때만 “조달 원칙 
 이는 적용대상·법적 의무 여부를 판정하는 법률 Writer가 아니고,
 conflict synthesis와 최종 규정문 생성은 여전히 사람 QA 후속 범위다.
 
+### 12.1 Content-Free Feedback
+
+quick 결과는 workspace purge가 확인된 뒤에만 feedback token을 발급한다. token의 서명 key는
+abuse HMAC key에서 domain-separated HMAC으로 파생하며 payload에는 다음만 포함한다.
+
+```text
+version
+cryptographic nonce
+expiry
+```
+
+token에는 operation ID, run ID, 질문, citation, IP, 사용자나 Host 식별자를 넣지 않는다.
+`psr.feedback.submit`은 `helpful`과 `save_feature_interest` boolean만 받고 free text를
+허용하지 않는다. raw token은 저장·로그하지 않고 SHA-256 digest만 만료시각까지 process
+memory에 유지해 replay를 거부한다. 기존 purge 주기와 같은 background sweeper가 만료된
+digest를 최대 60초 안에 제거한다. aggregate submitted/helpful/save-interest count만
+content-free metric으로 남긴다.
+
+현재 replay cache와 aggregate counter는 single-process다. process restart 또는 multi-replica
+환경의 전역 one-time 보장은 아직 없으므로 Public Preview는 single-node/sticky routing에서
+먼저 검증하고, 확장 전 content-free shared dedup/metric backend를 도입한다.
+
 ## 13. MCP Contract
 
 Public catalog:
@@ -599,6 +621,7 @@ PSR_QUICK_TIMEOUT_SECONDS=20
 PSR_PUBLIC_MAX_ACTIVE_QUICK=8
 PSR_PUBLIC_DAILY_QUICK_BUDGET=500
 PSR_PUBLIC_PAUSE_FILE=/run/psr/public.pause
+PSR_FEEDBACK_TOKEN_TTL_SECONDS=86400
 PSR_RUN_TTL_SECONDS=3600
 PSR_DELIVERED_PURGE_SECONDS=60
 PSR_ORPHAN_MAX_AGE_SECONDS=7200
@@ -653,6 +676,7 @@ duration_bucket
 byte/source/cost bucket
 purge state/latency
 quota decision
+feedback aggregate count
 ```
 
 금지:
@@ -664,6 +688,7 @@ full URL query
 raw IP
 run handle
 token/cookie
+raw feedback token
 workspace path
 ```
 

@@ -366,11 +366,14 @@ Live QA는 다음을 추가로 충족해야 한다.
 
 | ID | 기준 | Expected |
 |---|---|---|
-| VAL-PUB-FBK-001 | feedback token | content/run 복원 불가 |
-| VAL-PUB-FBK-002 | 기본 field | helpful/save interest만 |
-| VAL-PUB-FBK-003 | question/result join | 불가능 |
-| VAL-PUB-FBK-004 | free text | 기본 비활성 |
-| VAL-PUB-FBK-005 | deletion/retention notice | 사용자에게 명확 |
+| VAL-PUB-FBK-001 | feedback token | payload가 version·nonce·expiry뿐이며 content/run/user/IP 복원 불가 |
+| VAL-PUB-FBK-002 | 기본 field | helpful/save interest boolean 2개만 |
+| VAL-PUB-FBK-003 | question/result join | raw token·question·result 미저장/미로그 |
+| VAL-PUB-FBK-004 | free text | Tool schema에 field 없음 |
+| VAL-PUB-FBK-005 | deletion/retention notice | 결과 purge 뒤 token 발급, 사용자에게 명확 |
+| VAL-PUB-FBK-006 | 변조·만료·replay | 동일 typed error, single-process 중복 집계 0 |
+| VAL-PUB-FBK-007 | aggregate metric | submitted/helpful/save-interest count만 허용 |
+| VAL-PUB-FBK-008 | digest expiry | token expiry 뒤 purge sweep interval 이내 process memory에서 제거 |
 
 ### 8.4 Release Review
 

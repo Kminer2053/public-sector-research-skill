@@ -13,8 +13,10 @@ from pydantic import Field, HttpUrl
 from psr_mcp.bootstrap import PublicContainer
 from psr_mcp.config import Environment, SearchProviderMode
 from psr_mcp.mcp.transport import transport_security
+from psr_mcp.public.feedback import FeedbackSubmissionError
 from psr_mcp.public.schemas import (
     ExternalServiceDisclosure,
+    FeedbackOutput,
     PublicToolErrorPayload,
     QuickResearchOutput,
     ServicePolicyOutput,
@@ -70,6 +72,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "quick_timeout_seconds": settings.quick_timeout_seconds,
                 "max_active_quick": settings.public_max_active_quick,
                 "daily_quick_budget": settings.public_daily_quick_budget,
+                "feedback_token_ttl_seconds": settings.feedback_token_ttl_seconds,
                 "requests_per_window": settings.rate_limit_requests,
                 "rate_window_seconds": settings.rate_limit_window_seconds,
                 "max_run_sources": settings.max_run_sources,
@@ -82,6 +85,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "delivered_purge_seconds": settings.delivered_purge_seconds,
                 "failed_content_ttl_seconds": settings.failed_content_ttl_seconds,
                 "orphan_max_age_seconds": settings.orphan_max_age_seconds,
+                "feedback_content_linked": False,
             },
             external_services=_external_services(settings.search_provider),
         )
@@ -119,6 +123,39 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                     operation_id=container.ids.new(),
                 ).model_dump_json()
             ) from None
+
+    @server.tool(
+        name="psr.feedback.submit",
+        title="익명 결과 피드백 제출",
+        annotations=ToolAnnotations(
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=False,
+        ),
+    )
+    async def feedback_submit(
+        feedback_token: Annotated[str, Field(min_length=40, max_length=512)],
+        helpful: bool,
+        save_feature_interest: bool,
+    ) -> FeedbackOutput:
+        """질문·결과와 연결하지 않고 helpful·저장기능 관심 여부만 제출합니다."""
+        try:
+            container.feedback_service.submit(
+                token=feedback_token,
+                helpful=helpful,
+                save_feature_interest=save_feature_interest,
+            )
+        except FeedbackSubmissionError as error:
+            raise ToolError(
+                PublicToolErrorPayload(
+                    code=error.code,
+                    message=error.message,
+                    retryable=error.retryable,
+                    operation_id=container.ids.new(),
+                ).model_dump_json()
+            ) from None
+        return FeedbackOutput(operation_id=container.ids.new())
 
     return server
 

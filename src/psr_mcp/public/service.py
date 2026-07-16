@@ -17,6 +17,7 @@ from psr_mcp.ephemeral.ports import ArtifactKind, EphemeralWorkspaceStore, Works
 from psr_mcp.planner.government import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
 from psr_mcp.public.admission import PauseSignal
+from psr_mcp.public.feedback import FeedbackIssuer
 from psr_mcp.public.schemas import (
     AppliedScope,
     Citation,
@@ -198,6 +199,7 @@ class PublicQuickResearchService:
         max_active_quick: int,
         daily_quick_budget: int,
         pause_signal: PauseSignal,
+        feedback_issuer: FeedbackIssuer,
         kill_switch: bool,
     ) -> None:
         self._store = store
@@ -218,6 +220,7 @@ class PublicQuickResearchService:
         self._daily_quick_used = 0
         self._daily_budget_lock = Lock()
         self._pause_signal = pause_signal
+        self._feedback_issuer = feedback_issuer
         self._kill_switch = kill_switch
 
     @property
@@ -338,6 +341,7 @@ class PublicQuickResearchService:
                     retryable=True,
                 )
             purged_at = self._clock.now()
+            feedback_token = self._feedback_issuer.issue()
             return QuickResearchOutput(
                 operation_id=self._ids.new(),
                 status=draft.status,
@@ -349,6 +353,8 @@ class PublicQuickResearchService:
                 conflicts=list(draft.conflicts),
                 failures=list(draft.failures),
                 markdown=markdown,
+                feedback_token=feedback_token.value,
+                feedback_expires_at=feedback_token.expires_at,
                 retention=RetentionStatus(
                     purge_state="PURGED",
                     purged_at=purged_at,

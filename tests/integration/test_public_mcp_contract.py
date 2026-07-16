@@ -47,6 +47,7 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert [tool.name for tool in tools.tools] == [
         "psr.service.policy",
         "psr.research.quick",
+        "psr.feedback.submit",
     ]
 
     result = await public_session.call_tool("psr.service.policy", {})
@@ -59,6 +60,8 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.structuredContent["retention"]["server_saved"] is False
     assert result.structuredContent["limits"]["max_active_quick"] == 8
     assert result.structuredContent["limits"]["daily_quick_budget"] == 0
+    assert result.structuredContent["limits"]["feedback_token_ttl_seconds"] == 86_400
+    assert result.structuredContent["retention"]["feedback_content_linked"] is False
     assert result.structuredContent["limits"]["trusted_proxy_networks"] == 0
 
 
@@ -260,6 +263,8 @@ async def test_quick_fixture_returns_result_and_purges_all_content(
     assert output["citations"][0]["source_tier"] == "TEST_FIXTURE"
     assert output["citations"][0]["score"]["authority"]["value"] == 0.0
     assert len(output["citations"][0]["document_sha256"]) == 64
+    assert output["feedback_token"]
+    assert output["feedback_expires_at"]
     assert list(root.iterdir()) == []
 
     serialized = json.dumps(output, ensure_ascii=False)
@@ -267,6 +272,70 @@ async def test_quick_fixture_returns_result_and_purges_all_content(
     assert question_canary not in caplog.text
     assert "PSR-SOURCE-CONTENT-CANARY" not in caplog.text
     assert "PSR-RESULT-CONTENT-CANARY" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_feedback_submit_collects_only_booleans_and_rejects_replay(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    question_canary = "QUESTION-FEEDBACK-CANARY 공공기관 AI 구매 원칙을 조사해줘"
+    root = tmp_path / "ephemeral"
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(root),
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            quick = await session.call_tool(
+                "psr.research.quick",
+                {"question": question_canary},
+            )
+            assert quick.structuredContent is not None
+            token = quick.structuredContent["feedback_token"]
+            with caplog.at_level(logging.INFO):
+                accepted = await session.call_tool(
+                    "psr.feedback.submit",
+                    {
+                        "feedback_token": token,
+                        "helpful": True,
+                        "save_feature_interest": True,
+                    },
+                )
+                replay = await session.call_tool(
+                    "psr.feedback.submit",
+                    {
+                        "feedback_token": token,
+                        "helpful": False,
+                        "save_feature_interest": False,
+                    },
+                )
+    finally:
+        await container.close()
+
+    assert accepted.isError is False
+    assert accepted.structuredContent is not None
+    assert accepted.structuredContent["accepted"] is True
+    assert accepted.structuredContent["content_linked"] is False
+    assert replay.isError is True
+    assert "FEEDBACK_TOKEN_INVALID_OR_USED" in replay.content[0].text  # type: ignore[union-attr]
+    metrics = container.feedback_service.snapshot()
+    assert metrics.submitted == 1
+    assert metrics.helpful_true == 1
+    assert metrics.save_feature_interest_true == 1
+    assert token not in caplog.text
+    assert question_canary not in caplog.text
+    assert list(root.iterdir()) == []
 
 
 @pytest.mark.anyio

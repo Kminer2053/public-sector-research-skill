@@ -80,6 +80,7 @@ class Settings:
     quick_timeout_seconds: float = 20.0
     public_max_active_quick: int = 8
     public_daily_quick_budget: int = 0
+    feedback_token_ttl_seconds: int = 86_400
     max_run_sources: int = 12
     max_run_bytes: int = 31_457_280
     search_provider: SearchProviderMode = SearchProviderMode.DISABLED
@@ -149,6 +150,9 @@ class Settings:
                 quick_timeout_seconds=float(values.get("PSR_QUICK_TIMEOUT_SECONDS", "20")),
                 public_max_active_quick=int(values.get("PSR_PUBLIC_MAX_ACTIVE_QUICK", "8")),
                 public_daily_quick_budget=int(values.get("PSR_PUBLIC_DAILY_QUICK_BUDGET", "0")),
+                feedback_token_ttl_seconds=int(
+                    values.get("PSR_FEEDBACK_TOKEN_TTL_SECONDS", "86400")
+                ),
                 max_run_sources=int(values.get("PSR_MAX_RUN_SOURCES", "12")),
                 max_run_bytes=int(values.get("PSR_MAX_RUN_BYTES", "31457280")),
                 search_provider=SearchProviderMode(values.get("PSR_SEARCH_PROVIDER", "disabled")),
@@ -206,6 +210,8 @@ class Settings:
             raise ValueError("PSR_PUBLIC_MAX_ACTIVE_QUICK must be 1..100")
         if self.public_daily_quick_budget < 0 or self.public_daily_quick_budget > 1_000_000:
             raise ValueError("PSR_PUBLIC_DAILY_QUICK_BUDGET must be 0..1000000")
+        if self.feedback_token_ttl_seconds < 300 or self.feedback_token_ttl_seconds > 604_800:
+            raise ValueError("PSR_FEEDBACK_TOKEN_TTL_SECONDS must be 300..604800")
         if self.max_run_sources < 1 or self.max_run_sources > 100:
             raise ValueError("PSR_MAX_RUN_SOURCES must be 1..100")
         if self.max_run_bytes < 1_048_576 or self.max_run_bytes > 104_857_600:

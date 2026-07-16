@@ -48,6 +48,12 @@ from psr_mcp.parsers import DocumentParser, ParserLimits
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.public.admission import FilePauseSignal, NeverPauseSignal
 from psr_mcp.public.development_fixture import build_development_fixture_backend
+from psr_mcp.public.feedback import (
+    ContentFreeFeedbackService,
+    FeedbackDigestSweeper,
+    FeedbackTokenCodec,
+    derive_feedback_signing_key,
+)
 from psr_mcp.public.pipeline import PublicResearchPipeline
 from psr_mcp.public.schemas import SourceDiscoveryMode
 from psr_mcp.public.service import (
@@ -99,19 +105,29 @@ class PublicContainer:
     workspace_store: FilesystemEphemeralWorkspaceStore
     purge_sweeper: PurgeSweeper
     abuse_hmac_key: bytes
+    feedback_service: ContentFreeFeedbackService
+    feedback_sweeper: FeedbackDigestSweeper
     quick_service: PublicQuickResearchService
     search_client: httpx.AsyncClient | None = None
 
     async def open(self) -> None:
         await self.workspace_store.open()
-        await self.purge_sweeper.start()
+        try:
+            await self.purge_sweeper.start()
+            await self.feedback_sweeper.start()
+        except BaseException:
+            await self.purge_sweeper.stop()
+            raise
 
     async def close(self) -> None:
         try:
-            await self.purge_sweeper.stop()
+            await self.feedback_sweeper.stop()
         finally:
-            if self.search_client is not None:
-                await self.search_client.aclose()
+            try:
+                await self.purge_sweeper.stop()
+            finally:
+                if self.search_client is not None:
+                    await self.search_client.aclose()
 
 
 ApplicationContainer = Container | PublicContainer
@@ -165,6 +181,14 @@ def _build_public_container(
         create_root=settings.environment is Environment.DEVELOPMENT,
     )
     ids = Uuid4Generator()
+    feedback_service = ContentFreeFeedbackService(
+        codec=FeedbackTokenCodec(
+            signing_key=derive_feedback_signing_key(abuse_hmac_key),
+            clock=clock,
+            ttl_seconds=settings.feedback_token_ttl_seconds,
+        ),
+        clock=clock,
+    )
     backend: ResearchBackend
     search_client: httpx.AsyncClient | None = None
     if settings.public_fixture_research_enabled:
@@ -254,6 +278,11 @@ def _build_public_container(
             interval_seconds=settings.purge_sweep_seconds,
         ),
         abuse_hmac_key=abuse_hmac_key,
+        feedback_service=feedback_service,
+        feedback_sweeper=FeedbackDigestSweeper(
+            feedback_service,
+            interval_seconds=settings.purge_sweep_seconds,
+        ),
         search_client=search_client,
         quick_service=PublicQuickResearchService(
             store=store,
@@ -273,6 +302,7 @@ def _build_public_container(
                 if settings.public_pause_file
                 else NeverPauseSignal()
             ),
+            feedback_issuer=feedback_service,
             kill_switch=settings.public_kill_switch,
         ),
     )

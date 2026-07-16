@@ -321,6 +321,10 @@ GR-002~004 확대, 법령 source adapter, 선택형 live provider 비용·보존
 - incident, purge failure, source block runbook
 - boolean helpful + save/history interest feedback
 
+**현재:** content-free token과 boolean feedback Tool은 local PASS. single-process replay
+방지와 aggregate metric까지 구현됐으며 실제 공개 endpoint의 표본 수집, shared dedup과
+metric backend는 R4 운영 검증에서 수행한다.
+
 ### 운영 학습
 
 - 실패율이 높은 질문 유형과 source track 파악

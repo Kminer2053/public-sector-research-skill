@@ -126,6 +126,7 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_PUBLIC_MAX_ACTIVE_QUICK` | 8 | process당 동시 quick 상한, 1..100 |
 | `PSR_PUBLIC_DAILY_QUICK_BUDGET` | 0 | process·UTC 일자별 quick 진입 상한, 0은 development 비활성; production은 1 이상 필수 |
 | `PSR_PUBLIC_PAUSE_FILE` | 빈 값 | operator가 관리하는 절대경로 sentinel; 존재하면 새 quick 중지 |
+| `PSR_FEEDBACK_TOKEN_TTL_SECONDS` | 86400 | feedback capability TTL, 300..604800 |
 | `PSR_MAX_RUN_SOURCES` | 12 | 1..100 |
 | `PSR_MAX_RUN_BYTES` | 30 MiB | 1..100 MiB |
 | `PSR_PUBLIC_KILL_SWITCH` | `false` | 새 quick/start 중지 |
@@ -184,6 +185,30 @@ secret 존재, trusted proxy, daily quick budget과 runtime pause control이 준
 미달이면 종료코드 5다. 출력의 `external_gates_pending`은 이 명령이 확인할 수 없는 실제
 gateway spoof rehearsal, shared quota/provider hard cap, staging purge와 사용자 효용 검증을
 나열한다. 따라서 exit 0만으로 Public Preview 배포 승인을 선언하지 않는다.
+
+## 6.3 Content-free feedback
+
+성공한 quick 결과에는 workspace purge 뒤 생성된 `feedback_token`과
+`feedback_expires_at`이 포함된다. Host는 사용자가 선택한 경우에만 다음 Tool을 호출한다.
+
+```text
+psr.feedback.submit(
+  feedback_token,
+  helpful: bool,
+  save_feature_interest: bool
+)
+```
+
+feedback Tool payload는 free text, 질문, 결과, 사용자·IP·Host ID를 받지 않는다. raw
+token도 저장·로그하지 않고 만료 전 replay 방지를 위한 SHA-256 digest와 aggregate count만
+process memory에 둔다. digest는 만료 뒤 `PSR_PURGE_SWEEP_SECONDS` 이내에 제거된다. 현재
+dedup과 count는 process restart와 multi-replica를 넘지 않으므로 제한 공개는 single-node 또는
+sticky routing에서 시작하고, 표본 보존이 필요하면 content-free shared metric backend를 별도
+승인한다.
+
+reverse proxy, WAF와 MCP Host telemetry에서도 request/response body와 Tool argument logging을
+꺼야 한다. access log는 허용된 status·duration·byte bucket만 남기며 raw feedback token이나
+boolean 응답을 기록하지 않는다. 공개 전 gateway canary scan으로 이 설정을 다시 확인한다.
 
 ## 7. 품질 검증
 

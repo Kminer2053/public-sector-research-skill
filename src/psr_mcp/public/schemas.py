@@ -129,7 +129,18 @@ class QuickResearchOutput(BaseModel):
     conflicts: list[str]
     failures: list[ResearchFailure]
     markdown: str
+    feedback_token: str
+    feedback_expires_at: datetime
     retention: RetentionStatus
+
+
+class FeedbackOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: str = "1.0"
+    operation_id: str
+    accepted: Literal[True] = True
+    content_linked: Literal[False] = False
 
 
 class PublicToolErrorPayload(BaseModel):

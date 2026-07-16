@@ -21,6 +21,7 @@ from psr_mcp.ephemeral.ports import (
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
 from psr_mcp.public.admission import NeverPauseSignal, PauseSignal
+from psr_mcp.public.feedback import FeedbackIssuer, IssuedFeedbackToken
 from psr_mcp.public.schemas import QuickResearchOutput
 from psr_mcp.public.service import (
     FixtureResearchBackend,
@@ -58,6 +59,14 @@ class MutablePauseSignal:
 class FixedIds:
     def new(self) -> str:
         return "operation-test"
+
+
+class FixedFeedbackIssuer:
+    def issue(self) -> IssuedFeedbackToken:
+        return IssuedFeedbackToken(
+            value="feedback-token-test",
+            expires_at=datetime(2026, 7, 17, tzinfo=UTC),
+        )
 
 
 class ExplodingBackend:
@@ -175,6 +184,7 @@ def _service(
     daily_quick_budget: int = 0,
     clock: Clock | None = None,
     pause_signal: PauseSignal | None = None,
+    feedback_issuer: FeedbackIssuer | None = None,
     kill_switch: bool = False,
 ) -> PublicQuickResearchService:
     return PublicQuickResearchService(
@@ -191,6 +201,7 @@ def _service(
         max_active_quick=max_active_quick,
         daily_quick_budget=daily_quick_budget,
         pause_signal=pause_signal or NeverPauseSignal(),
+        feedback_issuer=feedback_issuer or FixedFeedbackIssuer(),
         kill_switch=kill_switch,
     )
 
@@ -525,6 +536,8 @@ async def test_markdown_matches_structured_citations_and_escapes_untrusted_text(
     assert f"[{citation.id}]" in output.markdown
     assert citation.document_sha256 in output.markdown
     assert "근거 점수: 0.0000" in output.markdown
+    assert output.feedback_token == "feedback-token-test"
+    assert output.feedback_expires_at == datetime(2026, 7, 17, tzinfo=UTC)
     assert "출처 권위성: 0.0000" in output.markdown
     assert "## 상충 정보\n- 없음" in output.markdown
     assert _markdown_text("<script>*[source]`") == ("&lt;script&gt;\\*\\[source\\]\\`")

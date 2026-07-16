@@ -78,6 +78,8 @@ Enterprise
 - production에서 명시해야 하며 UTC 일자별로 새 조사 진입을 막는 process daily quick budget
 - 서버 재시작 없이 새 조사만 멈추고 기존 purge는 유지하는 operator pause-file signal
 - local smoke와 production 공개 설정 준비를 분리하고 CI gate를 제공하는 `psrctl doctor`
+- 결과 purge 뒤 content-free token으로 boolean만 받는 익명 feedback Tool
+- 사용 완료 feedback token digest를 TTL 뒤 주기적으로 제거하는 memory sweeper
 - public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
 - random workspace ID, directory `0700`, file `0600`
 - path traversal·symlink·만료 workspace 접근 차단
@@ -112,6 +114,8 @@ Planner·SafeCollector 기반 검증을 기록했습니다.
 남은 사람 유용성 검증을 기록했습니다.
 [Trusted Proxy 검증 보고서](./docs/validation/2026-07-16-trusted-proxy-boundary.md)에
 canonical client IP, header spoof 방지와 production fail-closed 증적을 기록했습니다.
+[Content-free Feedback 검증 보고서](./docs/validation/2026-07-16-content-free-feedback.md)에
+purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증을 기록했습니다.
 
 ## 다음 구현 범위
 
@@ -139,10 +143,11 @@ psr.service.policy
 psr.feedback.submit
 ```
 
-위 catalog는 목표 계약입니다. 현재 public server에는 `psr.service.policy`와
-`psr.research.quick`만 구현돼 있습니다. quick은 개발 fixture, 명시적으로 구성한 `curated`
-source mode 또는 Brave Search adapter에서 동작합니다. 기본값은 `disabled`이며 discovery
-mode가 없으면 `research_available=false`로 fail closed합니다.
+위 catalog는 목표 계약입니다. 현재 public server에는 `psr.service.policy`,
+`psr.research.quick`, `psr.feedback.submit`이 구현돼 있습니다. quick은 개발 fixture,
+명시적으로 구성한 `curated` source mode 또는 Brave Search adapter에서 동작합니다. 기본값은
+`disabled`이며 discovery mode가 없으면 `research_available=false`로 fail closed합니다.
+feedback은 결과 purge 뒤 발급된 content-free token으로 helpful·저장기능 관심 여부만 받습니다.
 
 API key 없이 현재 검토 범위의 실제 원문을 사용하는 개발·검증 실행:
 

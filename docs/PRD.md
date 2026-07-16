@@ -279,9 +279,10 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 
 | ID | 요구사항 | 우선순위 | Acceptance Criteria |
 |---|---|---|---|
-| FR-PUB-060 | 결과마다 content와 분리된 일회성 feedback token을 제공한다. | Should | token에서 run/question 복원 불가 |
-| FR-PUB-061 | helpful 여부와 저장기능 관심만 기본 수집한다. | Should | free-text는 기본 비활성 |
-| FR-PUB-062 | 피드백을 조사 content와 join하지 않는다. | Must | DB 관계와 log correlation 없음 |
+| FR-PUB-060 | purge가 확인된 결과마다 content와 분리된 만료형 feedback token을 제공한다. | Must | token payload는 version·nonce·expiry뿐이며 run/question/user/IP 복원 불가 |
+| FR-PUB-061 | helpful 여부와 저장기능 관심만 수집한다. | Must | Tool schema에 boolean 2개만 있고 free-text field 없음 |
+| FR-PUB-062 | 피드백을 조사 content와 join하지 않는다. | Must | raw token·question·result 미저장/미로그, aggregate count만 허용 |
+| FR-PUB-063 | feedback token 재사용과 변조·만료를 동일 typed error로 거부한다. | Must | single-process replay 0, `FEEDBACK_TOKEN_INVALID_OR_USED` |
 
 ### 8.8 Future Account and Persistence
 
@@ -330,6 +331,7 @@ stateDiagram-v2
 | `INPUT_INVALID` | 질문·날짜·budget이 잘못됨 | network 전 거부 |
 | `PUBLIC_LIMIT_REACHED` | 익명 사용 한도 초과 | Retry-After |
 | `PUBLIC_DAILY_BUDGET_EXHAUSTED` | UTC 일일 quick 진입 budget 소진 | 다음 UTC 일자 또는 운영자 조정 뒤 retry |
+| `FEEDBACK_TOKEN_INVALID_OR_USED` | feedback token 변조·만료·재사용 | 새 조사 결과의 token만 사용 |
 | `RUN_EXPIRED_OR_NOT_FOUND` | handle 없음 또는 만료 | 존재 여부 통합 |
 | `SOURCE_POLICY_BLOCKED` | 안전·약관 정책상 수집 불가 | limitation에 표시 |
 | `NETWORK_TRANSIENT` | source 일시 장애 | 제한된 retry |

@@ -260,6 +260,7 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     assert settings.public_fixture_research_enabled is True
     assert settings.public_max_active_quick == 8
     assert settings.public_daily_quick_budget == 0
+    assert settings.feedback_token_ttl_seconds == 86_400
     assert settings.diagnostics()["abuse_hmac_key_ref"] is False
 
     container = build_container(settings)
@@ -384,6 +385,22 @@ def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> 
                 "PSR_PUBLIC_DAILY_QUICK_BUDGET": "1000001",
             },
             "PUBLIC_DAILY_QUICK_BUDGET",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_FEEDBACK_TOKEN_TTL_SECONDS": "299",
+            },
+            "FEEDBACK_TOKEN_TTL_SECONDS",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_FEEDBACK_TOKEN_TTL_SECONDS": "604801",
+            },
+            "FEEDBACK_TOKEN_TTL_SECONDS",
         ),
         (
             {

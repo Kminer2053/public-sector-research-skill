@@ -644,6 +644,12 @@ validate
 - question/run/content와 join 불가
 - 결과 수령률, official ratio, citation coverage, cost bucket
 
+**현재:** purge 확인 뒤 version·nonce·expiry만 가진 HMAC token을 발급하고
+`psr.feedback.submit`이 boolean 2개만 수집한다. raw token·question·result는 저장·로그하지
+않고 만료형 token digest와 process-local aggregate count만 유지한다. 변조·만료·재사용은
+`FEEDBACK_TOKEN_INVALID_OR_USED`로 통합한다. multi-replica shared replay cache와 durable
+content-free metric sink는 실제 공개 확장 전 후속이다.
+
 ### CH-P3.3 Documentation and Host Onboarding
 
 - 공개 MCP 연결 가이드
@@ -694,7 +700,7 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 | FR-PUB-030~039 | P1.6~P1.9 | VAL-PUB-EVIDENCE, QUALITY |
 | FR-PUB-040~046 | S0.4~S0.5, P2 | VAL-PUB-RETENTION |
 | FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
-| FR-PUB-060~062 | P3.2 | VAL-PUB-FEEDBACK |
+| FR-PUB-060~063 | P3.2 | VAL-PUB-FBK-* |
 | NFR-PUB-001~010 | S0~P3 | PG0~PG3 |
 | FR-ACC-001~008 | A0 | AG0 |
 
