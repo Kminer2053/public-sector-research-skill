@@ -78,6 +78,7 @@ class Settings:
     public_fixture_research_enabled: bool = False
     quick_timeout_seconds: float = 20.0
     public_max_active_quick: int = 8
+    public_daily_quick_budget: int = 0
     max_run_sources: int = 12
     max_run_bytes: int = 31_457_280
     search_provider: SearchProviderMode = SearchProviderMode.DISABLED
@@ -145,6 +146,7 @@ class Settings:
                 ),
                 quick_timeout_seconds=float(values.get("PSR_QUICK_TIMEOUT_SECONDS", "20")),
                 public_max_active_quick=int(values.get("PSR_PUBLIC_MAX_ACTIVE_QUICK", "8")),
+                public_daily_quick_budget=int(values.get("PSR_PUBLIC_DAILY_QUICK_BUDGET", "0")),
                 max_run_sources=int(values.get("PSR_MAX_RUN_SOURCES", "12")),
                 max_run_bytes=int(values.get("PSR_MAX_RUN_BYTES", "31457280")),
                 search_provider=SearchProviderMode(values.get("PSR_SEARCH_PROVIDER", "disabled")),
@@ -200,6 +202,8 @@ class Settings:
             raise ValueError("PSR_QUICK_TIMEOUT_SECONDS must not exceed request timeout")
         if self.public_max_active_quick < 1 or self.public_max_active_quick > 100:
             raise ValueError("PSR_PUBLIC_MAX_ACTIVE_QUICK must be 1..100")
+        if self.public_daily_quick_budget < 0 or self.public_daily_quick_budget > 1_000_000:
+            raise ValueError("PSR_PUBLIC_DAILY_QUICK_BUDGET must be 0..1000000")
         if self.max_run_sources < 1 or self.max_run_sources > 100:
             raise ValueError("PSR_MAX_RUN_SOURCES must be 1..100")
         if self.max_run_bytes < 1_048_576 or self.max_run_bytes > 104_857_600:
@@ -356,6 +360,8 @@ class Settings:
                 raise ValueError("public production requires PSR_ABUSE_HMAC_KEY_REF")
             if not self.trusted_proxy_cidrs:
                 raise ValueError("public production requires PSR_TRUSTED_PROXY_CIDRS")
+            if self.public_daily_quick_budget < 1:
+                raise ValueError("public production requires PSR_PUBLIC_DAILY_QUICK_BUDGET")
             return
         if self.auth_mode is not AuthMode.OAUTH:
             raise ValueError("production requires OAuth authentication")

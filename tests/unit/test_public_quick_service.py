@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -35,6 +35,14 @@ from psr_mcp.public.service import (
 class FixedClock:
     def now(self) -> datetime:
         return datetime(2026, 7, 16, tzinfo=UTC)
+
+
+class MutableClock:
+    def __init__(self) -> None:
+        self.value = datetime(2026, 7, 16, tzinfo=UTC)
+
+    def now(self) -> datetime:
+        return self.value
 
 
 class FixedIds:
@@ -154,13 +162,15 @@ def _service(
     *,
     timeout_seconds: float = 20,
     max_active_quick: int = 8,
+    daily_quick_budget: int = 0,
+    clock: Clock | None = None,
     kill_switch: bool = False,
 ) -> PublicQuickResearchService:
     return PublicQuickResearchService(
         store=store,
         planner=GovernmentPlanner(),
         backend=backend,
-        clock=cast(Clock, FixedClock()),
+        clock=clock or cast(Clock, FixedClock()),
         ids=cast(IdGenerator, FixedIds()),
         run_ttl_seconds=3_600,
         orphan_max_age_seconds=7_200,
@@ -168,6 +178,7 @@ def _service(
         max_bytes=31_457_280,
         timeout_seconds=timeout_seconds,
         max_active_quick=max_active_quick,
+        daily_quick_budget=daily_quick_budget,
         kill_switch=kill_switch,
     )
 
@@ -248,7 +259,12 @@ async def test_active_quick_limit_rejects_before_workspace_and_releases_slot(
 ) -> None:
     store = StoreWrapper(await _store(tmp_path))
     backend = BlockingBackend()
-    service = _service(store, backend, max_active_quick=1)
+    service = _service(
+        store,
+        backend,
+        max_active_quick=1,
+        daily_quick_budget=2,
+    )
 
     first = asyncio.create_task(_quick_request(service))
     await backend.entered.wait()
@@ -263,9 +279,12 @@ async def test_active_quick_limit_rejects_before_workspace_and_releases_slot(
     backend.release.set()
     first_output = await first
     second_output = await _quick_request(service)
+    with pytest.raises(PublicResearchError) as exhausted:
+        await _quick_request(service)
 
     assert first_output.retention.purge_state == "PURGED"
     assert second_output.retention.purge_state == "PURGED"
+    assert exhausted.value.code is PublicErrorCode.PUBLIC_DAILY_BUDGET_EXHAUSTED
     assert len(store.created) == 2
     assert list(store.inner.root.iterdir()) == []
 
@@ -305,6 +324,81 @@ async def test_active_quick_slot_is_released_after_task_cancellation(
 
     assert recovered.retention.purge_state == "PURGED"
     assert len(store.created) == 2
+    assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_daily_quick_budget_rejects_before_workspace_and_resets_on_utc_day(
+    tmp_path: Path,
+) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    clock = MutableClock()
+    service = _service(
+        store,
+        FixtureResearchBackend(cast(Clock, clock)),
+        daily_quick_budget=1,
+        clock=cast(Clock, clock),
+    )
+
+    with pytest.raises(PublicResearchError) as invalid:
+        await service.quick(
+            question="짧음",
+            as_of_date=None,
+            jurisdiction="KR",
+            profile="government-v0",
+        )
+    first = await _quick_request(service)
+    with pytest.raises(PublicResearchError) as exhausted:
+        await _quick_request(service)
+
+    assert invalid.value.code is PublicErrorCode.INPUT_INVALID
+    assert first.retention.purge_state == "PURGED"
+    assert exhausted.value.code is PublicErrorCode.PUBLIC_DAILY_BUDGET_EXHAUSTED
+    assert exhausted.value.retryable is True
+    assert not bool(service.available)
+    assert len(store.created) == 1
+
+    clock.value += timedelta(days=1)
+    assert bool(service.available)
+    reset = await _quick_request(service)
+
+    assert reset.retention.purge_state == "PURGED"
+    assert len(store.created) == 2
+    assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_failed_started_research_consumes_daily_budget(tmp_path: Path) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    service = _service(store, FailsOnceBackend(), daily_quick_budget=1)
+
+    with pytest.raises(PublicResearchError) as failed:
+        await _quick_request(service)
+    with pytest.raises(PublicResearchError) as exhausted:
+        await _quick_request(service)
+
+    assert failed.value.code is PublicErrorCode.INTERNAL_ERROR
+    assert exhausted.value.code is PublicErrorCode.PUBLIC_DAILY_BUDGET_EXHAUSTED
+    assert len(store.created) == 1
+    assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_cancelled_started_research_consumes_daily_budget(tmp_path: Path) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    backend = BlockingBackend()
+    service = _service(store, backend, daily_quick_budget=1)
+
+    cancelled = asyncio.create_task(_quick_request(service))
+    await backend.entered.wait()
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+    with pytest.raises(PublicResearchError) as exhausted:
+        await _quick_request(service)
+
+    assert exhausted.value.code is PublicErrorCode.PUBLIC_DAILY_BUDGET_EXHAUSTED
+    assert len(store.created) == 1
     assert list(store.inner.root.iterdir()) == []
 
 

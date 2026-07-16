@@ -58,6 +58,7 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["retention"]["server_saved"] is False
     assert result.structuredContent["limits"]["max_active_quick"] == 8
+    assert result.structuredContent["limits"]["daily_quick_budget"] == 0
     assert result.structuredContent["limits"]["trusted_proxy_networks"] == 0
 
 
@@ -266,6 +267,49 @@ async def test_quick_fixture_returns_result_and_purges_all_content(
     assert question_canary not in caplog.text
     assert "PSR-SOURCE-CONTENT-CANARY" not in caplog.text
     assert "PSR-RESULT-CONTENT-CANARY" not in caplog.text
+
+
+@pytest.mark.anyio
+async def test_daily_quick_budget_updates_policy_and_rejects_before_workspace(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "ephemeral"
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(root),
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            "PSR_PUBLIC_DAILY_QUICK_BUDGET": "1",
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            first = await session.call_tool(
+                "psr.research.quick",
+                {"question": "공공기관 AI 구매 원칙을 공식자료 중심으로 조사해줘"},
+            )
+            policy = await session.call_tool("psr.service.policy", {})
+            exhausted = await session.call_tool(
+                "psr.research.quick",
+                {"question": "공공기관 AI 구매 원칙을 공식자료 중심으로 다시 조사해줘"},
+            )
+    finally:
+        await container.close()
+
+    assert first.isError is False
+    assert policy.structuredContent is not None
+    assert policy.structuredContent["research_available"] is False
+    assert policy.structuredContent["limits"]["daily_quick_budget"] == 1
+    assert exhausted.isError is True
+    assert "PUBLIC_DAILY_BUDGET_EXHAUSTED" in exhausted.content[0].text  # type: ignore[union-attr]
+    assert list(root.iterdir()) == []
 
 
 @pytest.mark.anyio

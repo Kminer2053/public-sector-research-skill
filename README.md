@@ -75,6 +75,7 @@ Enterprise
 - token을 바꿔도 같은 IP 한도를 새로 얻지 못하는 HMAC IP-first limiter
 - trusted proxy CIDR의 단일 canonical client IP만 소비하고 위조 header를 제거하는 경계
 - workspace·외부 수집 전에 적용하고 성공·실패·취소 뒤 반환하는 process active quick 상한
+- production에서 명시해야 하며 UTC 일자별로 새 조사 진입을 막는 process daily quick budget
 - public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
 - random workspace ID, directory `0700`, file `0600`
 - path traversal·symlink·만료 workspace 접근 차단

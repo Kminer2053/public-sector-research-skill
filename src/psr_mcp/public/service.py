@@ -35,6 +35,7 @@ class PublicErrorCode(StrEnum):
     RESEARCH_NOT_AVAILABLE = "RESEARCH_NOT_AVAILABLE"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
     PUBLIC_LIMIT_REACHED = "PUBLIC_LIMIT_REACHED"
+    PUBLIC_DAILY_BUDGET_EXHAUSTED = "PUBLIC_DAILY_BUDGET_EXHAUSTED"
     PURGE_PENDING = "PURGE_PENDING"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -194,6 +195,7 @@ class PublicQuickResearchService:
         max_bytes: int,
         timeout_seconds: float,
         max_active_quick: int,
+        daily_quick_budget: int,
         kill_switch: bool,
     ) -> None:
         self._store = store
@@ -209,11 +211,17 @@ class PublicQuickResearchService:
         self._max_active_quick = max_active_quick
         self._active_quick = 0
         self._active_quick_lock = Lock()
+        self._daily_quick_budget = daily_quick_budget
+        self._daily_budget_day: date | None = None
+        self._daily_quick_used = 0
+        self._daily_budget_lock = Lock()
         self._kill_switch = kill_switch
 
     @property
     def available(self) -> bool:
-        return self._backend.available and not self._kill_switch
+        return (
+            self._backend.available and not self._kill_switch and not self._daily_budget_exhausted()
+        )
 
     async def quick(
         self,
@@ -273,6 +281,12 @@ class PublicQuickResearchService:
                 str(error),
                 retryable=False,
             ) from None
+        if not self._try_consume_daily_budget():
+            raise PublicResearchError(
+                PublicErrorCode.PUBLIC_DAILY_BUDGET_EXHAUSTED,
+                "public daily quick budget is exhausted until the next UTC day",
+                retryable=True,
+            )
 
         ref: WorkspaceRef | None = None
         purged = False
@@ -359,6 +373,29 @@ class PublicQuickResearchService:
             if self._active_quick <= 0:
                 raise RuntimeError("public quick concurrency counter underflow")
             self._active_quick -= 1
+
+    def _try_consume_daily_budget(self) -> bool:
+        if self._daily_quick_budget == 0:
+            return True
+        with self._daily_budget_lock:
+            self._reset_daily_budget_if_needed()
+            if self._daily_quick_used >= self._daily_quick_budget:
+                return False
+            self._daily_quick_used += 1
+            return True
+
+    def _daily_budget_exhausted(self) -> bool:
+        if self._daily_quick_budget == 0:
+            return False
+        with self._daily_budget_lock:
+            self._reset_daily_budget_if_needed()
+            return self._daily_quick_used >= self._daily_quick_budget
+
+    def _reset_daily_budget_if_needed(self) -> None:
+        today = self._clock.now().date()
+        if self._daily_budget_day != today:
+            self._daily_budget_day = today
+            self._daily_quick_used = 0
 
 
 async def _best_effort_purge(

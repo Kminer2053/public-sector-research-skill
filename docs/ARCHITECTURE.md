@@ -373,6 +373,13 @@ ephemeral workspace 생성과 외부 source network보다 먼저 수행한다. s
 process-local이므로 replica가 둘 이상이면 gateway 또는 공유 limiter backend에서 별도의
 배포 전체 상한을 적용해야 한다.
 
+`PSR_PUBLIC_DAILY_QUICK_BUDGET`은 UTC 날짜별로 실제 backend 진입이 승인된 quick 횟수를
+제한한다. 입력·계획 검증을 통과한 뒤 workspace 생성 전에 원자적으로 1회를 차감한다. 따라서
+잘못된 입력과 active quick 초과 요청은 차감하지 않지만, 이미 외부 비용을 만들 수 있었던
+backend 오류·취소는 차감한다. 개발환경의 0은 비활성화를 뜻하며 production public mode는
+1 이상의 명시값 없이는 startup에 실패한다. 이 counter도 process-local이므로 provider billing
+hard cap이나 replica 전체 비용보장을 대신하지 않는다.
+
 reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
 `X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
 값은 fail closed한다. trusted network 밖에서 보낸 같은 header는 quota 계산에 사용하지 않고
@@ -386,6 +393,7 @@ quick: IP당 분당 5회
 async start: IP당 시간당 3회
 active run: IP당 1개
 active quick: process당 8개(초기 기본값)
+daily quick: process·UTC 일자별 operator config
 source documents: run당 12개
 download: run당 30MB
 runtime: run당 10분
@@ -583,6 +591,7 @@ PSR_PUBLIC_ACCESS_ENABLED=true
 PSR_EPHEMERAL_ROOT=/restricted/path
 PSR_QUICK_TIMEOUT_SECONDS=20
 PSR_PUBLIC_MAX_ACTIVE_QUICK=8
+PSR_PUBLIC_DAILY_QUICK_BUDGET=500
 PSR_RUN_TTL_SECONDS=3600
 PSR_DELIVERED_PURGE_SECONDS=60
 PSR_ORPHAN_MAX_AGE_SECONDS=7200

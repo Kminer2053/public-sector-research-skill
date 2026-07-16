@@ -271,6 +271,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-053 | 운영자가 public start/collection을 즉시 중지하는 kill switch를 가진다. | Must | 기존 결과 조회·purge는 계속 가능 |
 | FR-PUB-054 | abuse counter는 회전 HMAC key와 TTL을 사용한다. | Must | raw IP·question이 app DB에 없음 |
 | FR-PUB-055 | 동시에 실행할 수 있는 quick 조사를 프로세스별 설정값으로 제한한다. | Must | 상한 초과 요청은 workspace·외부 network 생성 전에 `PUBLIC_LIMIT_REACHED`, 완료·실패·취소 뒤 slot 반환 |
+| FR-PUB-056 | production 공개 mode는 UTC 일자별 quick 진입 budget을 명시하고 소진 시 새 조사를 중단한다. | Must | 잘못된 입력·active 초과는 미차감, 시작된 성공·실패는 차감, workspace·network 전 `PUBLIC_DAILY_BUDGET_EXHAUSTED` |
 
 ### 8.7 Feedback
 
@@ -326,6 +327,7 @@ stateDiagram-v2
 |---|---|---|
 | `INPUT_INVALID` | 질문·날짜·budget이 잘못됨 | network 전 거부 |
 | `PUBLIC_LIMIT_REACHED` | 익명 사용 한도 초과 | Retry-After |
+| `PUBLIC_DAILY_BUDGET_EXHAUSTED` | UTC 일일 quick 진입 budget 소진 | 다음 UTC 일자 또는 운영자 조정 뒤 retry |
 | `RUN_EXPIRED_OR_NOT_FOUND` | handle 없음 또는 만료 | 존재 여부 통합 |
 | `SOURCE_POLICY_BLOCKED` | 안전·약관 정책상 수집 불가 | limitation에 표시 |
 | `NETWORK_TRANSIENT` | source 일시 장애 | 제한된 retry |
@@ -454,7 +456,7 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 | OQ-PUB-003 | 임시 content backend | 단일 node encrypted tmpdir부터 시작 | Public Preview |
 | OQ-PUB-004 | 결과 최대크기 | Markdown 256KB, JSON 512KB 초기값 | Host test |
 | OQ-PUB-005 | feedback 수집 | boolean + save interest, free-text 없음 | Preview |
-| OQ-PUB-006 | 공개 비용상한 | 일/시간별 운영 budget kill switch | 배포 전 |
+| OQ-PUB-006 | 공개 비용상한 | process daily quick budget은 안전 하한으로 적용; 실제 provider 비용·multi-replica 합계는 shared budget과 provider hard cap으로 보완 | PG3 |
 | OQ-PUB-007 | Account IdP | Google/Microsoft 지원 OIDC broker | Stage B |
 | OQ-PUB-008 | 유료화 기준 | 저장·장기실행 비용과 지불의사 확인 후 | Stage C |
 

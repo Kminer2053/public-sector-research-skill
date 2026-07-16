@@ -266,6 +266,7 @@ def _build_public_container(
             max_bytes=settings.max_run_bytes,
             timeout_seconds=settings.quick_timeout_seconds,
             max_active_quick=settings.public_max_active_quick,
+            daily_quick_budget=settings.public_daily_quick_budget,
             kill_switch=settings.public_kill_switch,
         ),
     )

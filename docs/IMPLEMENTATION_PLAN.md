@@ -226,7 +226,7 @@ src/psr_mcp/
 
 ### CH-S0.3 Abuse Limiter 교체
 
-**요구사항:** `FR-PUB-050~055`
+**요구사항:** `FR-PUB-050~056`
 
 **수정/추가**
 
@@ -249,13 +249,17 @@ src/psr_mcp/
 `PSR_PUBLIC_MAX_ACTIVE_QUICK` 기반 process-local quick 동시실행 상한은 구현 완료했다.
 초과 요청은 workspace와 source network를 만들기 전에 `PUBLIC_LIMIT_REACHED`로 거부하며,
 성공·오류·취소 경로 모두 slot을 반환한다. 실제 gateway의 header overwrite, raw-IP quota와
-multi-replica 공유 quota는 CH-P3.1에서 검증한다.
+`PSR_PUBLIC_DAILY_QUICK_BUDGET` 기반 UTC 일일 진입 budget도 구현했다. production 공개
+mode는 명시값 없이는 시작하지 않으며, 소진 시 workspace·network 전에
+`PUBLIC_DAILY_BUDGET_EXHAUSTED`로 거부한다. 실제 gateway의 header overwrite, raw-IP quota,
+multi-replica 공유 quota와 provider billing hard cap은 CH-P3.1에서 검증한다.
 
 **DoD**
 
 - 100개의 invalid bearer를 회전해도 같은 IP budget을 초과할 수 없다.
 - 다른 IP fixture는 독립 bucket을 사용한다.
 - process active quick 상한에서 초과 요청은 workspace 생성 전에 거부되고 종료 뒤 slot이 반환된다.
+- UTC 일일 budget은 잘못된 입력을 차감하지 않고 시작된 성공·실패를 차감하며 날짜 변경 시 reset된다.
 - `Retry-After`와 `PUBLIC_LIMIT_REACHED`가 일관되다.
 - HMAC key rotation과 counter TTL test가 있다.
 

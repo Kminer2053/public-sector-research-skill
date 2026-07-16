@@ -258,6 +258,7 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     assert settings.public_kill_switch is True
     assert settings.public_fixture_research_enabled is True
     assert settings.public_max_active_quick == 8
+    assert settings.public_daily_quick_budget == 0
     assert settings.diagnostics()["abuse_hmac_key_ref"] is False
 
     container = build_container(settings)
@@ -358,6 +359,22 @@ def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> 
                 "PSR_PUBLIC_MAX_ACTIVE_QUICK": "101",
             },
             "PUBLIC_MAX_ACTIVE_QUICK",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_DAILY_QUICK_BUDGET": "-1",
+            },
+            "PUBLIC_DAILY_QUICK_BUDGET",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_DAILY_QUICK_BUDGET": "1000001",
+            },
+            "PUBLIC_DAILY_QUICK_BUDGET",
         ),
         (
             {
@@ -475,16 +492,27 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
             }
         )
 
+    with pytest.raises(ValueError, match="PUBLIC_DAILY_QUICK_BUDGET"):
+        Settings.from_env(
+            {
+                **base,
+                "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+                "PSR_TRUSTED_PROXY_CIDRS": "127.0.0.1/32",
+            }
+        )
+
     settings = Settings.from_env(
         {
             **base,
             "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
             "PSR_SEARCH_PROVIDER": "curated",
             "PSR_TRUSTED_PROXY_CIDRS": "127.0.0.1/32, 10.0.0.7/8",
+            "PSR_PUBLIC_DAILY_QUICK_BUDGET": "500",
         }
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
     assert settings.search_provider is SearchProviderMode.CURATED
+    assert settings.public_daily_quick_budget == 500
     assert settings.trusted_proxy_cidrs == ("127.0.0.1/32", "10.0.0.0/8")
     container = build_container(
         settings,

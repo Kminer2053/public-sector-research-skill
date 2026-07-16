@@ -124,11 +124,17 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_TRUSTED_PROXY_CIDRS` | 빈 값 | production public mode 필수, comma-separated CIDR |
 | `PSR_QUICK_TIMEOUT_SECONDS` | 20 | 1..30, request timeout 이하 |
 | `PSR_PUBLIC_MAX_ACTIVE_QUICK` | 8 | process당 동시 quick 상한, 1..100 |
+| `PSR_PUBLIC_DAILY_QUICK_BUDGET` | 0 | process·UTC 일자별 quick 진입 상한, 0은 development 비활성; production은 1 이상 필수 |
 | `PSR_MAX_RUN_SOURCES` | 12 | 1..100 |
 | `PSR_MAX_RUN_BYTES` | 30 MiB | 1..100 MiB |
 | `PSR_PUBLIC_KILL_SWITCH` | `false` | 새 quick/start 중지 |
 
 API key와 HMAC key는 diagnostics에서 값 대신 존재 여부만 표시된다.
+
+`PSR_PUBLIC_DAILY_QUICK_BUDGET`은 정확한 provider 청구액 상한이 아니라 단일 process의
+보수적 진입 안전망이다. production 초기값은 load·provider quota를 검토해 명시해야 하며,
+예시 500은 제품 보장값이 아니다. replica가 여러 개면 gateway/shared limiter와 provider
+dashboard hard cap을 함께 설정한다.
 
 ## 7. 품질 검증
 
