@@ -32,8 +32,8 @@ Stage A Public Preview
 
         ↓ 저장·History에 대한 실제 사용자 수요
 
-Stage B Opt-in Account Beta
-선택 가입 · Personal Workspace · 저장을 켠 조사만 History·재사용
+Stage B Free Account Beta
+선택 가입 · Personal Workspace · 저장한 조사 History·최신성 기반 자동 재사용
 
         ↓ 반복 사용과 운영비 지불 의사
 
@@ -93,6 +93,17 @@ OAuth, PostgreSQL, RLS와 durable Job foundation은 이미 구현된 미래 확�
 ### Persistence Must Be Earned
 
 History와 Evidence reuse는 내부 기대가 아니라 사용자의 명시적인 요청이 확인됐을 때만 만든다. 가입 후에도 저장은 opt-in이다.
+
+### Identity Enhances, Never Gates
+
+계정은 공개 MCP 사용권이 아니다. 익명 사용은 계속 유지하고, 계정은 History, freshness,
+Evidence reuse, 개인 Workspace처럼 반복 사용자에게 유리한 기능만 추가한다. 계정·저장 서비스가
+고장 나도 공개 무보관 조사는 계속 동작해야 한다.
+
+### Reuse Must Stay Verifiable
+
+저장 근거를 자동 재사용하더라도 이전 조사라는 이유만으로 신뢰하지 않는다. freshness를 먼저
+확인하고, 재사용한 근거와 새로 수집한 근거를 결과에서 구분한다.
 
 ### MCP-First, Client-Agnostic
 
@@ -168,7 +179,7 @@ Public Preview의 성공은 기능 수가 아니라 실제 사용으로 판단�
 | 단계 | 사용자가 얻는 것 | 서비스가 저장하는 것 |
 |---|---|---|
 | Public Preview | 가입 없는 조사, 즉시 결과 | 임시 content + 최소 비콘텐츠 운영정보 |
-| Account Beta | 선택 저장, History, 개인 Evidence reuse | 사용자가 저장을 선택한 조사 |
+| Free Account Beta | 선택 저장, History, freshness-aware Evidence reuse | 사용자가 저장을 선택한 조사 |
 | Paid Persistent | 장기 보관, 높은 quota, 고급 export | 계약된 저장공간과 운영 metadata |
 | Enterprise | 팀 공유, SSO, Review, 감사, 보존정책 | 기관 정책에 따른 격리 데이터 |
 
@@ -177,7 +188,8 @@ Public Preview의 성공은 기능 수가 아니라 실제 사용으로 판단�
 - 공개 MCP가 최소 두 종류 Host에서 쉽게 연결된다.
 - 반복적으로 쓰는 실제 사용자가 존재하고 조사 유용성이 측정된다.
 - Public Preview는 기본 무보관 약속과 purge 검증을 유지한다.
-- 저장 수요가 확인되면 선택 가입과 Personal Workspace가 제공된다.
+- 저장 수요가 확인되면 무료 선택 가입과 Personal Workspace가 제공된다.
+- 가입 사용자는 저장한 근거의 최신성 상태를 확인하고 후속 조사에서 자동 재사용할 수 있다.
 - 유료화는 저장·장기실행·높은 quota에 대한 비용과 수요가 확인된 뒤 시작한다.
 - 기관 기능은 일반 공개 서비스의 사용성을 해치지 않는 별도 mode로 제공한다.
 - Government, Regulation, Procurement, Technology Profile이 순차적으로 확장된다.
@@ -198,6 +210,8 @@ Public Preview의 성공은 기능 수가 아니라 실제 사용으로 판단�
 | Citation | 출처 URL, 제목, 발행기관, 기준시점과 원문 구간을 결합한 인용정보 |
 | Opt-in Persistence | 사용자가 가입하고 특정 조사의 저장을 명시적으로 선택한 상태 |
 | Personal Workspace | Account Beta에서 개인이 저장한 조사만 관리하는 공간 |
+| Evidence Reuse | 사용자가 저장한 근거를 freshness 판정 후 후속 조사에 다시 사용하는 기능 |
+| Reuse Mode | 저장근거 사용을 `off`, `prefer_fresh`, `saved_only`로 통제하는 사용자 설정 |
 | Organization | Enterprise 단계에서 팀·기관의 권한과 데이터를 격리하는 경계 |
 
 ---

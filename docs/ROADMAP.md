@@ -20,7 +20,7 @@
 → R2 빠른 Evidence Research
 → R3 Ephemeral Async
 → R4 Public Preview 운영·학습
-→ R5 Opt-in Account Beta
+→ R5 Free Account Beta
 → R6 Paid Persistent
 → R7 Team / Public-Sector Enterprise
 ```
@@ -43,7 +43,7 @@
 | R2 Useful Quick Research | 30초 이내 공식자료 중심 결과 | Planner/Profile, SafeCollector, Composer, quick Tool | Research Quality Gate |
 | R3 Ephemeral Async | 긴 조사를 짧은 TTL로 수행·전달 | start/status/result/cancel, worker, sweeper | Zero-Retention Gate |
 | R4 Public Preview | 실제 사용자에게 공개하고 효용 검증 | 배포, feedback, cost/quality 지표 | Product Validation Gate |
-| R5 Account Beta | 희망 사용자만 저장·재사용 | OIDC, Personal Workspace, opt-in save | Account Trust Gate |
+| R5 Free Account Beta | 희망 사용자만 가입해 저장·재사용 | OIDC, Personal Workspace, opt-in save, freshness-aware reuse | Account Trust Gate |
 | R6 Paid Persistent | 저장·장기실행을 지속 가능한 서비스로 제공 | quota, billing, storage, backup/delete | Paid Reliability Gate |
 | R7 Enterprise | 기관 팀·감사·보존 요구 지원 | SSO, Organization, RLS, Review, audit | Enterprise Readiness Gate |
 
@@ -334,6 +334,10 @@ metric backend는 R4 운영 검증에서 수행한다.
 운영 출력에는 질문·인용·capability token이 없고 feedback 제출은 기본 비활성이다. 실제
 HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 
+pinned multi-stage OCI artifact와 non-root·read-only·tmpfs container contract,
+network-none fixture smoke CI도 추가됐다. 현재 개발환경에는 Docker engine이 없어 실제 OCI
+build 결과는 원격 CI 전까지 검증 대기다.
+
 ### 운영 학습
 
 - 실패율이 높은 질문 유형과 source track 파악
@@ -358,31 +362,50 @@ HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 
 조건이 미달하면 가입 기능을 만들지 않고 조사 품질·연결 편의·source coverage를 개선한다.
 
-## 8. R5 — Opt-in Account Beta
+## 8. R5 — Free Account Beta
 
 ### 시작 조건
 
 - R4 Product Validation Gate 통과
 - 계정과 저장에 대한 Privacy/Security 설계 승인
 - 사용자가 저장하지 않는 mode를 계속 선택할 수 있음
+- 저장·History·reuse를 실제로 시험할 관심 사용자 cohort 확보
 
-### 기능
+R5는 Public Preview 출시를 위한 선행조건이 아니다. 초기에는 무료·제한 quota의 초대형 Beta로
+운영하고, 실제 저장량·재사용률·refresh 비용을 확인한 뒤 self-service 범위를 넓힌다.
+
+### R5.1 Identity-only Beta
 
 - Google/Microsoft 등을 지원하는 OIDC broker
-- self-service signup과 Personal Workspace
-- `save=true`인 조사만 persistent store로 이동
+- Account와 Personal Workspace bootstrap
+- 로그인만으로 content를 저장하지 않는 `ephemeral + reuse off` 기본값
+- Public endpoint와 Account endpoint의 독립 장애영역
+
+### R5.2 Opt-in Save
+
+- `retention_mode=saved`인 조사만 persistent store로 이동
 - 저장한 조사 History·검색·재사용
 - `saved` preflight 실패 시 조사 시작 전 명시적 거부
 - 익명 완료 결과는 자동 소급 귀속하지 않고 export/import로만 이전
-- 기존 저장 근거의 freshness 표시
 - export/delete/account close
 - 저장 동의 version과 retention 표시
 - account mode에서도 기본은 ephemeral
+
+### R5.3 Freshness-aware Automatic Reuse
+
+- `reuse_mode=off|prefer_fresh|saved_only`
+- 신규 계정 기본 `off`, 사용자가 Workspace 단위로 명시 활성화
+- Research Profile별 freshness rule
+- fresh 근거 우선 재사용, stale·unknown track은 새 조사 또는 명시적 gap
+- 결과에 reused/new Evidence와 freshness·refresh 실패 표시
+- 삭제된 Evidence 즉시 reuse index 제외
+- cross-user reuse 0건
 
 ### Foundation 보강
 
 - tenant actor composite FK
 - JWKS unknown `kid` negative cache/cooldown
+- self-service용 AccountIdentity bootstrap
 - account별 abuse·quota
 - Personal Workspace RLS
 - persistent object namespace와 encryption
@@ -390,8 +413,10 @@ HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 ### 종료 기준
 
 - 가입하지 않은 공개 사용 흐름이 그대로 유지된다.
-- `save=false` 조사 content가 persistent store에 남지 않는다.
+- `retention_mode=ephemeral` 조사 content가 persistent store에 남지 않는다.
 - 사용자가 저장한 조사만 History에 나타난다.
+- `prefer_fresh`가 stale 근거를 최신 근거처럼 조용히 사용하지 않는다.
+- 모든 자동 재사용 결과에 reuse/new/freshness provenance가 있다.
 - export/delete가 저장 metadata와 object를 일관되게 처리한다.
 - cross-user data 접근 성공 0건이다.
 
@@ -455,7 +480,7 @@ HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 | Follow-up Discovery | gap 제시 | 저장 후보 | bounded auto-run | 승인 workflow |
 | Living Report | 없음 | History | 부분 재생성 | Review·impact |
 | Diff Detection | 없음 | freshness check | structural diff | impact propagation |
-| Project Memory | 없음 | 저장 조사 재사용 | 정식 기능 | 팀 memory |
+| Project Memory | 없음 | 저장 조사 freshness-aware 재사용 | 정식 기능 | 팀 memory |
 | Research Profiles | Government v0 | Regulation 후보 | 다중 profile | 기관 profile |
 | Exporter | Markdown/JSON | account export | bundle/HTML/CSV | signed package |
 
@@ -469,7 +494,8 @@ HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 | 조사결과가 쓸모없음 | 낮은 result retrieval/helpful | golden QA, profile·source 개선 | R2~R4 |
 | 공식자료 확보 실패 | 기사 비중 증가 | gap 표시, source registry 개선 | R2 |
 | 임시 결과 유실 | async result 조회 실패 | handle/TTL/fault test, 명확한 SLA | R3 |
-| 계정 기능 조기 투자 | 저장 요청 부족 | R4 trigger 전 R5 시작 금지 | R4 |
+| 계정 기능 조기 투자 | 저장 요청 부족 | R4 trigger 전 R5 시작 금지, 초대형 무료 Beta로 제한 | R4 |
+| 오래된 근거 자동 재사용 | stale 자료가 새 조사처럼 출력 | profile freshness gate, reused/new provenance, request별 reuse off | R5 |
 | 영구저장 보안 결함 | cross-user reference 허용 | composite FK, RLS, export/delete test | R5 |
 | OAuth JWKS DoS | unknown `kid` 반복 refresh | negative cache/cooldown | R5 |
 | 범위 팽창 | UI·graph·billing 선행 | 단계별 Won't와 gate | 전체 |
@@ -508,25 +534,30 @@ HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
 - locator 없는 FACT
 - 삭제 실패 content의 계속 제공
 - 자동 opt-in 저장
+- 자동 opt-in Evidence reuse
 - 가입을 Public Preview 사용조건으로 변경
 - public mode에서 account/tenant repository 암묵 호출
 
 ## 15. 가장 먼저 구현할 작업
 
-초기 public safety와 curated quick smoke는 완료됐다. 현재 가장 먼저 수행할 작업은 다음이다.
+초기 public safety, curated quick, review packet과 local public conformance는 완료됐다. 현재
+가장 먼저 수행할 작업은 다음이다.
 
 ```text
-CH-P1.9 Human Usefulness QA
-+ curated 결과의 claim/citation/gap 과잉해석·누락 평가
-+ 국가법령정보센터 source adapter 결정
-+ citation-constrained Writer 필요성 판단
-+ 선택형 live Search의 recall·비용·query retention 비교
+CH-P3.1 Public Preview Deployment Rehearsal
++ OCI CI build와 runtime smoke 증적
++ 실제 reverse proxy의 canonical client IP overwrite
++ egress/private-route와 provider hard cap 검증
++ staging doctor, purge canary와 kill-switch rehearsal
++ 제한된 공공업무 담당자 human usefulness QA
 ```
 
-그 결과가 유용하지만 시간이 길면 R3 async를 우선하고, evidence bundle이 빈약하면
-citation-constrained Writer를 먼저 추가한다. 이후 trusted edge IP·비용 kill switch를 닫아
-R4 제한 공개로 이동한다.
+실제 quick이 30초를 자주 넘기기 전에는 async를 앞당기지 않는다. 제한 공개에서 source
+coverage가 병목이면 국가법령정보센터 adapter와 선택형 live Search를 우선하고, 반복 사용자가
+저장·reuse를 요청하더라도 R4 Product Validation Gate 전에는 Account 코드를 시작하지 않는다.
 
 ---
 
-이 로드맵은 “기능을 많이 만든 뒤 사용자를 찾는 계획”이 아니다. **안전하게 공개하고, 유용성을 증명하고, 사용자가 저장을 원할 때만 계정과 영구저장을 추가하는 계획**이다.
+이 로드맵은 “기능을 많이 만든 뒤 사용자를 찾는 계획”이 아니다. **안전하게 공개하고,
+유용성을 증명한 뒤, 반복 사용자가 원할 때 무료 선택 계정과 검증 가능한 자동 재사용을
+추가하고, 지속 비용과 지불 의사가 확인된 뒤에만 유료화하는 계획**이다.

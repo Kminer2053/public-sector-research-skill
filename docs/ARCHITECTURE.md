@@ -26,7 +26,7 @@
 | Mode | 인증 | content 저장 | 대상 |
 |---|---|---|---|
 | `PUBLIC_EPHEMERAL` | 없음 | memory/tmp + 강제 TTL | Public Preview |
-| `ACCOUNT_OPT_IN` | OIDC | `save=true`만 Personal Workspace | Account Beta |
+| `ACCOUNT_OPT_IN` | OIDC | `retention_mode=saved`만 Personal Workspace | Free Account Beta |
 | `PAID_PERSISTENT` | OIDC | 계약 quota·retention | Paid |
 | `ENTERPRISE` | 기관 OIDC/SSO | Organization 격리·정책 보존 | Team/기관 |
 
@@ -68,6 +68,60 @@ flowchart LR
 
 `saved`를 요청한 작업은 preflight가 실패하면 시작하지 않는다. 사용자가 요청한 저장을 보장하지
 못하면서 결과만 ephemeral로 반환하는 묵시적 downgrade는 금지한다.
+
+### 2.2 Account Beta의 자동 재사용 선택
+
+인증과 저장 의도, 재사용 의도는 서로 다른 축이다.
+
+```python
+class RetentionMode(StrEnum):
+    EPHEMERAL = "ephemeral"
+    SAVED = "saved"
+
+
+class ReuseMode(StrEnum):
+    OFF = "off"
+    PREFER_FRESH = "prefer_fresh"
+    SAVED_ONLY = "saved_only"
+```
+
+| retention | reuse | 동작 |
+|---|---|---|
+| `ephemeral` | `off` | 저장자료를 읽거나 새 결과를 저장하지 않음 |
+| `ephemeral` | `prefer_fresh` | 저장 Evidence를 읽을 수 있지만 새 결과는 저장하지 않음 |
+| `saved` | `off` | 새 조사만 실행하고 결과를 저장 |
+| `saved` | `prefer_fresh` | fresh 저장 Evidence를 우선 사용하고 부족한 부분만 새 조사한 뒤 저장 |
+| `saved` | `saved_only` | network 없이 저장 Evidence로만 결과를 만들고 부족한 부분은 gap |
+
+신규 계정의 기본값은 `retention_mode=ephemeral`, `reuse_mode=off`다. Workspace에서 재사용을
+명시적으로 활성화한 뒤에만 `prefer_fresh`를 사용자 기본값으로 기억한다.
+
+### 2.3 배포 경계
+
+Public과 Account는 같은 endpoint가 요청별로 repository를 바꾸는 구조가 아니다.
+
+```mermaid
+flowchart LR
+    Host["MCP Host"]
+    Public["Public Endpoint\nno auth · no persistent content sink"]
+    Account["Account Endpoint\nOIDC · Personal Workspace"]
+    Core["Shared Research Core"]
+    Temp["Ephemeral Runtime"]
+    Store["Account Evidence Store"]
+
+    Host -->|"anonymous"| Public
+    Host -->|"optional OIDC"| Account
+    Public --> Core
+    Account --> Core
+    Core --> Temp
+    Account --> Store
+```
+
+- Public deployment는 Account IdP, Membership과 persistent content repository 없이 기동한다.
+- Account deployment는 verified identity가 없으면 저장·재사용 Tool을 노출하지 않는다.
+- 공통 Planner, Collector, Parser, Evidence Composer와 Writer는 공유하되 composition root,
+  Tool catalog, data sink와 배포 장애영역은 분리한다.
+- Account 또는 결제 서비스 장애가 Public endpoint의 availability를 낮추지 않는다.
 
 ## 3. Current Foundation Assessment
 
@@ -141,6 +195,9 @@ flowchart LR
 ```
 
 Public Preview 경로에는 IdP, Membership, Organization Evidence Store가 없다.
+
+향후 Account endpoint는 별도 URL과 OAuth protected resource metadata를 사용한다. Public
+endpoint는 Account Beta 출시 뒤에도 OAuth challenge를 요구하지 않는다.
 
 ## 5. Container Architecture
 
@@ -709,13 +766,31 @@ content-free metrics
 
 초기에는 단일 region·단일 node 또는 sticky routing을 허용한다. 유용성 검증 전에 Kubernetes, Redis cluster, multi-region을 도입하지 않는다.
 
+현재 OCI artifact는 다음 배포계약을 코드로 고정한다.
+
+- pinned Python 3.12 slim multi-platform base digest
+- builder wheel과 final runtime 분리
+- `USER 10001:10001`
+- production/public/static/memory fail-closed 기본값
+- read-only root + `/tmp`, ephemeral root, `/run/psr` tmpfs 실행
+- `VOLUME`, `HEALTHCHECK`, Account DB credential 없음
+- CI의 network-none fixture conformance와 purge-after-smoke
+
+상세 실행절차는 [Container Runbook](./runbooks/container-public-preview.md)을 따른다. image build
+통과는 gateway, egress와 실제 사용자 검증을 대신하지 않는다.
+
 ### Account Beta
 
 - OIDC broker
 - Personal Workspace
 - PostgreSQL persistent metadata
 - opt-in object storage
+- Evidence reuse planner와 freshness evaluator
 - export/delete worker
+
+Account Beta는 초기 무료·제한 quota로 운영한다. Public과 별도 process/deployment, 별도
+resource URL과 별도 persistent credential을 사용한다. Public image에는 account DB credential을
+주입하지 않는다.
 
 ### Paid/Enterprise
 
@@ -840,6 +915,64 @@ Public Tool Catalog
 6. 실제 official-source golden scenario와 human usefulness review — 다음
 7. Writer 사람 QA와 conflict 보강, 이후 async lifecycle과 public edge — 후속
 
+### 20.1 Account Beta 전환 설계
+
+현재 Foundation identity schema는 Organization Membership을 전제로 하므로 self-service 개인
+계정 bootstrap에 그대로 사용하지 않는다. A0에서 다음 중 하나를 ADR로 확정한다.
+
+1. OIDC broker가 발급하는 내부 `account_id`를 검증하고 Personal Workspace에 매핑
+2. global `AccountIdentity(issuer, subject)` bootstrap table을 추가한 뒤 개인 tenant를 생성
+
+추천안은 2번이다. 외부 `issuer + subject`를 DB에서 한 번 더 확인하고, Account와 Personal
+Workspace를 명시적으로 분리할 수 있다. 기존 Organization/Membership schema는 팀·기관 전환에
+재사용한다.
+
+미래 최소 persistent model:
+
+```text
+Account
+AccountIdentity
+PersonalWorkspace
+RetentionConsent
+SavedResearch
+SavedEvidence
+FreshnessCheck
+ReuseDecision
+ImportReceipt
+DeletionManifest
+```
+
+`ReuseDecision`은 어떤 저장 Evidence를 어떤 freshness 상태로 사용했고 어떤 track을 새로
+조사했는지 기록한다. 질문·결과의 장기 보관은 `retention_mode=saved`와 유효한 consent가
+있을 때만 허용한다.
+
+### 20.2 Account Reuse Flow
+
+```mermaid
+sequenceDiagram
+    participant H as MCP Host
+    participant A as Account MCP
+    participant W as Personal Workspace
+    participant F as Freshness Evaluator
+    participant R as Research Core
+
+    H->>A: research(question, retention_mode, reuse_mode)
+    A->>A: verify identity + authorize workspace
+    A->>A: saved 요청 preflight
+    A->>W: lookup relevant saved Evidence
+    W-->>A: candidate Evidence
+    A->>F: classify fresh/stale/unknown
+    F-->>A: freshness decisions
+    A->>R: research only uncovered/stale tracks
+    R-->>A: new Evidence
+    A-->>H: result + reuse/new/freshness provenance
+    A->>W: persist only when retention_mode=saved
+```
+
+freshness evaluator는 단일 전역 TTL이 아니라 Research Profile 규칙을 사용한다. 법령은
+현행성·시행일·개정일, 정부 가이드는 발행·개정일과 source diff, 기술문서는 release/version,
+기업자료는 공시기간을 우선한다.
+
 ## 21. Extension Points
 
 - `SearchProvider`
@@ -853,6 +986,10 @@ Public Tool Catalog
 - `AbuseLimiter`
 - `FeedbackSink`
 - `PersistentWorkspaceStore`(future)
+- `AccountIdentityResolver`(future)
+- `SavedEvidenceSearch`(future)
+- `FreshnessEvaluator`(future)
+- `ReusePolicy`(future)
 
 domain/application은 MCP SDK, PostgreSQL, 특정 search provider를 직접 import하지 않는다.
 
@@ -869,7 +1006,7 @@ domain/application은 MCP SDK, PostgreSQL, 특정 search provider를 직접 impo
 | ADR-0007 | Remote HTTP boundary |
 | ADR-0008 | Capability-aware Host conformance |
 | ADR-0009 | Public Zero-Retention First |
-| ADR-0010 | Progressive Identity and Opt-in Persistence |
+| ADR-0010 | Progressive Identity, Opt-in Persistence, and Evidence Reuse |
 
 ADR-0002·0005·0006은 폐기되지 않았으며 Account/Enterprise mode에 적용된다. Public Preview의
 현재 제품 경계는 ADR-0009가 우선하고, 향후 선택 가입·저장 경계는 ADR-0010을 따른다.

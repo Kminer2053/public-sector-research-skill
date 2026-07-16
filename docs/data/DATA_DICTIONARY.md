@@ -274,6 +274,9 @@ Foundation에는 자동 retention/purge Job이 없다. 운영 전 임시 정책:
 | `Report`, `ReportSection` | Report/MVP | table 없음 |
 | `Entity`, `Relation` | v1.5+ | table 없음 |
 | `ChangeEvent`, freshness state | v1.5 | table 없음 |
+| `Account`, `AccountIdentity`, `PersonalWorkspace` | Free Account Beta A0.1 | table 없음 |
+| `RetentionConsent`, `SavedResearch`, `SavedEvidence` | Free Account Beta A0.2 | table 없음 |
+| `FreshnessCheck`, `ReuseDecision`, `ImportReceipt`, `DeletionManifest` | Free Account Beta A0.3 | table 없음 |
 
 이 Entity 이름이 response나 문서에 존재하더라도 구현된 persistence로 간주하지 않는다.
 

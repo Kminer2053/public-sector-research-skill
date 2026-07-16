@@ -26,12 +26,15 @@
 - 안전·사용량 통제를 위한 최소 비콘텐츠 metadata만 제한적으로 보관한다.
 - Project Memory, 과거 조사 재사용, 팀 공유, 결제는 제공하지 않는다.
 
-### Stage B — Opt-in Account Beta
+### Stage B — Free Account Beta
 
 - 사용자가 저장·과거 조사 검색을 원할 때만 OIDC 계정을 만든다.
 - 신규 계정은 Personal Workspace를 가진다.
 - 저장은 명시적 opt-in이며 기본값은 계속 무보관이다.
 - 저장한 조사에만 History, Evidence reuse, refresh 기능을 제공한다.
+- 신규 계정의 자동 재사용은 꺼져 있고, 사용자가 켠 뒤 freshness를 확인한 근거만 우선
+  재사용한다.
+- 초기 Beta는 무료·제한 quota로 운영하며 익명 공개 경로를 대체하지 않는다.
 
 ### Stage C — Paid Persistent Service
 

@@ -7,7 +7,8 @@
 > adapter, robots 정책, SafeCollector, HTML·JSON·PDF parser, Evidence Composer와 실제 quick
 > pipeline, citation-constrained Writer까지 연결됐습니다. curated mode의 실제 검토 원문
 > 5종·7개 track smoke, 근거 anchor 기반 조달 원칙 후보 5건과 즉시 purge는 통과했지만 사람
-> 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았으므로 공개
+> 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았습니다. pinned
+> non-root OCI artifact와 CI smoke 계약은 추가했지만 실제 image build 증적 전이므로 공개
 > 완성품으로 표현하거나 배포하면 안 됩니다.
 
 ## 제품 성장 순서
@@ -18,8 +19,8 @@ Public Preview
 
 → 실제 저장 수요가 확인되면
 
-Opt-in Account Beta
-선택 가입 · 저장을 켠 조사만 History·재사용
+Free Account Beta
+선택 가입 · 저장한 조사 History·최신성 기반 자동 재사용
 
 → 비용과 지불 의사가 확인되면
 
@@ -50,6 +51,7 @@ Enterprise
 - [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md): 다음 change set과 파일·interface·DoD
 - [VALIDATION CRITERIA](./docs/VALIDATION_CRITERIA.md): PG0~PG3 공개 검증 게이트
 - [PUBLIC PREVIEW RUNBOOK](./docs/runbooks/public-preview.md): fixture와 선택형 Search adapter 실행
+- [CONTAINER RUNBOOK](./docs/runbooks/container-public-preview.md): non-root·read-only·tmpfs 공개 배포 경계
 - [FOUNDATION DETAILED DESIGN](./docs/DETAILED_DESIGN.md): 이미 구현된 로그인·Tenant 기반 상세설계
 - [THREAT MODEL](./docs/security/THREAT_MODEL.md): Foundation과 Public Preview 위협
 - [ADR](./docs/adr/): 주요 제품·아키텍처 결정
@@ -66,6 +68,11 @@ Enterprise
 - statement 95.02%, branch 87.10%, critical module 최소 95% coverage gate
 
 이 기능은 Account Beta와 Enterprise의 자산으로 유지합니다. Public Preview 요청에는 OAuth 로그인, Organization, persistent content storage를 사용하지 않습니다.
+
+계정은 공개 기능의 사용 허가가 아닙니다. Public Preview는 이후에도 익명으로 유지하고, 반복
+사용자가 원할 때만 별도 Account endpoint에서 OIDC 인증, Personal Workspace, 명시적 저장,
+freshness-aware Evidence reuse를 제공합니다. 신규 계정도 기본은 무보관·재사용 꺼짐이며,
+Account 서비스 장애가 Public endpoint를 중단시키지 않도록 배포와 data sink를 분리합니다.
 
 ## 현재 구현된 Public Safety Core
 
@@ -121,18 +128,22 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 구조 품질지표, 실제 curated 결과 검토와 과잉범위 권고 수정 증적을 기록했습니다.
 [Public Conformance 검증 보고서](./docs/validation/2026-07-16-public-conformance.md)에
 익명 Tool catalog, 실제 curated quick, purge와 재연결 증적을 기록했습니다.
+[Progressive Account/OCI 검증 보고서](./docs/validation/2026-07-16-progressive-account-and-container.md)에
+선택 가입·freshness-aware reuse 설계와 컨테이너 정적계약, 전체 회귀 및 남은 OCI build gate를
+기록했습니다.
 
 ## 다음 구현 범위
 
 다음 작업은 이미 연결된 수직 슬라이스를 실제 공개 서비스 수준으로 검증하는 것입니다.
 
-1. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
-2. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
-3. citation-constrained 조달 원칙 후보의 표현·적용범위와 conflict/gap 검증
-4. 선택형 live Search provider의 recall·비용·보존경계 비교검증
-5. 실제 reverse proxy의 canonical client IP header 설정과 end-to-end spoof·leakage scan
-6. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
-7. `start/status/result/cancel` async flow
+1. OCI CI build와 non-root·read-only·tmpfs runtime smoke
+2. 실제 reverse proxy의 canonical client IP header 설정과 end-to-end spoof·leakage scan
+3. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
+4. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
+5. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
+6. citation-constrained 조달 원칙 후보의 표현·적용범위와 conflict/gap 검증
+7. 선택형 live Search provider의 recall·비용·보존경계 비교검증
+8. 실제 quick latency가 필요성을 증명하면 `start/status/result/cancel` async flow
 
 상세 순서는 [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md)을 따릅니다.
 
@@ -234,4 +245,6 @@ uv run --frozen psrctl doctor --json
 - 조사당 비용
 - 저장·History·재사용을 원하는 실제 사용자 수
 
-사용자가 반복해서 저장을 원할 때만 선택 가입을 열고, 저장과 장기실행에 지불 의사가 확인된 뒤 유료화합니다.
+사용자가 반복해서 저장을 원할 때만 무료 선택 가입 Beta를 열고, 저장한 근거의 최신성 확인과
+자동 재사용이 실제로 시간을 줄이는지 먼저 검증합니다. 저장공간·장기실행의 비용과 지불 의사가
+확인되고 보안·삭제·복구가 충분히 검증된 뒤에만 유료화합니다.

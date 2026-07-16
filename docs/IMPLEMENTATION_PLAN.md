@@ -640,6 +640,11 @@ validate
 - egress allow/deny와 DNS policy
 - public kill switch rehearsal
 
+**현재:** pinned multi-stage OCI artifact, non-root runtime, read-only/tmpfs 실행계약,
+network-none fixture smoke와 static contract CI를 구현했다. 로컬 환경에는 Docker engine이 없어
+실제 image build는 CI 증적 전까지 PENDING이다. 실제 TLS gateway, egress와 provider hard cap은
+계속 외부 gate다.
+
 ### CH-P3.2 Feedback and Product Metrics
 
 - one-time feedback token
@@ -673,6 +678,10 @@ gateway staging rehearsal은 여전히 외부 검증 대상이다.
 policy 일치를 검사한다. 출력은 count·ratio·상태만 포함하고 질문·인용·feedback token을
 제외한다. `--verify-feedback`은 aggregate를 오염시키므로 staging에서만 사용한다.
 
+OCI `test` target의 `scripts/container_smoke.py`는 development fixture에서만
+`release_gate=false`로 같은 SDK flow를 실행한다. 이는 image wiring과 purge를 검증하지만 실제
+공식자료 품질이나 공개 release gate로 승격하지 않는다.
+
 ### CH-P3.4 Public Release Rehearsal
 
 - load/cost test
@@ -682,21 +691,42 @@ policy 일치를 검사한다. 출력은 count·ratio·상태만 포함하고 �
 - rollback/kill switch
 - 24~72시간 제한 공개 후 gate review
 
-## 10. A0 — Account Beta 준비
+## 10. A0 — Free Account Beta 준비
 
 R4 product trigger 전에는 착수하지 않는다.
 
-### 필수 선행 수정
+초기 Account Beta는 무료·제한 quota이며 Public endpoint를 대체하지 않는다. 아래 변경은 한 번에
+구현하지 않고 identity-only → opt-in save → freshness-aware reuse 순으로 나눈다.
+
+### A0.1 Identity-only
+
+1. OIDC broker와 `AccountIdentity(issuer, subject)` bootstrap
+2. Personal Workspace 자동 생성과 user-scoped authorization
+3. Account deployment 전용 protected resource metadata와 Tool catalog
+4. 로그인 상태에서도 `retention_mode=ephemeral`, `reuse_mode=off` 기본값
+5. Account 장애 중 anonymous Public conformance가 통과하는 독립 배포 test
+
+### A0.2 Opt-in Save
 
 1. `users`와 `research_runs.initiated_by`의 `(organization_id, id)` composite FK
 2. unknown `kid` negative cache와 refresh cooldown
-3. self-service OIDC provisioning
-4. Personal Workspace와 user-scoped RLS
-5. `save=false` 기본값과 explicit consent
-6. export/delete/account close
-7. persistent object encryption과 deletion manifest
-8. saved preflight 실패 시 조사 시작 전 fail-closed
-9. 익명 완료 결과의 자동 소급 귀속 금지와 명시적 import
+3. `retention_mode=saved` explicit consent
+4. Personal Workspace RLS와 persistent object namespace
+5. export/delete/account close
+6. persistent object encryption과 deletion manifest
+7. saved preflight 실패 시 조사 시작 전 fail-closed
+8. 익명 완료 결과의 자동 소급 귀속 금지와 명시적 `user_imported` provenance
+
+### A0.3 Freshness-aware Reuse
+
+1. `reuse_mode=off|prefer_fresh|saved_only`
+2. 신규 계정은 `off`, Workspace 기본값 변경은 사용자 명시 동의
+3. Saved Evidence search port와 relevance filter
+4. Research Profile별 `FreshnessEvaluator`
+5. fresh/stale/unknown 판정과 stale track의 bounded refresh
+6. 결과의 reused/new Evidence와 freshness provenance
+7. delete와 reuse index의 원자적 제거
+8. cross-user reuse와 `saved_only` network call 0 test
 
 Public Preview deployment와 Account deployment는 mode와 data sink가 분리돼야 한다.
 
@@ -712,7 +742,8 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 | FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
 | FR-PUB-060~063 | P3.2 | VAL-PUB-FBK-* |
 | NFR-PUB-001~010 | S0~P3 | PG0~PG3 |
-| FR-ACC-001~008 | A0 | AG0 |
+| FR-ACC-001~009 | A0.1~A0.2 | AG0 |
+| FR-ACC-010~015 | A0.3 | AG0 |
 
 ## 12. Definition of Ready
 

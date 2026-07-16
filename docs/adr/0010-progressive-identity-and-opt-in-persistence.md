@@ -1,4 +1,4 @@
-# ADR-0010 — Progressive Identity and Opt-in Persistence
+# ADR-0010 — Progressive Identity, Opt-in Persistence, and Evidence Reuse
 
 > 상태: Accepted · 날짜: 2026-07-16 · 결정자: Product owner
 
@@ -18,12 +18,15 @@ Public Preview의 최우선 목표는 가입 장벽 없이 실제 조사 유용�
 - 익명 사용자의 질문·원문·결과는 전달 또는 TTL 뒤 삭제한다.
 - 계정 기능 장애가 공개 조사 경로를 중단시키지 않도록 deployment와 composition root를 분리한다.
 
-### 2. 가입은 저장과 재사용을 원하는 사용자만 선택한다
+### 2. 계정은 사용 허가가 아니라 선택형 편의 기능이다
 
-- Account Beta는 OIDC broker 기반 self-service 가입을 사용한다.
-- 초기에는 자체 비밀번호를 보관하지 않는다.
+- Account Beta는 OIDC broker를 사용하고 자체 비밀번호를 보관하지 않는다.
+- 초기 Beta는 운영 안정성을 위해 관심 사용자 초대 방식으로 열고, 검증 뒤 self-service로
+  확대할 수 있다. 익명 공개 사용은 초대나 가입으로 제한하지 않는다.
 - 가입만으로 조사 content를 저장하지 않는다.
 - 인증된 요청도 기본 `retention_mode`는 `ephemeral`이다.
+- 공개 사용자와 가입 사용자는 같은 official-first 품질 기준을 적용받는다. 무료 공개 결과의
+  근거 품질을 낮춰 가입이나 결제를 유도하지 않는다.
 
 ```text
 retention_mode=ephemeral  # 익명·가입 사용자 모두 가능, 기본값
@@ -45,7 +48,38 @@ retention_mode=saved      # 인증 사용자만 가능, 명시적 선택
 - Personal Workspace 데이터는 사용자 단위 RLS와 object namespace로 격리한다.
 - export, 개별 삭제, account close를 제공한 뒤 Account Beta를 연다.
 
-### 5. 유료화는 저장과 운영비가 검증된 뒤 추가한다
+### 5. 자동 재사용은 최신성과 provenance를 숨기지 않는다
+
+가입 사용자는 Personal Workspace에 저장한 조사와 Evidence를 후속 질문에서 재사용할 수 있다.
+자동 재사용은 다음 별도 설정으로 통제한다.
+
+```text
+reuse_mode=off             # 저장자료를 읽지 않음
+reuse_mode=prefer_fresh    # fresh 저장근거 우선, 부족하거나 stale이면 새 조사
+reuse_mode=saved_only      # 저장자료만 사용하고 새 network 조사는 하지 않음
+```
+
+- 신규 계정의 `reuse_mode` 기본값은 `off`다.
+- 사용자가 Workspace에서 재사용을 한 번 명시적으로 켜면 기본값을 `prefer_fresh`로 저장할 수
+  있으며, 요청마다 다시 끌 수 있다.
+- 재사용 전 `fresh`, `stale`, `unknown`을 판정한다. 법령·정책처럼 최신성이 핵심인 문서는
+  profile별 freshness rule을 적용한다.
+- `stale` 또는 `unknown` Evidence를 사실상 최신 자료처럼 조용히 사용하지 않는다.
+- 결과에는 재사용한 Evidence, 새로 수집한 Evidence, freshness 판정, refresh 실패와 남은
+  공백을 구분해 표시한다.
+- 삭제된 조사와 Evidence는 즉시 재사용 후보에서 제외한다.
+- 다른 사용자의 저장자료와 Public Preview의 ephemeral content는 재사용 후보가 될 수 없다.
+- 자동 재사용은 조사 비용과 시간을 줄이는 기능이지, 근거 검증을 생략하는 기능이 아니다.
+
+### 6. 무료 Account Beta와 유료 기능을 분리한다
+
+- Account Beta는 초기 팬과 반복 사용자가 제품 가치를 검증하는 무료·제한형 단계다.
+- 무료 Beta에는 제한된 저장공간, History, freshness 표시와 Evidence reuse를 제공할 수 있다.
+- 계정 생성, 저장량, 자동 재사용률과 refresh 비용을 먼저 측정한다.
+- 저장공간, 장기 실행, 예약 refresh, 높은 quota처럼 지속 비용이 발생하는 기능만 이후 유료
+  후보가 된다.
+
+### 7. 유료화는 저장과 운영비가 검증된 뒤 추가한다
 
 - 무료 공개 조사의 공식자료 우선 원칙과 근거 품질을 낮춰 유료 전환을 유도하지 않는다.
 - 유료 가치는 저장공간, 긴 실행, 높은 quota, 갱신, 고급 export와 지원에서 만든다.
@@ -87,9 +121,11 @@ Account Beta는 다음이 모두 충족될 때만 구현·공개한다.
 1. Public Preview Product Validation Gate 통과
 2. 저장·History·재사용 관심 사용자 20명 이상
 3. 개인정보 처리방침과 consent UX 승인
-4. self-service OIDC, RLS, encryption, export/delete/account-close 검증
-5. `save=false` persistent content zero test 통과
+4. OIDC login/provisioning, RLS, encryption, export/delete/account-close 검증
+5. `retention_mode=ephemeral` persistent content zero test 통과
 6. cross-user 접근과 mode 혼선 test 100% 통과
+7. `reuse_mode`별 fresh/stale/unknown 동작과 재사용 provenance 표시 검증
+8. Account 서비스 장애 중에도 익명 Public Preview가 정상 동작
 
 Paid Persistent는 저장 사용량, 원가와 지불 의사가 확인되고 backup/restore, billing correctness,
 deletion manifest와 독립 보안 검토가 끝난 뒤 활성화한다.
@@ -98,6 +134,8 @@ deletion manifest와 독립 보안 검토가 끝난 뒤 활성화한다.
 
 - **처음부터 로그인 필수:** 유용성 검증 전에 전환 장벽과 개인정보 범위를 키운다.
 - **가입하면 자동 저장:** 사용자의 기대와 Zero-Retention 기본값을 깨뜨린다.
+- **가입 즉시 과거 자료 자동 재사용:** 사용자가 저장자료의 사용 여부를 통제하지 못하고 stale
+  Evidence가 조용히 섞일 수 있다.
 - **익명 조사 자동 소급 연결:** 삭제 약속과 익명성을 훼손한다.
 - **한 process에서 mode별 repository를 동적 선택:** 구성 오류가 persistent content leak으로 이어질 수 있다.
 - **무료 결과 품질을 제한해 유료화:** 제품의 공신력과 공공적 가치를 훼손한다.

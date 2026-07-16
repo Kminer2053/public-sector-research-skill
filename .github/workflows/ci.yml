@@ -90,3 +90,87 @@ jobs:
 
       - name: Verify release SBOM
         run: test -s dist/sbom.cdx.json
+
+  public-image:
+    name: Public Preview OCI gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Verify fail-closed container contract
+        run: python3 scripts/verify_container_contract.py
+
+      - name: Build isolated test image
+        run: docker build --target test --tag psr-public:test .
+
+      - name: Start hardened fixture container
+        run: >-
+          docker run --detach --name psr-public-test
+          --network none
+          --read-only
+          --cap-drop=ALL
+          --security-opt=no-new-privileges
+          --pids-limit=128
+          --memory=512m
+          --cpus=1.0
+          --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+          --tmpfs /var/lib/psr/ephemeral:rw,noexec,nosuid,nodev,size=128m,mode=0700,uid=10001,gid=10001
+          --tmpfs /run/psr:rw,noexec,nosuid,nodev,size=1m,mode=0700,uid=10001,gid=10001
+          --env PSR_ENV=development
+          --env PSR_HOST=127.0.0.1
+          --env PSR_PUBLIC_URL=http://127.0.0.1:8000
+          --env PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED=true
+          psr-public:test
+
+      - name: Wait for loopback listener
+        run: |
+          ready=0
+          for attempt in $(seq 1 30); do
+            if docker exec psr-public-test python -c "import socket; connection = socket.create_connection(('127.0.0.1', 8000), 1); connection.close()"; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "${ready}" = "1"
+
+      - name: Run official SDK container smoke
+        run: >-
+          docker exec psr-public-test
+          python /opt/psr/container_smoke.py
+          --endpoint http://127.0.0.1:8000/mcp
+          --ephemeral-root /var/lib/psr/ephemeral
+
+      - name: Verify runtime hardening and purge
+        run: |
+          test "$(docker exec psr-public-test id -u)" = "10001"
+          test "$(docker inspect --format '{{.HostConfig.ReadonlyRootfs}}' psr-public-test)" = "true"
+          if docker exec psr-public-test sh -c "touch /root-write-test"; then
+            echo "read-only root filesystem accepted a write"
+            exit 1
+          fi
+          docker exec psr-public-test sh -c "test -w /tmp"
+          docker exec psr-public-test sh -c "test -w /var/lib/psr/ephemeral"
+          docker exec psr-public-test sh -c 'test -z "$(find /var/lib/psr/ephemeral -mindepth 1 -print -quit)"'
+
+      - name: Build final runtime image
+        run: docker build --target runtime --tag psr-public:runtime .
+
+      - name: Inspect final runtime image
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' psr-public:runtime)" = "10001:10001"
+          test "$(docker image inspect --format '{{json .Config.Entrypoint}}' psr-public:runtime)" = '["psr-mcp"]'
+
+      - name: Emit restricted container logs
+        if: always()
+        run: docker logs psr-public-test 2>&1 || true
+
+      - name: Remove test container
+        if: always()
+        run: docker rm --force psr-public-test 2>/dev/null || true

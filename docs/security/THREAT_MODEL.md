@@ -41,7 +41,7 @@ Review Console, private document, user credential, browser automation, 영구 Ev
 | Mode | 주요 보호자산 | 기본 보존 |
 |---|---|---|
 | `PUBLIC_EPHEMERAL` | 질문, 검색어, source body, result, handle | 결과 전달 또는 강제 TTL까지 |
-| `ACCOUNT_OPT_IN` | 사용자 identity, 저장 consent, 저장한 조사 | 사용자 선택·정책에 따름 |
+| `ACCOUNT_OPT_IN` | 사용자 identity, 저장 consent, 저장한 조사, reuse/freshness 기록 | 사용자 선택·정책에 따름 |
 | `ENTERPRISE` | 기관 Project, Evidence, Review, Audit | 기관 보존정책 |
 
 Public Preview에서는 “저장하지 않는 것” 자체가 핵심 보안속성이다.
@@ -139,6 +139,10 @@ flowchart LR
 - client bearer를 downstream dependency로 전달하지 않는다.
 - audit row는 append-only이며 application write transaction과 함께 commit한다.
 - production은 static auth, memory storage, HTTP public URL, development cursor key로 기동하지 않는다.
+- Account 가입만으로 content를 저장하거나 과거 Evidence를 자동 재사용하지 않는다.
+- `reuse_mode=prefer_fresh`는 저장 Evidence의 freshness를 확인하고 reused/new provenance를
+  결과에 표시한다.
+- Public deployment에는 Account DB credential과 persistent content sink를 주입하지 않는다.
 
 ## 6. Public Preview 위협·통제·검증
 
@@ -159,6 +163,19 @@ flowchart LR
 | TM-PUB-013 | edge forwarded IP spoof | trusted proxy CIDR, canonical single-IP parse, untrusted header strip | `VAL-PUB-ABUSE-011~012`, `VAL-PUB-EDGE-002` | application PASS; gateway rehearsal 대기 |
 | TM-PUB-014 | feedback로 content 재식별 | content-free signed token, no content join/free text, digest TTL sweep | `VAL-PUB-FBK-*` | local single-process PASS; shared dedup·운영 metric 대기 |
 | TM-PUB-015 | Search query가 외부 provider에 보존 | 기본 disabled, service disclosure, provider 계약 분리 | `FR-PUB-026`, Live QA | 고지 구현; provider ZDR 미검증 |
+| TM-PUB-016 | container 탈출·root filesystem 잔존 | non-root, read-only root, drop all capabilities, no-new-privileges, tmpfs only | `VAL-PUB-EDGE-012` | static contract 구현; OCI CI·staging 대기 |
+
+### 6.1 Future Account Beta 위협
+
+| ID | 위협 | 필수 통제 | 검증 |
+|---|---|---|---|
+| TM-ACC-001 | 가입만으로 질문·결과가 저장됨 | ephemeral default, explicit retention consent | `VAL-ACC-002~004` |
+| TM-ACC-002 | 다른 사용자의 Evidence 자동 재사용 | user-scoped RLS, opaque denial, reuse query authorization | `VAL-ACC-005`, `020` |
+| TM-ACC-003 | stale 근거가 최신 근거처럼 혼입 | profile freshness gate, stale/unknown 표시, bounded refresh | `VAL-ACC-016~019` |
+| TM-ACC-004 | 삭제한 자료가 reuse index에 잔존 | transactional delete + index purge + manifest | `VAL-ACC-009`, `021` |
+| TM-ACC-005 | 익명 조사를 계정에 몰래 소급 연결 | explicit import, `user_imported` provenance | `VAL-ACC-012`, `022` |
+| TM-ACC-006 | Account 장애가 공개 서비스를 중단 | 별도 deployment, credential, composition root | `VAL-ACC-013` |
+| TM-ACC-007 | 유료 전환을 위해 공개 품질 저하 | anonymous golden quality regression gate | `VAL-ACC-023` |
 
 ## 7. Foundation 위협·통제·검증
 
@@ -232,7 +249,7 @@ flowchart LR
 - edge/network namespace에서 private route가 실제로 없는지 검증
 - robots.txt 외 site Terms·저작권·개인정보의 source registry 운영절차
 - 실제 malformed/대형 정부 PDF와 parser zero-day 대응
-- PDF worker의 Linux container seccomp/no-network/read-only filesystem
+- PDF worker의 Linux custom seccomp profile; container network-none/read-only fixture smoke는 구현
 - response URL query와 upstream error의 telemetry redaction
 - Search provider query retention·비용·credential rotation
 - source-host rate와 upstream circuit breaker

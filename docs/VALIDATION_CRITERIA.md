@@ -24,7 +24,7 @@
 | PG1 | Useful Research | planner, collector, parser, evidence, quick | CURATED LIVE SMOKE PASS / HUMAN QA PENDING |
 | PG2 | Zero-Retention Async | handle, worker, consume, TTL, crash recovery | NOT IMPLEMENTED |
 | PG3 | Public Preview Ready | edge, Host, load/cost, docs, incident rehearsal | NOT IMPLEMENTED |
-| AG0 | Account Trust | opt-in save, user isolation, export/delete, OAuth hardening | FUTURE |
+| AG0 | Account Trust and Reuse | optional identity, opt-in save, freshness-aware reuse, user isolation, export/delete | FUTURE |
 
 Foundation 통과는 Public Preview 통과를 의미하지 않는다. public composition, HMAC IP-first
 limiter, ephemeral workspace/purge, Planner, Search port, SafeCollector, parser, Evidence
@@ -365,6 +365,7 @@ Live QA는 다음을 추가로 충족해야 한다.
 | VAL-PUB-EDGE-009 | operator doctor | local smoke/public config 분리, secret 미노출, 미달 시 exit 5 |
 | VAL-PUB-EDGE-010 | public conformance | anonymous policy→quick→purge→재연결, content-free summary |
 | VAL-PUB-EDGE-011 | synthetic feedback | 기본 미제출, staging 명시 옵션에서만 1회 검증 |
+| VAL-PUB-EDGE-012 | OCI runtime | pinned base, non-root, read-only root, tmpfs workspace, no capabilities, fixture smoke 뒤 root empty |
 
 ### 8.2 Load와 Cost
 
@@ -425,9 +426,9 @@ PG3는 기술적 공개 가능성이다. Account Beta 시작은 다음 실제 �
 | ID | 기준 | Expected |
 |---|---|---|
 | VAL-ACC-001 | signup 미선택 public 사용자 | 기존 anonymous flow 유지 |
-| VAL-ACC-002 | account default | `save=false` |
-| VAL-ACC-003 | `save=false` 조사 | persistent content 0 |
-| VAL-ACC-004 | `save=true` 조사 | 해당 사용자 workspace에만 저장 |
+| VAL-ACC-002 | account default | `retention_mode=ephemeral` |
+| VAL-ACC-003 | `retention_mode=ephemeral` 조사 | persistent content 0 |
+| VAL-ACC-004 | `retention_mode=saved` 조사 | 해당 사용자 workspace에만 저장 |
 | VAL-ACC-005 | cross-user ID guess | opaque denial |
 | VAL-ACC-006 | actor FK | cross-tenant user reference DB 거부 |
 | VAL-ACC-007 | unknown JWT `kid` flood | bounded JWKS refresh |
@@ -437,6 +438,16 @@ PG3는 기술적 공개 가능성이다. Account Beta 시작은 다음 실제 �
 | VAL-ACC-011 | `saved` preflight storage 장애 | collection 시작 전 `PERSISTENCE_UNAVAILABLE` |
 | VAL-ACC-012 | 익명 완료 run을 account에 귀속 시도 | 자동 귀속 거부, 명시적 import만 허용 |
 | VAL-ACC-013 | Account service 장애 | anonymous Public Preview 정상 동작 |
+| VAL-ACC-014 | 신규 계정 기본값 | `retention_mode=ephemeral`, `reuse_mode=off` |
+| VAL-ACC-015 | `ephemeral + prefer_fresh` | 저장 Evidence read 가능, 새 결과 persistent write 0 |
+| VAL-ACC-016 | `saved + prefer_fresh` | fresh 저장근거 재사용, 부족·stale track만 새 조사 |
+| VAL-ACC-017 | `saved_only` | outbound network 0, 부족한 근거는 gap |
+| VAL-ACC-018 | stale/unknown Evidence | 최신 자료처럼 숨기지 않고 freshness·refresh 상태 표시 |
+| VAL-ACC-019 | reuse provenance | reused/new Evidence와 출처·freshness가 결과에 구분됨 |
+| VAL-ACC-020 | cross-user Evidence ID guess | reuse candidate와 결과에 포함 0 |
+| VAL-ACC-021 | 저장 Evidence 삭제 | delete commit 뒤 reuse lookup 0 |
+| VAL-ACC-022 | anonymous import | 사용자 명시 import만 허용, `user_imported` provenance 유지 |
+| VAL-ACC-023 | 공개 품질 회귀 | Account 출시 전후 anonymous golden 품질 기준 동일 |
 
 ## 11. Foundation Regression
 

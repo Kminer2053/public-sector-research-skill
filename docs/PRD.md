@@ -80,8 +80,10 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | US-PUB-005 | 일부 source 실패와 미확인 항목을 숨기지 않기를 원한다. | Must |
 | US-PUB-006 | 받은 결과를 Markdown/JSON으로 내 저장소에 보관하고 싶다. | Must |
 | US-PUB-007 | 운영자로서 한 사용자가 과도한 비용을 발생시키지 않게 하고 싶다. | Must |
-| US-PUB-008 | 반복 사용자로서 나중에 선택 가입해 저장과 재사용을 켜고 싶다. | Should/Future |
-| US-PUB-009 | 가입 후에도 저장하지 않는 조사 mode를 선택하고 싶다. | Should/Future |
+| US-ACC-001 | 반복 사용자로서 공개 기능은 그대로 쓰면서 선택 가입해 저장과 재사용을 켜고 싶다. | Should/Future |
+| US-ACC-002 | 가입 후에도 저장하지 않는 조사 mode를 선택하고 싶다. | Should/Future |
+| US-ACC-003 | 과거 근거를 자동 재사용하되 오래된 자료인지와 새로 조사한 부분을 알고 싶다. | Should/Future |
+| US-ACC-004 | 저장자료의 자동 재사용을 Workspace 기본값과 요청별 설정으로 끄고 싶다. | Should/Future |
 
 ## 6. 제품 단계와 범위
 
@@ -112,14 +114,18 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 - 기관 관리자 Console과 human Review workflow
 - 의미 기반 Diff와 자동 report refresh
 
-### 6.3 Account Beta
+### 6.3 Free Account Beta
 
 - OIDC 선택 가입
 - Personal Workspace 자동 생성
-- 조사별 `save=true` 명시적 저장
+- 조사별 `retention_mode=saved` 명시적 저장
 - 저장한 조사 History·검색·Evidence reuse
+- `reuse_mode=off|prefer_fresh|saved_only`
+- 재사용 전 Evidence freshness 확인
+- 결과에서 재사용 근거·새 근거·stale/unknown 근거 구분
 - 사용자 export/delete
 - 가입 상태에서도 기본 ephemeral mode 유지
+- 제한된 저장공간과 quota의 무료 Beta로 검증
 
 ### 6.4 Paid and Enterprise
 
@@ -290,15 +296,44 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 |---|---|---|
 | FR-ACC-001 | OIDC 가입은 저장기능을 원하는 사용자의 선택이어야 한다. | Account Beta |
 | FR-ACC-002 | 가입 후에도 ephemeral mode가 기본이어야 한다. | Account Beta |
-| FR-ACC-003 | `save=true`인 조사만 Personal Workspace에 저장한다. | Account Beta |
+| FR-ACC-003 | `retention_mode=saved`인 조사만 Personal Workspace에 저장한다. | Account Beta |
 | FR-ACC-004 | 사용자는 저장된 조사 export/delete를 수행할 수 있어야 한다. | Account Beta |
 | FR-ACC-005 | History·Evidence reuse는 저장된 조사에만 적용한다. | Account Beta |
 | FR-ACC-006 | 저장 요청은 실행 전에 인증·consent·quota·storage 가용성을 검증한다. | Account Beta |
 | FR-ACC-007 | 저장을 보장할 수 없으면 시작 전에 실패하고 ephemeral로 조용히 강등하지 않는다. | Account Beta |
 | FR-ACC-008 | 익명 완료 조사는 소급 귀속하지 않고 사용자 주도 import만 허용한다. | Account Beta |
+| FR-ACC-009 | 계정 생성과 Account 서비스 장애가 익명 공개 사용을 막지 않아야 한다. | Account Beta |
+| FR-ACC-010 | 신규 계정의 `reuse_mode`는 `off`이며 사용자가 명시적으로 켠 뒤에만 저장 Evidence를 자동 조회한다. | Account Beta |
+| FR-ACC-011 | `prefer_fresh`는 fresh 근거를 우선 재사용하고 stale·unknown 또는 공백은 새 조사 대상으로 전환한다. | Account Beta |
+| FR-ACC-012 | `saved_only`는 network 수집 없이 저장 Evidence만 사용하고 부족한 부분을 gap으로 반환한다. | Account Beta |
+| FR-ACC-013 | 결과는 재사용 Evidence, 새 Evidence, freshness 상태와 refresh 실패를 구분해 표시한다. | Account Beta |
+| FR-ACC-014 | 삭제된 Evidence와 다른 사용자의 Evidence는 재사용 후보에서 제외한다. | Account Beta |
+| FR-ACC-015 | 익명 결과 import는 사용자 명시 작업이어야 하며 `user_imported` provenance를 유지한다. | Account Beta |
 | FR-PAID-001 | quota·retention·가격·삭제정책을 구매 전에 명시한다. | Paid |
 | FR-PAID-002 | 저장공간과 장기 Job에 billing meter를 적용한다. | Paid |
 | FR-PAID-003 | Organization/SSO/RLS/Review는 팀·기관 mode에서 제공한다. | Enterprise |
+
+#### Account Beta 입력·처리·출력 계약
+
+| 항목 | 계약 |
+|---|---|
+| 입력 | verified OIDC identity, `retention_mode`, `reuse_mode`, question, profile |
+| 처리 | identity binding → Workspace authorization → save preflight → reuse lookup → freshness gate → 부족한 범위만 새 조사 → 결과 조립 → 선택 저장 |
+| 출력 | Public 결과 schema + `account_context`, `reused_evidence[]`, `new_evidence[]`, `freshness_summary`, `save_receipt?` |
+| 예외 | `AUTHENTICATION_REQUIRED`, `PERSISTENCE_UNAVAILABLE`, `QUOTA_EXCEEDED`, `REUSE_SCOPE_INVALID` |
+| 사용자 확인 | 최초 저장 동의, Workspace 기본 reuse 활성화, import, 삭제와 account close |
+| 우선순위 | Public Preview 검증 뒤 `Should/Future`; Public 기능보다 먼저 구현하지 않음 |
+
+Account Beta Acceptance Criteria:
+
+- `AC-ACC-001`: 로그인하지 않은 사용자는 기존 public endpoint와 동일 품질의 quick을 계속 사용한다.
+- `AC-ACC-002`: 로그인만 하고 `retention_mode=ephemeral`로 실행하면 persistent content write가 0건이다.
+- `AC-ACC-003`: `saved + prefer_fresh` 요청은 fresh 저장근거를 재사용하고 부족한 track만 새로 조사한다.
+- `AC-ACC-004`: stale 저장근거를 사용하면 결과에 stale 상태와 refresh 결과가 표시된다.
+- `AC-ACC-005`: `saved_only` 요청은 outbound network 0회이며 부족한 근거를 gap으로 표시한다.
+- `AC-ACC-006`: 다른 계정의 ID를 추측해도 History·Evidence·export에 접근할 수 없다.
+- `AC-ACC-007`: 저장 Evidence 삭제 뒤 동일 자료가 reuse lookup에 나타나지 않는다.
+- `AC-ACC-008`: Account deployment를 중단해도 anonymous Public Preview conformance가 통과한다.
 
 ## 9. 상태 모델
 
@@ -339,6 +374,8 @@ stateDiagram-v2
 | `BUDGET_EXHAUSTED` | 시간·byte·source 한도 도달 | partial 결과 |
 | `RESULT_TOO_LARGE` | MCP 응답 상한 초과 | 요약·citation 중심 축소 |
 | `PURGE_PENDING` | 삭제 재시도 중 | content 접근 차단 |
+| `PERSISTENCE_UNAVAILABLE` | 선택한 저장을 보장할 수 없음 | network 전에 거부, ephemeral 강등 금지 |
+| `REUSE_SCOPE_INVALID` | 요청한 reuse mode를 현재 인증·Workspace에서 사용할 수 없음 | network 전에 거부 |
 
 내부 stack trace, raw upstream response, token, IP와 filesystem path는 반환하지 않는다.
 
@@ -460,6 +497,7 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 4. 저장·History·재사용 요청 20명 이상
 5. Public Preview의 abuse·비용·purge 지표가 안정적
 6. 계정 데이터와 opt-in 저장에 대한 개인정보·보안 설계 승인
+7. 저장·freshness·자동 재사용을 실제로 시험할 Beta 사용자 cohort가 확보됨
 
 조건이 미달하면 가입 기능 대신 조사 품질, 연결 편의, source coverage를 개선한다.
 
@@ -475,6 +513,9 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 | OQ-PUB-006 | 공개 비용상한 | process daily quick budget은 안전 하한으로 적용; 실제 provider 비용·multi-replica 합계는 shared budget과 provider hard cap으로 보완 | PG3 |
 | OQ-PUB-007 | Account IdP | Google/Microsoft 지원 OIDC broker | Stage B |
 | OQ-PUB-008 | 유료화 기준 | 저장·장기실행 비용과 지불의사 확인 후 | Stage C |
+| OQ-ACC-001 | 무료 Beta 저장한도 | 사용자당 작은 quota로 시작하고 실제 저장량·원가로 조정 | Stage B 설계 |
+| OQ-ACC-002 | freshness 기본주기 | Research Profile별 규칙으로 시작하고 모든 문서에 단일 TTL을 적용하지 않음 | Stage B 설계 |
+| OQ-ACC-003 | Beta 가입방식 | 관심 사용자 초대형으로 시작한 뒤 운영 안정 시 self-service 전환 | Stage B 출시 |
 
 ## 17. 제품 결정사항
 
@@ -491,3 +532,6 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 10. PSR 서버가 content를 저장하지 않는 것과 외부 Search provider의 query 보존정책을
     분리해 고지한다.
 11. Brave live search는 선택형이며 Search 결과 자체를 Evidence로 간주하지 않는다.
+12. 계정은 익명 공개 기능을 대체하지 않고 저장·History·freshness·reuse만 추가한다.
+13. Account Beta는 초기 무료·제한형이며 유료화와 별도 gate로 관리한다.
+14. 자동 재사용은 사용자가 켜야 하며 freshness와 provenance를 결과에 공개한다.
