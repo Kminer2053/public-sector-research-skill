@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Threat Model
 
-> 상태: Public Preview 설계 갱신 · 기준일: 2026-07-16 · Foundation 구현 기준: `c7064cd`
+> 상태: Public Preview local vertical slice 갱신 · 기준일: 2026-07-16
 
 [Architecture](../ARCHITECTURE.md) · [ADR-0009](../adr/0009-public-zero-retention-first.md) · [OAuth Runbook](../runbooks/oauth-resource-server.md) · [Remote Runbook](../runbooks/remote-mcp.md) · [Validation Criteria](../VALIDATION_CRITERIA.md)
 
@@ -9,7 +9,7 @@
 이 문서는 두 범위를 분리한다.
 
 1. 이미 구현된 OAuth·Tenant·PostgreSQL Foundation
-2. 다음 구현 대상인 가입 없는 `PUBLIC_EPHEMERAL` Public Preview
+2. 구현 중인 가입 없는 `PUBLIC_EPHEMERAL` Public Preview
 
 Foundation 범위:
 
@@ -30,7 +30,9 @@ Public Preview 설계 범위:
 - Planner, Evidence Composer, Markdown/JSON result
 - TTL purge와 content-free observability
 
-Public Preview 기능은 아직 구현되지 않았다. 아래 설계 통제를 현재 code에 이미 존재하는 것으로 간주하지 않는다. `PG0~PG3` 검증 전 공개 endpoint를 열지 않는다.
+Public Preview의 local safety core와 quick research 수직 슬라이스는 구현됐다. 아래 표의
+`PASS/local`은 통제된 fixture와 localhost 환경의 구현 증거이며 staging·edge·실제 공공 웹
+검증을 뜻하지 않는다. `PG0~PG3` 검증 전 공개 endpoint를 열지 않는다.
 
 Review Console, private document, user credential, browser automation, 영구 Evidence Store, Account signup은 Public Preview 범위 밖이다.
 
@@ -143,19 +145,20 @@ flowchart LR
 | ID | 위협 | 필수 통제 | 검증 | 상태 |
 |---|---|---|---|---|
 | TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, edge 대기 |
-| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~013` | 미구현/PG0 |
-| TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | 미구현/PG0 |
-| TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS, content canary 대기 |
+| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~013` | quick budget/concurrency PASS; edge·async 대기 |
+| TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | quick canary PASS/local; staging scan 대기 |
+| TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS; async 대기 |
 | TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | PASS/S0 |
 | TM-PUB-006 | handle 추측·유출로 결과 탈취 | 192-bit CSPRNG, keyed digest, no log, uniform error | `VAL-PUB-HANDLE-*` | 미구현/PG2 |
-| TM-PUB-007 | localhost/private/metadata SSRF | HTTPS/port policy, DNS/IP check, redirect revalidation | `VAL-PUB-NET-001~009` | 미구현/PG1 |
-| TM-PUB-008 | client credential upstream 유출 | credential input 미지원, header allowlist | `VAL-PUB-NET-010` | 미구현/PG1 |
-| TM-PUB-009 | decompression/PDF/parser bomb | byte, ratio, page, depth, time, memory budget | `VAL-PUB-COL/PARSE` | 미구현/PG1 |
-| TM-PUB-010 | source prompt injection이 조사정책 변경 | source를 untrusted data로 tag, deterministic policy | `VAL-PUB-PLAN-008`, `PARSE-007` | 미구현/PG1 |
-| TM-PUB-011 | 악성·제한 source 우회수집 | robots/terms/access policy, no captcha/paywall bypass | `VAL-PUB-NET-012` | 미구현/PG1 |
-| TM-PUB-012 | 인용 없는 허위사실 출력 | FACT citation lint, gaps/inference 분리 | `VAL-PUB-EVD-*` | 미구현/PG1 |
+| TM-PUB-007 | localhost/private/metadata SSRF | HTTPS/port policy, DNS/IP check, redirect revalidation | `VAL-PUB-NET-001~009` | PASS/local; staging egress 대기 |
+| TM-PUB-008 | client credential upstream 유출 | credential input 미지원, header allowlist | `VAL-PUB-NET-010` | PASS/local |
+| TM-PUB-009 | decompression/PDF/parser bomb | byte, ratio, page, depth, time, memory budget | `VAL-PUB-COL/PARSE` | PASS/local; hostile corpus 확대 필요 |
+| TM-PUB-010 | source prompt injection이 조사정책 변경 | source를 untrusted data로 tag, deterministic policy | `VAL-PUB-PLAN-008`, `PARSE-007` | PASS/local |
+| TM-PUB-011 | 악성·제한 source 우회수집 | robots/terms/access policy, no captcha/paywall bypass | `VAL-PUB-NET-012` | robots PASS; site Terms 운영검토 대기 |
+| TM-PUB-012 | 인용 없는 허위사실 출력 | FACT citation lint, gaps/inference 분리 | `VAL-PUB-EVD-*` | citation lint PASS; domain synthesis QA 대기 |
 | TM-PUB-013 | edge forwarded IP spoof | trusted proxy boundary, direct header 거부 | `VAL-PUB-EDGE-002` | 미구현/PG3 |
 | TM-PUB-014 | feedback로 content 재식별 | one-time opaque token, no content join/free text | `VAL-PUB-FBK-*` | 미구현/PG3 |
+| TM-PUB-015 | Search query가 외부 provider에 보존 | 기본 disabled, service disclosure, provider 계약 분리 | `FR-PUB-026`, Live QA | 고지 구현; provider ZDR 미검증 |
 
 ## 7. Foundation 위협·통제·검증
 
@@ -180,7 +183,7 @@ flowchart LR
 | TM-017 | forged forwarded header | `proxy_headers=False`, config-derived public URL | spoof integration test | gateway 자체 로그/route 설정 |
 | TM-018 | oversized/chunked request DoS | declared+observed byte limit | HTTP policy tests | proxy에도 동일/더 작은 limit 필요 |
 | TM-019 | slow request/resource exhaustion | application timeout, bounded JSON response | timeout tests | slowloris는 gateway 책임 |
-| TM-020 | brute force/traffic flood | token+IP process limiter, gateway quota contract | rate tests | invalid bearer 회전이 별도 key를 만들 수 있어 Public 전 교체 필요 |
+| TM-020 | brute force/traffic flood | Foundation token+IP limiter, Public IP-first limiter, gateway quota contract | rate tests | Public application 우회는 닫힘; edge quota 대기 |
 | TM-021 | TLS MITM | production HTTPS fail closed, CA-verifying proxy test | TLS integration test | 실기관 cert 미검증 |
 | TM-022 | Host disconnect 상태 상실 | stateless HTTP, durable explicit Run ID | TCP/TLS/Inspector reconnect | Host retry behavior 차이 |
 | TM-023 | vulnerable dependency | locked dependencies, `uv audit`, SBOM | CI + 2026-07-16 audit | advisory feed 한계 |
@@ -202,37 +205,38 @@ flowchart LR
 
 | 항목 | 영향 | 처리 |
 |---|---|---|
-| token digest+IP rate key | invalid bearer 회전으로 공개 IP quota 우회 가능 | S0에서 IP-first limiter로 교체 |
 | `research_runs.initiated_by` global FK | 다른 tenant user ID 참조가 DB constraint로 차단되지 않음 | A0에서 composite tenant FK |
 | unknown JWT `kid` 반복 refresh | 인증 endpoint와 IdP에 요청 증폭 가능 | A0에서 negative cache/cooldown |
 
-세 항목은 감사 중 재현됐다. 첫 항목은 Public Preview blocker다. 나머지 두 항목은 Public mode가 OAuth/Tenant 경로를 사용하지 않으므로 Public Preview blocker는 아니지만 Account Beta 전에 반드시 수정한다.
+공개 rate key 문제는 IP-first limiter로 닫혔다. 남은 두 항목은 Public mode가 OAuth/Tenant 경로를
+사용하지 않으므로 Public Preview blocker는 아니지만 Account Beta 전에 반드시 수정한다.
 
 ## 9. 미검증과 의사결정 대기
 
 | 항목 | 분류 | 다음 조치 |
 |---|---|---|
-| Public Tool과 ephemeral lifecycle | 부분 구현 | `service.policy`, workspace, sweeper 완료; quick canary 남음 |
-| SafeCollector와 parser | 미구현 | P1/PG1 |
+| Public Tool과 ephemeral lifecycle | quick 구현 | policy/quick/purge 완료; async와 staging canary 남음 |
+| Search·SafeCollector·parser·Evidence | 로컬 구현 | 실제 official-source QA와 hostile corpus 확대 |
 | async handle·consume·purge | 미구현 | P2/PG2 |
+| external Search provider | adapter 구현/운영 미검증 | credential·비용·query retention 승인 후 Live QA |
 | 실제 기관 IdP/JWKS/폐기 전파 | 환경 미검증 | Pilot IdP owner와 integration test |
 | 실제 gateway/WAF/TLS cipher | 환경 미검증 | 운영 topology review + penetration test |
 | project distribution license | Product/Legal decision | 배포 전에 LICENSE와 NOTICE 결정 |
 | global rate limit | 아키텍처 후속 | multi-replica 전에 gateway/Redis 정책 결정 |
 | security owner sign-off | G6 approval | 본 문서와 validation report 서명 |
 
-## 10. Collector 이전 필수 Threat Model 확장
+## 10. Collector 이후 남은 Threat Model 확장
 
-다음은 아직 통제가 구현되지 않았으므로 C0/Collector merge 전에 새 threat ID와 test가 필요하다.
+다음은 기본 통제가 구현됐지만 실제 공개 전 추가 검증이 필요하다.
 
-- SSRF: scheme, hostname, DNS resolve, private/link-local/metadata IP, redirect revalidation
-- robots.txt/약관/저작권/개인정보/source credential
-- malicious HTML/PDF/JSON parser와 decompression bomb
-- prompt injection을 instruction과 evidence data로 분리
-- response header/cookie/URL query secret redaction
-- ephemeral path와 후속 persistent object key isolation
-- sandboxed parser, file type sniffing, antivirus/content disarm 정책
-- upstream rate/retry/circuit breaker와 client token passthrough 음성 test
+- edge/network namespace에서 private route가 실제로 없는지 검증
+- robots.txt 외 site Terms·저작권·개인정보의 source registry 운영절차
+- 실제 malformed/대형 정부 PDF와 parser zero-day 대응
+- PDF worker의 Linux container seccomp/no-network/read-only filesystem
+- response URL query와 upstream error의 telemetry redaction
+- Search provider query retention·비용·credential rotation
+- source-host rate와 upstream circuit breaker
+- 향후 persistent object key가 public ephemeral path와 섞이지 않는 mode test
 
 ## 11. Review 절차
 

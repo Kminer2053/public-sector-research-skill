@@ -14,9 +14,7 @@ from psr_mcp.collectors.safe import CollectionError, CollectionErrorCode
 from psr_mcp.collectors.url_policy import IpAddress, ValidatedUrl
 
 type SocketOption = (
-    tuple[int, int, int]
-    | tuple[int, int, bytes | bytearray]
-    | tuple[int, int, None, int]
+    tuple[int, int, int] | tuple[int, int, bytes | bytearray] | tuple[int, int, None, int]
 )
 
 

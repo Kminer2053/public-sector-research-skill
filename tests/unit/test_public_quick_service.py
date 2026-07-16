@@ -21,11 +21,13 @@ from psr_mcp.ephemeral.ports import (
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
 from psr_mcp.public.service import (
+    FixtureResearchBackend,
     PublicErrorCode,
     PublicQuickResearchService,
     PublicResearchError,
     ResearchBackend,
     ResearchDraft,
+    _markdown_text,
 )
 
 
@@ -206,8 +208,6 @@ async def test_purge_problem_returns_typed_error_then_finally_retries(
     purge_failures: int,
     inconclusive_purges: int,
 ) -> None:
-    from psr_mcp.public.service import FixtureResearchBackend
-
     store = StoreWrapper(
         await _store(tmp_path),
         purge_failures=purge_failures,
@@ -234,8 +234,6 @@ async def test_purge_problem_returns_typed_error_then_finally_retries(
 async def test_repeated_purge_failure_leaves_content_inaccessible_for_sweeper(
     tmp_path: Path,
 ) -> None:
-    from psr_mcp.public.service import FixtureResearchBackend
-
     store = StoreWrapper(await _store(tmp_path), purge_failures=2)
     with pytest.raises(PublicResearchError) as error:
         await _service(
@@ -252,3 +250,28 @@ async def test_repeated_purge_failure_leaves_content_inaccessible_for_sweeper(
     ref = store.created[0]
     with pytest.raises(WorkspaceAccessBlocked):
         await store.read_bytes(ref, ArtifactKind.RESULT)
+
+
+@pytest.mark.anyio
+async def test_markdown_matches_structured_citations_and_escapes_untrusted_text(
+    tmp_path: Path,
+) -> None:
+    store = await _store(tmp_path)
+    output = await _service(
+        store,
+        FixtureResearchBackend(cast(Clock, FixedClock())),
+    ).quick(
+        question="공공기관 정책을 공식자료 중심으로 조사해줘",
+        as_of_date=None,
+        jurisdiction="KR",
+        profile="government-v0",
+    )
+
+    citation = output.citations[0]
+    assert f"[{citation.id}]" in output.markdown
+    assert citation.document_sha256 in output.markdown
+    assert "Evidence score: 0.0000" in output.markdown
+    assert "authority: 0.0000" in output.markdown
+    assert "## Conflicts\n- none" in output.markdown
+    assert _markdown_text("<script>*[source]`") == ("&lt;script&gt;\\*\\[source\\]\\`")
+    assert list(store.root.iterdir()) == []

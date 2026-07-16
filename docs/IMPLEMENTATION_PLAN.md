@@ -1,6 +1,7 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재: **Quick/Planner/SafeCollector 기반 완료, 실제 Search·Parser 연결 진행 전**
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재:
+> **PG1 로컬 수직 슬라이스 구현 완료, 실제 공식 웹 유용성 검증 대기**
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
@@ -26,11 +27,20 @@
 - 완료: deterministic Government Planner v0와 bounded stop condition
 - 완료: legacy crawlkit characterization과 reuse/refactor/replace 판단
 - 완료: HTTPS-only URL policy, redirect 재검증, 검증 IP 고정 transport, bounded SafeCollector
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 281 tests
-- coverage gate: statement 96.31%, branch 88.69%, critical module 95% 이상
-- 남음: edge IP normalization, SearchProvider, parser, Evidence Composer, 실제 quick backend
+- 완료: official-first query builder, official domain registry, 선택형 Brave Search adapter
+- 완료: robots 선검사와 source access typed policy
+- 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
+- 완료: document quality, URL/hash dedup, component Evidence Score와 citation composer
+- 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 397 tests
+- coverage gate: normalized statement 96.11%, branch 90.31%, critical module 95% 이상
+- supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
+- 남음: 실제 Search credential 기반 공식 웹 golden scenario, domain claim/writer QA,
+  edge IP normalization, async flow
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
+[PG1 로컬 수직 슬라이스 보고서](./validation/2026-07-16-pg1-useful-research.md)는
+구현 증적과 실웹 검증 대기를 분리한다.
 
 Legacy 수집기 분석과 이식 판단은
 [Legacy crawlkit characterization](./analysis/legacy-crawlkit-characterization.md)에 고정했다.
@@ -38,6 +48,9 @@ Legacy 수집기 분석과 이식 판단은
 ## 2. 현재 기준선
 
 ### 2.1 구현 완료
+
+아래 수치는 Public Preview 착수 전 Foundation 기준선이며 현재 전체 회귀 수치는 1장의
+2026-07-16 구현 상태를 따른다.
 
 - Python 3.12, `src` layout, strict lint/type/test
 - MCP Streamable HTTP server와 5개 Foundation Tool
@@ -50,20 +63,21 @@ Legacy 수집기 분석과 이식 판단은
 
 ### 2.2 아직 없음
 
-- official-first SearchProvider와 source registry
-- HTML/PDF/JSON bounded parser
-- Evidence Composer와 실제 official-source research result
+- 실제 공식 인터넷 source를 사용하는 golden scenario 승인
+- 인용 구간에서 업무용 정책 문장을 만드는 Evidence-grounded Writer
+- 의미 기반 conflict 탐지와 법령 현행성 판정
 - start/status/result/cancel public async flow
 - content-free feedback와 product metric
+- trusted edge client IP normalization과 multi-replica quota
 
 ### 2.3 확인된 보강 항목
 
 | ID | 항목 | 영향 | 처리 단계 |
 |---|---|---|---|
-| FIX-001 | rate key가 token digest+IP라 invalid bearer 회전으로 별도 bucket 생성 가능 | 공개 endpoint 비용 우회 | S0 Must |
+| FIX-001 | rate key가 token digest+IP라 invalid bearer 회전으로 별도 bucket 생성 가능 | 공개 endpoint 비용 우회 | S0 완료 |
 | FIX-002 | `research_runs.initiated_by`가 global user FK | Account/Enterprise cross-tenant integrity | A0 Must |
 | FIX-003 | unknown JWT `kid`마다 JWKS 강제 refresh | Account endpoint DoS | A0 Must |
-| FIX-004 | `psrctl doctor`가 G5 완료 후에도 remote 미검증 표시 | 운영자 혼동 | P3 Should |
+| FIX-004 | `psrctl doctor`가 구현된 public pipeline을 미구현으로 표시 | 운영자 혼동 | P1 완료 |
 
 ## 3. 구현 원칙
 
@@ -86,8 +100,9 @@ Legacy 수집기 분석과 이식 판단은
 src/psr_mcp/
 ├─ public/
 │  ├─ context.py
-│  ├─ services.py
-│  ├─ handles.py
+│  ├─ service.py
+│  ├─ pipeline.py
+│  ├─ development_fixture.py
 │  └─ schemas.py
 ├─ planner/
 │  ├─ models.py
@@ -95,24 +110,31 @@ src/psr_mcp/
 │  └─ service.py
 ├─ search/
 │  ├─ ports.py
-│  └─ providers/
+│  ├─ models.py
+│  ├─ government.py
+│  ├─ registry.py
+│  ├─ static.py
+│  └─ brave.py
 ├─ collectors/
-│  ├─ ports.py
-│  ├─ policy.py
-│  ├─ http.py
-│  └─ models.py
+│  ├─ models.py
+│  ├─ url_policy.py
+│  ├─ safe.py
+│  ├─ httpcore_transport.py
+│  └─ access_policy.py
 ├─ parsers/
 │  ├─ html.py
 │  ├─ pdf.py
-│  └─ json.py
+│  ├─ pdf_core.py
+│  ├─ json_document.py
+│  ├─ text.py
+│  ├─ sniff.py
+│  └─ dispatch.py
+├─ parser_workers/
+│  └─ pdf.py
 ├─ evidence/
 │  ├─ models.py
-│  ├─ dedup.py
-│  ├─ scoring.py
+│  ├─ quality.py
 │  └─ composer.py
-├─ reporting/
-│  ├─ markdown.py
-│  └─ json.py
 ├─ ephemeral/
 │  ├─ ports.py
 │  ├─ filesystem.py
@@ -359,6 +381,11 @@ class EphemeralWorkspaceStore(Protocol):
 - DNS rebinding 방어 방식이 test 가능
 - user cookie, Authorization, client certificate 입력 자체를 받지 않음
 
+**상태:** 구현 완료. `GovernmentQueryBuilder`, `GovernmentSourceRegistry`,
+`BraveSearchProvider`, `UrlPolicy`, `PinnedHttpcoreTransport`가 연결됐다. Search 결과는
+Evidence가 아닌 candidate로만 취급한다. Brave는 기본 disabled이며 API key가 없으면
+production quick은 fail closed한다.
+
 ### CH-P1.4 Bounded Collector
 
 **요구사항:** `FR-PUB-024~025`, `FR-PUB-051~052`
@@ -390,6 +417,10 @@ CollectionResult
 - login/error/empty page 제외
 - source별 실패가 전체 Run을 자동 실패시키지 않음
 
+**상태:** 구현 완료. 요청별/Run별 byte budget, connect/read/total timeout, manual redirect,
+identity encoding, header allowlist와 typed partial failure를 적용했다. production pipeline은
+같은 SafeCollector로 `robots.txt`를 먼저 검사한다.
+
 ### CH-P1.5 Parsers
 
 **추가**
@@ -406,6 +437,10 @@ CollectionResult
 - JSON Pointer
 - scanned PDF는 허위 text 대신 `OCR_REQUIRED`
 - page/node/depth/string/time/memory budget test
+
+**상태:** 구현 완료. magic/MIME sniff 뒤 HTML·JSON·text를 bounded parser로 처리한다. PDF는
+별도 subprocess에서 pypdf로 읽고 page·text·wall-time 제한과 가능한 환경의 memory/CPU/FD
+제한을 적용한다. blank scan은 `OCR_REQUIRED`, 암호화 문서는 `ENCRYPTED_DOCUMENT`다.
 
 ### CH-P1.6 Evidence and Reporting
 
@@ -440,6 +475,11 @@ CollectionResult
 - Markdown/JSON의 finding·citation ID 일치
 - excerpt 길이 상한과 저작권 고지
 
+**상태:** 핵심 구현 완료. citation ID, 원문 SHA-256, locator, 짧은 excerpt와 7개 설명형
+score component를 반환한다. URL·동일 passage·동일 document hash를 중복 제거하고 track별
+citation을 우선 확보한다. 현재 자동 finding은 보수적인 원문 확인 문장이고, 실제 업무 판단
+문장과 conflict synthesis는 실웹 QA 뒤 고도화한다.
+
 ### CH-P1.7 Quick Research Tool
 
 **요구사항:** `AC-PUB-001~003`, `AC-PUB-040~043`
@@ -470,6 +510,34 @@ validate
 - budget 초과는 `PARTIAL`
 - result에 as-of, citations, gaps, conflicts, failures, retention
 - response 완료 후 workspace content 0
+
+**상태:** 구현 완료. 실제 pipeline 결과의 source/extracted/result를 ephemeral workspace에서
+처리하고 접근 차단·purge 성공 뒤에만 응답한다. Search·수집·파싱 일부 실패는 성공 근거와 함께
+`PARTIAL`로 보존한다.
+
+### CH-P1.8 Live Official-Source Validation
+
+**선행조건**
+
+- 운영자가 승인한 Search provider credential 또는 별도 official-source seed adapter
+- 외부 provider 고지와 비용상한
+- 당시 source 약관·robots·저작권 운영검토
+
+**검증**
+
+- 실제 법령·정부 가이드·조달·개인정보 source로 GR-001~004 실행
+- source tier·locator·hash·점수의 사람이 읽는 검토
+- generic evidence bundle이 실제 공공업무 초안에 충분한지 평가
+- 부족하면 LLM을 바로 신뢰하지 않고 citation-constrained Writer 계약과 lint를 추가
+- query/provider 비용, timeout, 403, robots unavailable 비율 측정
+
+**DoD**
+
+- 실제 공식 원문 비율 70% 이상
+- citation 없는 FACT 0개
+- critical factual contradiction과 unsupported legal conclusion 0개
+- provider query retention과 PSR server retention을 사용자에게 분리 고지
+- validation report에 credential을 노출하지 않은 evidence artifact 기록
 
 ## 8. P2 — Ephemeral Async
 
@@ -578,7 +646,7 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 | FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
 | FR-PUB-060~062 | P3.2 | VAL-PUB-FEEDBACK |
 | NFR-PUB-001~010 | S0~P3 | PG0~PG3 |
-| FR-ACC-001~005 | A0 | AG0 |
+| FR-ACC-001~008 | A0 | AG0 |
 
 ## 12. Definition of Ready
 
@@ -601,15 +669,17 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 - 운영 metric은 allowlist field만 사용
 - known limitation과 다음 gate 기록
 
-## 14. 권장 첫 세 change
+## 14. 현재 다음 세 change
 
 ```text
-CH-S0.1 ServiceMode와 fail-closed config
-CH-S0.3 IP-first abuse limiter
-CH-S0.4/5 Ephemeral store와 purge
+CH-P1.8 실제 공식 source golden validation
+CH-P3.1 trusted edge IP·cost kill switch의 최소 공개 경계
+CH-P2.1/2 opaque handle과 ephemeral async lifecycle
 ```
 
-그 다음 public Tool skeleton과 fake research lifecycle을 완성한다. 실제 crawler 연결은 `PG0` 이후다.
+실제 source 검증에서 결과가 업무에 충분하지 않으면 async보다 먼저 citation-constrained Writer를
+보강한다. 반대로 quick이 이미 유용하지만 30초 안에 끝나지 않는 비율이 높으면 P2 async를
+우선한다. Account/Paid 기능은 R4 product trigger 전 시작하지 않는다.
 
 ## 15. 진행 보고 형식
 

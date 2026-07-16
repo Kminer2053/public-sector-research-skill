@@ -7,7 +7,7 @@ import pytest
 from psr_mcp.auth.providers import McpAccessTokenAuthContextProvider
 from psr_mcp.bootstrap import Container, PublicContainer, build_container
 from psr_mcp.common.secrets import EnvironmentSecretResolver
-from psr_mcp.config import ServiceMode, Settings
+from psr_mcp.config import SearchProviderMode, ServiceMode, Settings
 from psr_mcp.storage.postgres import PostgresStore
 
 
@@ -19,6 +19,7 @@ def test_development_defaults_are_loopback_and_redacted() -> None:
     assert settings.resource_server_url == "http://127.0.0.1:8000/mcp"
     assert diagnostics["cursor_signing_key"] == "***"
     assert diagnostics["database_url_ref"] is False
+    assert diagnostics["search_api_key_ref"] is False
 
 
 @pytest.mark.parametrize(
@@ -329,6 +330,62 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
             },
             "MAX_RUN_SOURCES",
         ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_PROVIDER": "brave",
+            },
+            "SEARCH_API_KEY_REF",
+        ),
+        (
+            {
+                "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+            },
+            "requires PSR_SEARCH_PROVIDER",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_PROVIDER": "brave",
+                "PSR_SEARCH_API_KEY_REF": "secret://key",
+            },
+            "SEARCH_API_KEY_REF",
+        ),
+        (
+            {
+                "PSR_SEARCH_PROVIDER": "brave",
+                "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+            },
+            "only in public ephemeral",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_PROVIDER": "brave",
+                "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+                "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            },
+            "cannot be enabled together",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_MAX_CONCURRENCY": "0",
+            },
+            "SEARCH_MAX_CONCURRENCY",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_COLLECTION_MAX_CONCURRENCY": "21",
+            },
+            "COLLECTION_MAX_CONCURRENCY",
+        ),
     ],
 )
 def test_public_ephemeral_configuration_fails_closed(
@@ -365,6 +422,34 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
                 "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
             }
         )
+
+
+@pytest.mark.anyio
+async def test_brave_public_composition_is_explicit_and_closes_client(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_SEARCH_PROVIDER": "brave",
+            "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+        }
+    )
+    container = build_container(
+        settings,
+        secret_resolver=EnvironmentSecretResolver({"BRAVE_API_KEY": "test-brave-api-key-123456"}),
+    )
+
+    assert isinstance(container, PublicContainer)
+    assert settings.search_provider is SearchProviderMode.BRAVE
+    assert settings.diagnostics()["search_api_key_ref"] is True
+    assert container.search_client is not None
+    assert container.quick_service.available is True
+
+    await container.open()
+    await container.close()
+    assert container.search_client.is_closed
 
 
 @pytest.mark.parametrize(

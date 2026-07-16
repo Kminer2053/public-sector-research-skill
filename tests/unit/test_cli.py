@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -26,6 +27,25 @@ def test_doctor_json_is_redacted(
 def test_doctor_human_output(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["doctor"]) == 0
     assert "foundation configuration: OK" in capsys.readouterr().out
+
+
+def test_public_doctor_reports_backend_state_without_treating_ephemeral_mode_as_a_fault(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("PSR_SERVICE_MODE", "public_ephemeral")
+    monkeypatch.setenv("PSR_EPHEMERAL_ROOT", str(tmp_path))
+    monkeypatch.setenv("PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED", "true")
+
+    assert cli.main(["doctor", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert "development fixture is not external research evidence" in payload["limitations"]
+    assert "Public Preview PG0 through PG3 are not yet fully validated" in payload["limitations"]
+    assert "development static authentication" not in payload["limitations"]
+    assert "in-memory storage" not in payload["limitations"]
+    assert all("not implemented" not in value for value in payload["limitations"])
 
 
 def test_configuration_error_uses_exit_code_2(

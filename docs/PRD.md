@@ -222,6 +222,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-023 | robots.txt·약관·저작권·접근제한 상태를 typed policy result로 남긴다. | Must | 우회수집 없이 limitation 표시 |
 | FR-PUB-024 | response·압축해제·PDF page·parser time에 상한을 둔다. | Must | bomb fixture가 process를 고갈시키지 않음 |
 | FR-PUB-025 | 공식 원문 미확보를 결과에서 명시한다. | Must | 대체 기사만 있을 때 gap 생성 |
+| FR-PUB-026 | 외부 Search provider로 전달되는 데이터와 provider-side retention을 공개해야 한다. | Must | `service.policy`와 연결문서가 실제 adapter와 일치 |
 
 ### 8.4 Evidence and Output
 
@@ -334,6 +335,7 @@ stateDiagram-v2
 | NFR-PUB-008 | 알려진 dependency critical/high 취약점은 공개 전 0건 또는 승인된 waiver다. | audit artifact |
 | NFR-PUB-009 | 서비스 정책과 실제 TTL config가 자동 비교된다. | startup fail on mismatch |
 | NFR-PUB-010 | 한국어 결과를 기본으로 하고 원문 의미를 과도하게 의역하지 않는다. | golden QA |
+| NFR-PUB-011 | PSR server 무보관과 외부 provider ZDR 여부를 구분해 표현한다. | 정책·문서 표현 검토 |
 
 ## 12. 관찰가능성과 개인정보
 
@@ -427,7 +429,7 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 
 | ID | 질문 | 추천안 | 결정 시점 |
 |---|---|---|---|
-| OQ-PUB-001 | 검색 provider | official-first adapter 1종 + 직접 URL | 구현 전 |
+| OQ-PUB-001 | 실제 Search provider 운영승인 | Brave adapter를 기본 disabled로 유지하고 live QA 전에 credential·약관·비용 승인 | PG1 Live QA |
 | OQ-PUB-002 | quick 최대시간 | 20초 목표, 30초 hard limit | load test |
 | OQ-PUB-003 | 임시 content backend | 단일 node encrypted tmpdir부터 시작 | Public Preview |
 | OQ-PUB-004 | 결과 최대크기 | Markdown 256KB, JSON 512KB 초기값 | Host test |
@@ -446,3 +448,7 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 6. History·Project Memory·Living Report는 실제 저장 수요가 확인되기 전 구현하지 않는다.
 7. 공개 전 최소조건은 로그인 기능이 아니라 SSRF·quota·비용·purge 안전성이다.
 8. 유료화는 저장공간과 반복사용 가치가 증명된 뒤 시작한다.
+9. 현재 Search adapter는 Brave를 지원하지만 기본 disabled이며 Search 결과를 Evidence로
+   간주하지 않는다.
+10. PSR 서버가 content를 저장하지 않는 것과 외부 Search provider의 query 보존정책을
+    분리해 고지한다.

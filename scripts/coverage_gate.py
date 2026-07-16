@@ -16,8 +16,11 @@ CRITICAL_PATH_PREFIXES = (
     "src/psr_mcp/collectors/",
     "src/psr_mcp/domain/",
     "src/psr_mcp/ephemeral/",
+    "src/psr_mcp/evidence/",
+    "src/psr_mcp/parsers/",
     "src/psr_mcp/planner/",
     "src/psr_mcp/public/",
+    "src/psr_mcp/search/",
 )
 CRITICAL_EXACT_PATHS = {
     "src/psr_mcp/auth/policy.py",

@@ -21,14 +21,19 @@
 |---|---|---|---|
 | G0~G5 | 기존 Foundation build/domain/MCP/DB/OAuth/Host | Foundation regression | PASS |
 | PG0 | Public Boundary Safe | mode, catalog, quota, tmp, purge, no-content telemetry | IN PROGRESS |
-| PG1 | Useful Research | planner, collector, parser, evidence, quick | NOT IMPLEMENTED |
+| PG1 | Useful Research | planner, collector, parser, evidence, quick | LOCAL SLICE PASS / LIVE QA PENDING |
 | PG2 | Zero-Retention Async | handle, worker, consume, TTL, crash recovery | NOT IMPLEMENTED |
 | PG3 | Public Preview Ready | edge, Host, load/cost, docs, incident rehearsal | NOT IMPLEMENTED |
 | AG0 | Account Trust | opt-in save, user isolation, export/delete, OAuth hardening | FUTURE |
 
-Foundation 통과는 Public Preview 통과를 의미하지 않는다. S0에서 public composition, HMAC IP-first limiter, ephemeral workspace와 purge sweeper는 구현됐다. 실제 content canary, quick/start kill-switch action, edge IP normalization, collector가 남아 있으므로 공개 endpoint는 아직 열 수 없다.
+Foundation 통과는 Public Preview 통과를 의미하지 않는다. public composition, HMAC IP-first
+limiter, ephemeral workspace/purge, Planner, Search port, SafeCollector, parser, Evidence
+Composer와 quick 수직 슬라이스는 구현됐다. edge IP normalization, async lifecycle, 실제 공식
+웹 유용성·비용·provider 보존 검증이 남아 있으므로 공개 endpoint는 아직 열 수 없다.
 
 S0 실행 증적은 [2026-07-16 Public S0 보고서](./validation/2026-07-16-public-s0.md)에 기록한다.
+PG1 로컬 수직 슬라이스는
+[2026-07-16 PG1 보고서](./validation/2026-07-16-pg1-useful-research.md)에 기록한다.
 
 ## 3. 검증 환경
 
@@ -253,6 +258,27 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | unsupported legal conclusion | 0 |
 | quick hard deadline | ≤30초 또는 async 안내 |
 
+### 6.6 현재 PG1 판정 규칙
+
+PG1은 두 층으로 판정한다.
+
+1. **Local Implementation:** 통제된 Search·HTTP·document fixture에서 모든 모듈과 failure
+   semantics를 검증한다.
+2. **Live Official-Source QA:** 실제 공식 source로 GR-001~004를 실행하고 공공업무 담당자가
+   claim·citation·gap의 유용성을 검토한다.
+
+2026-07-16 현재 1은 PASS, 2는 PENDING이다. 따라서 “Search/Parser/Evidence가 구현됐다”는
+표현은 허용하지만 “공공분야 리서치 품질 검증 완료” 또는 “PG1 최종 PASS”는 허용하지 않는다.
+
+Live QA는 다음을 추가로 충족해야 한다.
+
+- 운영자가 승인한 Search provider 또는 official URL seed 사용
+- 외부 provider에 전달되는 query와 provider-side retention 고지
+- site별 robots 결과와 Terms/저작권 운영검토
+- 실제 공식 1차 source 비율과 locator completeness 측정
+- 사람이 읽는 결과에서 unsupported legal conclusion 0건
+- generic evidence bundle이 불충분하면 citation-constrained Writer 보강
+
 ## 7. PG2 — Zero-Retention Async
 
 ### 7.1 Handle
@@ -427,6 +453,12 @@ PG3 전 금지:
 - zero retention verified
 - safe public crawler
 - public research quality verified
+
+PG1 Live QA 전 금지:
+
+- useful public-policy answers verified
+- official-source golden scenarios passed
+- end-to-end zero data retention
 
 R4 제품 지표 전 금지:
 

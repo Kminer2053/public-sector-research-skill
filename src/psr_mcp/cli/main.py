@@ -1,4 +1,4 @@
-"""Minimal operator/development CLI for Foundation."""
+"""Operator and development CLI for Foundation and Public Preview modes."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from psr_mcp import __version__
 from psr_mcp.bootstrap import build_container
-from psr_mcp.config import ServiceMode, Settings
+from psr_mcp.config import SearchProviderMode, ServiceMode, Settings
 from psr_mcp.conformance import ConformanceError, ConformanceOptions, run_conformance
 from psr_mcp.mcp.server import create_http_app
 from psr_mcp.storage.migrations.runner import current as migration_current
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     doctor = commands.add_parser("doctor", help="validate and print redacted configuration")
     doctor.add_argument("--json", action="store_true", dest="as_json")
-    serve_parser = commands.add_parser("serve", help="run the Foundation development MCP server")
+    serve_parser = commands.add_parser("serve", help="run the configured MCP server")
     serve_parser.add_argument("service", choices=["mcp"])
     database = commands.add_parser("db", help="run operator-only PostgreSQL migrations")
     database.add_argument("action", choices=["current", "upgrade", "downgrade"])
@@ -144,10 +144,18 @@ def _database_command(*, action: str, revision: str | None, confirm_downgrade: b
 def _limitations(settings: Settings) -> list[str]:
     limitations: list[str] = []
     if settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
-        limitations.append("public research collection and reporting are not implemented")
+        if settings.public_fixture_research_enabled:
+            limitations.append("development fixture is not external research evidence")
+        elif settings.search_provider is SearchProviderMode.DISABLED:
+            limitations.append("public research backend is disabled")
+        else:
+            limitations.append("live official-source usefulness is not yet validated")
+            limitations.append(
+                "external search provider retention is separate from PSR server retention"
+            )
         limitations.append("Public Preview PG0 through PG3 are not yet fully validated")
-    else:
-        limitations.append("collector and reporting modules are not implemented")
+        return limitations
+    limitations.append("public collector and reporting are not exposed in Foundation mode")
     if settings.auth_mode.value == "static":
         limitations.append("development static authentication")
     if settings.storage_mode.value == "memory":

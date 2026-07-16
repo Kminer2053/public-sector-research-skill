@@ -28,6 +28,11 @@ class StorageMode(StrEnum):
     POSTGRES = "postgres"
 
 
+class SearchProviderMode(StrEnum):
+    DISABLED = "disabled"
+    BRAVE = "brave"
+
+
 class ServiceMode(StrEnum):
     FOUNDATION = "foundation"
     PUBLIC_EPHEMERAL = "public_ephemeral"
@@ -73,6 +78,12 @@ class Settings:
     quick_timeout_seconds: float = 20.0
     max_run_sources: int = 12
     max_run_bytes: int = 31_457_280
+    search_provider: SearchProviderMode = SearchProviderMode.DISABLED
+    search_api_key_ref: str | None = None
+    search_timeout_seconds: float = 5.0
+    search_max_response_bytes: int = 1_048_576
+    search_max_concurrency: int = 7
+    collection_max_concurrency: int = 4
     abuse_hmac_key_ref: str | None = None
 
     @classmethod
@@ -117,12 +128,8 @@ class Settings:
                 cursor_signing_key=values.get("PSR_CURSOR_SIGNING_KEY", DEFAULT_CURSOR_SIGNING_KEY),
                 ephemeral_root=values.get("PSR_EPHEMERAL_ROOT"),
                 run_ttl_seconds=int(values.get("PSR_RUN_TTL_SECONDS", "3600")),
-                delivered_purge_seconds=int(
-                    values.get("PSR_DELIVERED_PURGE_SECONDS", "60")
-                ),
-                failed_content_ttl_seconds=int(
-                    values.get("PSR_FAILED_CONTENT_TTL_SECONDS", "600")
-                ),
+                delivered_purge_seconds=int(values.get("PSR_DELIVERED_PURGE_SECONDS", "60")),
+                failed_content_ttl_seconds=int(values.get("PSR_FAILED_CONTENT_TTL_SECONDS", "600")),
                 orphan_max_age_seconds=int(values.get("PSR_ORPHAN_MAX_AGE_SECONDS", "7200")),
                 purge_sweep_seconds=int(values.get("PSR_PURGE_SWEEP_SECONDS", "60")),
                 public_kill_switch=_parse_bool(
@@ -136,6 +143,14 @@ class Settings:
                 quick_timeout_seconds=float(values.get("PSR_QUICK_TIMEOUT_SECONDS", "20")),
                 max_run_sources=int(values.get("PSR_MAX_RUN_SOURCES", "12")),
                 max_run_bytes=int(values.get("PSR_MAX_RUN_BYTES", "31457280")),
+                search_provider=SearchProviderMode(values.get("PSR_SEARCH_PROVIDER", "disabled")),
+                search_api_key_ref=values.get("PSR_SEARCH_API_KEY_REF"),
+                search_timeout_seconds=float(values.get("PSR_SEARCH_TIMEOUT_SECONDS", "5")),
+                search_max_response_bytes=int(
+                    values.get("PSR_SEARCH_MAX_RESPONSE_BYTES", "1048576")
+                ),
+                search_max_concurrency=int(values.get("PSR_SEARCH_MAX_CONCURRENCY", "7")),
+                collection_max_concurrency=int(values.get("PSR_COLLECTION_MAX_CONCURRENCY", "4")),
                 abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
             )
         except (TypeError, ValueError) as error:
@@ -178,12 +193,33 @@ class Settings:
             raise ValueError("PSR_MAX_RUN_SOURCES must be 1..100")
         if self.max_run_bytes < 1_048_576 or self.max_run_bytes > 104_857_600:
             raise ValueError("PSR_MAX_RUN_BYTES must be 1048576..104857600")
+        if self.search_timeout_seconds <= 0 or self.search_timeout_seconds > 30:
+            raise ValueError("PSR_SEARCH_TIMEOUT_SECONDS must be >0 and <=30")
+        if self.search_max_response_bytes < 1_024 or self.search_max_response_bytes > 10_485_760:
+            raise ValueError("PSR_SEARCH_MAX_RESPONSE_BYTES must be 1024..10485760")
+        if self.search_max_concurrency < 1 or self.search_max_concurrency > 10:
+            raise ValueError("PSR_SEARCH_MAX_CONCURRENCY must be 1..10")
+        if self.collection_max_concurrency < 1 or self.collection_max_concurrency > 20:
+            raise ValueError("PSR_COLLECTION_MAX_CONCURRENCY must be 1..20")
         if self.ephemeral_root is not None and not Path(self.ephemeral_root).is_absolute():
             raise ValueError("PSR_EPHEMERAL_ROOT must be an absolute path")
         if self.abuse_hmac_key_ref and not re.fullmatch(
             r"env://[A-Za-z_][A-Za-z0-9_]*", self.abuse_hmac_key_ref
         ):
             raise ValueError("PSR_ABUSE_HMAC_KEY_REF must use env://VARIABLE")
+        if self.search_api_key_ref and not re.fullmatch(
+            r"env://[A-Za-z_][A-Za-z0-9_]*", self.search_api_key_ref
+        ):
+            raise ValueError("PSR_SEARCH_API_KEY_REF must use env://VARIABLE")
+        if self.search_provider is SearchProviderMode.BRAVE:
+            if self.service_mode is not ServiceMode.PUBLIC_EPHEMERAL:
+                raise ValueError("Brave search is available only in public ephemeral mode")
+            if not self.search_api_key_ref:
+                raise ValueError("Brave search requires PSR_SEARCH_API_KEY_REF")
+            if self.public_fixture_research_enabled:
+                raise ValueError("fixture research and Brave search cannot be enabled together")
+        elif self.search_api_key_ref:
+            raise ValueError("PSR_SEARCH_API_KEY_REF requires PSR_SEARCH_PROVIDER=brave")
         parsed_public_url = urlparse(self.public_url)
         if (
             parsed_public_url.scheme not in {"http", "https"}
@@ -310,6 +346,7 @@ class Settings:
         values["cursor_signing_key"] = "***"
         values["database_url_ref"] = bool(self.database_url_ref)
         values["abuse_hmac_key_ref"] = bool(self.abuse_hmac_key_ref)
+        values["search_api_key_ref"] = bool(self.search_api_key_ref)
         return values
 
 

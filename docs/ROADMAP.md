@@ -81,7 +81,7 @@
 
 - `research_runs.initiated_by`를 tenant composite FK로 강화: R5 전 Must
 - unknown JWT `kid` JWKS refresh negative cache/cooldown: R5 전 Must
-- `psrctl doctor`의 remote readiness 표시 정확성: R4 전 Should
+- `psrctl doctor`의 public backend/fixture/readiness 표시 정확성: R2에서 완료
 
 ## 4. R1 — Public Safety Core
 
@@ -180,8 +180,9 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 **난이도:** 매우 높음
 **완료 기준:** SSRF·redirect·DNS rebinding corpus 100% 차단
 
-**상태:** 부분 완료. HTTPS/userinfo/port/hostname/IP/redirect 정책과 검증 IP 고정 transport는
-구현됐다. SearchProvider와 운영 edge/network egress 검증은 남아 있다.
+**상태:** 로컬 구현 완료. HTTPS/userinfo/port/hostname/IP/redirect 정책과 검증 IP 고정
+transport, `SearchProvider` port, official domain registry, 선택형 Brave adapter가 구현됐다.
+실제 provider credential, 운영 edge/network egress와 비용상한 검증은 남아 있다.
 
 #### WP-R2.3 Bounded Collector and Parser
 
@@ -196,6 +197,10 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 **난이도:** 매우 높음  
 **완료 기준:** bomb fixture가 process를 고갈시키지 않고 typed partial failure 반환
 
+**상태:** 로컬 구현 완료. SafeCollector의 timeout/byte/redirect/encoding 제한, robots 선검사,
+MIME sniff, HTML·JSON·text locator와 subprocess PDF parser를 구현했다. 실제 대형·복잡한
+공공 PDF corpus와 운영 OS resource isolation은 추가 검증 대상이다.
+
 #### WP-R2.4 Planner and Government Profile v0
 
 - 기준일·관할·결정 질문·조사 질문 정규화
@@ -207,7 +212,8 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 **난이도:** 높음
 **완료 기준:** AI 구매 원칙 golden question의 필수 track recall 통과
 
-**상태:** deterministic baseline 완료. 실제 search query generation과 source registry 연결은 남아 있다.
+**상태:** deterministic baseline과 실제 search query generation/source registry 연결 완료.
+실제 공공질문에서 track precision과 provider 비용은 운영 검증 대상이다.
 
 #### WP-R2.5 Evidence Composer and Quick Tool
 
@@ -222,12 +228,19 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 **난이도:** 높음
 **완료 기준:** citation 없는 FACT 0개, locator completeness 95% 이상
 
+**상태:** 로컬 수직 슬라이스 완료. component score, URL/passage/document hash dedup, citation,
+Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 현재 finding은 보수적 원문
+확인 문장이므로 실제 업무 초안 유용성과 conflict/recommendation 품질은 아직 승인되지 않았다.
+
 ### R2 종료 게이트
 
 - quick 호출은 30초 안에 결과 또는 async 전환 안내를 반환한다.
 - 공공기관 AI 구매 원칙 scenario에서 필수 track과 공식 원문을 보여준다.
 - 일부 source 실패에도 usable partial 결과를 반환한다.
 - 질문·원문·결과 canary는 응답 후 남지 않는다.
+
+**현재 판정:** deterministic/local implementation은 통과했지만 R2 종료 게이트는 열려 있다.
+실제 공식 웹 GR-001~004, 사람의 유용성 검토, provider 비용·보존 고지가 남았다.
 
 ## 6. R3 — Ephemeral Async
 
@@ -459,19 +472,19 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 
 ## 15. 가장 먼저 구현할 작업
 
-첫 change set은 crawler가 아니다.
+초기 public safety와 quick 수직 슬라이스는 완료됐다. 현재 가장 먼저 수행할 작업은 다음이다.
 
 ```text
-CH-PUB-001
-ServiceMode.PUBLIC_EPHEMERAL
-+ public Tool catalog
-+ IP quota 우회 수정
-+ EphemeralWorkspaceStore
-+ TTL/PurgeSweeper
-+ content canary tests
+CH-P1.8 Live Official-Source Validation
++ 승인된 Search provider credential 또는 official-source seed
++ 실제 법령·조달·개인정보·데이터권리 golden scenario
++ 사람이 읽는 claim/citation/gap 유용성 평가
++ provider 비용·query retention 고지 검증
 ```
 
-그 다음 fake collector로 quick lifecycle을 완성하고, legacy characterization 후 SafeCollector를 연결한다. 이 순서를 지켜야 실제 웹 content를 다루기 전에 공개 서비스의 삭제·남용 경계가 검증된다.
+그 결과가 유용하지만 시간이 길면 R3 async를 우선하고, evidence bundle이 빈약하면
+citation-constrained Writer를 먼저 추가한다. 이후 trusted edge IP·비용 kill switch를 닫아
+R4 제한 공개로 이동한다.
 
 ---
 

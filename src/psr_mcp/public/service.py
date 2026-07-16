@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
@@ -17,10 +18,12 @@ from psr_mcp.planner.models import ResearchPlan
 from psr_mcp.public.schemas import (
     AppliedScope,
     Citation,
+    EvidenceScoreOutput,
     Finding,
     QuickResearchOutput,
     ResearchFailure,
     RetentionStatus,
+    ScoreComponentOutput,
 )
 
 
@@ -102,6 +105,38 @@ class FixtureResearchBackend:
             locator="fixture section 1",
             excerpt="이 문서는 외부 사실 근거가 아닌 무보관 실행경로 검증용 fixture입니다.",
             source_tier="TEST_FIXTURE",
+            document_sha256="0" * 64,
+            score=EvidenceScoreOutput(
+                overall=0.0,
+                authority=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="개발 fixture이며 실제 출처 권위성을 갖지 않음",
+                ),
+                primary_source=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="실제 1차자료가 아님",
+                ),
+                direct_relevance=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="lifecycle 검증 전용",
+                ),
+                original_snapshot=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="외부 원문 snapshot이 아님",
+                ),
+                specificity=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="fixture locator",
+                ),
+                freshness=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="발행일 개념 없음",
+                ),
+                independence=ScoreComponentOutput(
+                    value=0.0,
+                    explanation="독립 근거가 아님",
+                ),
+            ),
         )
         findings = (
             Finding(
@@ -120,8 +155,7 @@ class FixtureResearchBackend:
         return ResearchDraft(
             status="PARTIAL",
             summary=(
-                "무보관 quick lifecycle 검증 결과입니다. "
-                "실제 웹 조사는 아직 수행하지 않았습니다."
+                "무보관 quick lifecycle 검증 결과입니다. 실제 웹 조사는 아직 수행하지 않았습니다."
             ),
             findings=findings,
             citations=(citation,),
@@ -232,12 +266,9 @@ class PublicQuickResearchService:
             await self._store.write_bytes(ref, ArtifactKind.SOURCE, draft.source_bytes)
             await self._store.write_bytes(ref, ArtifactKind.EXTRACTED, draft.extracted_bytes)
             markdown = _render_markdown(draft, plan)
-            result_body = (
-                draft.summary
-                + "\n"
-                + markdown
-                + "\nPSR-RESULT-CONTENT-CANARY"
-            ).encode("utf-8")
+            result_body = (draft.summary + "\n" + markdown + "\nPSR-RESULT-CONTENT-CANARY").encode(
+                "utf-8"
+            )
             await self._store.write_bytes(ref, ArtifactKind.RESULT, result_body)
             try:
                 await self._store.block_access(ref)
@@ -321,13 +352,81 @@ def _render_markdown(draft: ResearchDraft, plan: ResearchPlan) -> str:
         f"- 관할: {plan.jurisdiction}",
         f"- Profile: {plan.profile}",
         "",
-        draft.summary,
+        _markdown_text(draft.summary),
         "",
         "## Findings",
     ]
     for finding in draft.findings:
-        citations = ", ".join(finding.citation_ids) or "none"
-        lines.append(f"- [{finding.kind}] {finding.claim} (citations: {citations})")
+        citations = ", ".join(_markdown_text(value) for value in finding.citation_ids) or "none"
+        lines.append(
+            f"- [{finding.kind}] {_markdown_text(finding.claim)} "
+            f"(citations: {citations}; confidence: {finding.confidence})"
+        )
+    lines.extend(("", "## Citations"))
+    if not draft.citations:
+        lines.append("- none")
+    for citation in draft.citations:
+        lines.extend(
+            (
+                (
+                    f"- [{_markdown_text(citation.id)}] "
+                    f"{_markdown_text(citation.title)} — "
+                    f"{_markdown_text(citation.publisher)}"
+                ),
+                f"  - URL: {citation.url}",
+                f"  - Tier: {_markdown_text(citation.source_tier)}",
+                f"  - Retrieved: {citation.retrieved_at.isoformat()}",
+                f"  - Locator: {_markdown_text(citation.locator)}",
+                f"  - Snapshot SHA-256: {citation.document_sha256}",
+                f"  - Excerpt: {_markdown_text(citation.excerpt)}",
+                f"  - Evidence score: {citation.score.overall:.4f}",
+            )
+        )
+        for name, component in _score_components(citation.score):
+            lines.append(
+                f"    - {name}: {component.value:.4f} — {_markdown_text(component.explanation)}"
+            )
     lines.extend(("", "## Gaps"))
-    lines.extend(f"- {gap}" for gap in draft.gaps)
+    lines.extend(
+        (f"- {_markdown_text(gap)}" for gap in draft.gaps),
+    )
+    if not draft.gaps:
+        lines.append("- none")
+    lines.extend(("", "## Conflicts"))
+    lines.extend(
+        (f"- {_markdown_text(conflict)}" for conflict in draft.conflicts),
+    )
+    if not draft.conflicts:
+        lines.append("- none")
+    lines.extend(("", "## Failures"))
+    for failure in draft.failures:
+        lines.append(
+            f"- [{_markdown_text(failure.code)}] "
+            f"{_markdown_text(failure.message)} "
+            f"(retryable: {str(failure.retryable).lower()})"
+        )
+    if not draft.failures:
+        lines.append("- none")
     return "\n".join(lines)
+
+
+def _score_components(
+    score: EvidenceScoreOutput,
+) -> tuple[tuple[str, ScoreComponentOutput], ...]:
+    return (
+        ("authority", score.authority),
+        ("primary_source", score.primary_source),
+        ("direct_relevance", score.direct_relevance),
+        ("original_snapshot", score.original_snapshot),
+        ("specificity", score.specificity),
+        ("freshness", score.freshness),
+        ("independence", score.independence),
+    )
+
+
+def _markdown_text(value: str) -> str:
+    normalized = " ".join(value.split())
+    escaped = html.escape(normalized, quote=False)
+    for character in ("\\", "`", "*", "_", "[", "]"):
+        escaped = escaped.replace(character, f"\\{character}")
+    return escaped

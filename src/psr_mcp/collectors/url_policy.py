@@ -53,10 +53,7 @@ class SystemHostResolver:
             type=socket.SOCK_STREAM,
             proto=socket.IPPROTO_TCP,
         )
-        addresses = {
-            ipaddress.ip_address(record[4][0])
-            for record in records
-        }
+        addresses = {ipaddress.ip_address(record[4][0]) for record in records}
         return tuple(sorted(addresses, key=_address_sort_key))
 
 
@@ -222,8 +219,7 @@ def _ip_literal(host: str) -> IpAddress | None:
 
 def _reject_internal_hostname(host: str) -> None:
     if "." not in host or any(
-        host == suffix or host.endswith(f".{suffix}")
-        for suffix in _NON_PUBLIC_SUFFIXES
+        host == suffix or host.endswith(f".{suffix}") for suffix in _NON_PUBLIC_SUFFIXES
     ):
         raise UrlPolicyError(
             UrlPolicyErrorCode.HOST_NOT_ALLOWED,

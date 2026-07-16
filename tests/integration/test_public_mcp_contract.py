@@ -11,6 +11,7 @@ from mcp.client.session import ClientSession
 from mcp.shared.memory import create_connected_server_and_client_session
 
 from psr_mcp.bootstrap import PublicContainer, build_container
+from psr_mcp.common.secrets import EnvironmentSecretResolver
 from psr_mcp.config import Settings
 from psr_mcp.mcp.server import create_http_app, create_server
 
@@ -95,6 +96,44 @@ async def test_public_http_lifecycle_serves_policy_without_oauth(tmp_path: Path)
 
 
 @pytest.mark.anyio
+async def test_service_policy_discloses_external_search_retention(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_SEARCH_PROVIDER": "brave",
+            "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+        }
+    )
+    container = build_container(
+        settings,
+        secret_resolver=EnvironmentSecretResolver({"BRAVE_API_KEY": "test-brave-api-key-123456"}),
+    )
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        assert server.instructions is not None
+        assert "외부 provider" in server.instructions
+        assert "psr.service.policy" in server.instructions
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            result = await session.call_tool("psr.service.policy", {})
+    finally:
+        await container.close()
+
+    assert result.structuredContent is not None
+    external = result.structuredContent["external_services"]
+    assert external[0]["provider"] == "Brave Search API"
+    assert "90일" in external[0]["provider_retention"]
+    assert "검색어" in external[0]["data_sent"][0]
+
+
+@pytest.mark.anyio
 async def test_quick_fixture_returns_result_and_purges_all_content(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -134,6 +173,10 @@ async def test_quick_fixture_returns_result_and_purges_all_content(
     assert "data-rights" in output["scope"]["source_tracks"]
     assert "procurement" in output["scope"]["source_tracks"]
     assert output["failures"][0]["code"] == "FIXTURE_ONLY"
+    assert output["citations"]
+    assert output["citations"][0]["source_tier"] == "TEST_FIXTURE"
+    assert output["citations"][0]["score"]["authority"]["value"] == 0.0
+    assert len(output["citations"][0]["document_sha256"]) == 64
     assert list(root.iterdir()) == []
 
     serialized = json.dumps(output, ensure_ascii=False)

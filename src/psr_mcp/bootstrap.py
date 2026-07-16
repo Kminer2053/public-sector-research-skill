@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+import httpx
+
 from psr_mcp.application.cursors import HmacCursorCodec
 from psr_mcp.application.projects import ProjectService
 from psr_mcp.application.research_runs import ResearchRunService
@@ -19,18 +21,42 @@ from psr_mcp.auth.providers import (
     StaticAuthContextProvider,
 )
 from psr_mcp.auth.tokens import OidcJwtTokenVerifier, OidcVerifierSettings
+from psr_mcp.collectors import (
+    CollectionLimits,
+    PinnedHttpcoreTransport,
+    RobotsSourceAccessPolicy,
+    SafeCollector,
+    SystemHostResolver,
+    UrlPolicy,
+)
 from psr_mcp.common.runtime import SystemClock, Uuid4Generator
 from psr_mcp.common.secrets import EnvironmentSecretResolver, SecretResolver
-from psr_mcp.config import AuthMode, Environment, ServiceMode, Settings, StorageMode
+from psr_mcp.config import (
+    AuthMode,
+    Environment,
+    SearchProviderMode,
+    ServiceMode,
+    Settings,
+    StorageMode,
+)
 from psr_mcp.domain.identity import ActorType, Role
 from psr_mcp.domain.projects import Project, ProjectStatus
 from psr_mcp.domain.research import PlanStatus, ResearchPlan
 from psr_mcp.ephemeral import FilesystemEphemeralWorkspaceStore, PurgeSweeper
+from psr_mcp.evidence import EvidenceComposer
+from psr_mcp.parsers import DocumentParser, ParserLimits
 from psr_mcp.planner import GovernmentPlanner
+from psr_mcp.public.development_fixture import build_development_fixture_backend
+from psr_mcp.public.pipeline import PublicResearchPipeline
 from psr_mcp.public.service import (
-    FixtureResearchBackend,
     PublicQuickResearchService,
+    ResearchBackend,
     UnavailableResearchBackend,
+)
+from psr_mcp.search import (
+    BraveSearchProvider,
+    GovernmentQueryBuilder,
+    GovernmentSourceRegistry,
 )
 from psr_mcp.storage.memory import InMemoryStore
 from psr_mcp.storage.postgres import PostgresMembershipResolver, PostgresStore
@@ -70,13 +96,18 @@ class PublicContainer:
     purge_sweeper: PurgeSweeper
     abuse_hmac_key: bytes
     quick_service: PublicQuickResearchService
+    search_client: httpx.AsyncClient | None = None
 
     async def open(self) -> None:
         await self.workspace_store.open()
         await self.purge_sweeper.start()
 
     async def close(self) -> None:
-        await self.purge_sweeper.stop()
+        try:
+            await self.purge_sweeper.stop()
+        finally:
+            if self.search_client is not None:
+                await self.search_client.aclose()
 
 
 ApplicationContainer = Container | PublicContainer
@@ -130,11 +161,74 @@ def _build_public_container(
         create_root=settings.environment is Environment.DEVELOPMENT,
     )
     ids = Uuid4Generator()
-    backend = (
-        FixtureResearchBackend(clock)
-        if settings.public_fixture_research_enabled
-        else UnavailableResearchBackend()
-    )
+    backend: ResearchBackend
+    search_client: httpx.AsyncClient | None = None
+    if settings.public_fixture_research_enabled:
+        backend = build_development_fixture_backend(clock)
+    elif settings.search_provider is SearchProviderMode.BRAVE:
+        if settings.search_api_key_ref is None:
+            raise RuntimeError("Brave search composition requires an API key reference")
+        search_api_key = secret_resolver.resolve(settings.search_api_key_ref)
+        if len(search_api_key) < 16:
+            raise ValueError("Brave Search API key is too short")
+        search_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(settings.search_timeout_seconds),
+            follow_redirects=False,
+            trust_env=False,
+            limits=httpx.Limits(
+                max_connections=settings.search_max_concurrency,
+                max_keepalive_connections=settings.search_max_concurrency,
+            ),
+        )
+        collector = SafeCollector(
+            policy=UrlPolicy(SystemHostResolver()),
+            transport=PinnedHttpcoreTransport(),
+            clock=clock,
+            limits=CollectionLimits(
+                max_response_bytes=min(
+                    settings.max_run_bytes,
+                    10_485_760,
+                ),
+                total_timeout_seconds=min(
+                    settings.quick_timeout_seconds,
+                    20.0,
+                ),
+            ),
+        )
+        backend = PublicResearchPipeline(
+            query_builder=GovernmentQueryBuilder(
+                max_results_per_track=min(5, settings.max_run_sources),
+            ),
+            search_provider=BraveSearchProvider(
+                api_key=search_api_key,
+                client=search_client,
+                registry=GovernmentSourceRegistry(),
+                timeout_seconds=settings.search_timeout_seconds,
+                max_response_bytes=settings.search_max_response_bytes,
+                max_concurrency=settings.search_max_concurrency,
+            ),
+            collector=collector,
+            parser=DocumentParser(
+                ParserLimits(
+                    max_input_bytes=min(
+                        settings.max_run_bytes,
+                        10_485_760,
+                    ),
+                    pdf_timeout_seconds=min(
+                        settings.quick_timeout_seconds / 2,
+                        5.0,
+                    ),
+                )
+            ),
+            evidence=EvidenceComposer(
+                max_citations=settings.max_run_sources,
+                max_per_document=2,
+            ),
+            source_policy=RobotsSourceAccessPolicy(collector),
+            max_collection_concurrency=settings.collection_max_concurrency,
+        )
+    else:
+        backend = UnavailableResearchBackend()
     return PublicContainer(
         settings=settings,
         ids=ids,
@@ -144,6 +238,7 @@ def _build_public_container(
             interval_seconds=settings.purge_sweep_seconds,
         ),
         abuse_hmac_key=abuse_hmac_key,
+        search_client=search_client,
         quick_service=PublicQuickResearchService(
             store=store,
             planner=GovernmentPlanner(),

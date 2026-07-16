@@ -89,16 +89,24 @@ flowchart LR
 - PostgreSQL/OAuth adapter의 mode 분리 구조
 - conformance, coverage, supply-chain CI
 
-Public Preview용 신규 구현:
+Public Preview 구현 완료:
 
 - public access provider와 public Tool catalog
 - ephemeral workspace store와 purge sweeper
-- quick/start/status/result/cancel application service
+- quick application service
 - official-first Planner/Profile v0
-- SSRF-safe Search/Collector/Parser
-- citation/result composer
+- official query builder, source registry와 선택형 Brave Search adapter
+- SSRF-safe SafeCollector와 robots source policy
+- HTML·JSON·text parser와 subprocess-isolated PDF parser
+- component Evidence Score, citation/result composer와 최소 dedup
 - IP+anonymous bucket quota
+
+Public Preview 후속 구현:
+
+- start/status/result/cancel application service
+- trusted edge IP와 source-host/global 운영 quota
 - content-free metric와 feedback
+- 실제 공식 웹 golden scenario와 citation-constrained Writer
 
 후속 mode 전에 수정:
 
@@ -376,11 +384,17 @@ global cost budget: operator config
 
 ### 11.1 Search
 
-- Provider adapter 뒤에 둔다.
-- Government Profile이 공식 domain과 source tier를 우선한다.
+- 모든 검색은 `SearchProvider` port 뒤에 둔다.
+- `GovernmentQueryBuilder`가 Planner track별 query와 preferred official domain을 만든다.
+- `GovernmentSourceRegistry`가 hostname suffix로 publisher와 source tier를 분류한다.
 - 검색어는 provider에 전달되지만 PSR log/DB에 보관하지 않는다.
 - provider별 개인정보·약관 고지를 서비스 정책에 포함한다.
 - 검색 결과는 Evidence가 아니라 candidate다.
+- provider 기본값은 `disabled`이며 key가 없으면 `research_available=false`다.
+- 현재 adapter는 Brave Search API 하나다. fixed endpoint, no redirect, `trust_env=false`,
+  strict safe search, 한국 locale, bounded JSON과 server-side key를 사용한다.
+- 표준 Brave provider가 query를 보관할 수 있으므로 `service.policy`에 외부 보존경계를
+  표시한다. PSR 무보관과 provider-side ZDR을 동일하게 표현하지 않는다.
 
 ### 11.2 URL Policy
 
@@ -416,18 +430,39 @@ TLS SNI와 HTTP `Host`는 원래 domain을 유지하므로 인증서 검증을 �
 
 현재 HTTP/1.1 transport는 `Accept-Encoding: identity`, manual redirect, response byte/time limit,
 response header allowlist를 적용한다. `Set-Cookie` 등 credential-bearing header는 수집 결과에
-포함하지 않는다. SearchProvider와 parser가 붙기 전까지 production quick backend에는 주입하지 않는다.
-- robots/terms policy result
+포함하지 않는다.
+
+production quick backend는 candidate별로 다음 순서를 강제한다.
+
+```text
+robots.txt SafeCollector fetch
+→ robots allow/disallow/unavailable 판정
+→ 남은 per-source byte budget 계산
+→ 원문 SafeCollector fetch
+→ document parser
+→ document quality
+```
+
+404/410 robots는 파일 없음으로 허용하고, 401/403은 접근제한으로 거부한다. 기타 robots 실패는
+`UNAVAILABLE`로 fail closed한다. robots는 사이트별 이용약관·저작권 허용여부를 완전히 대체하지
+않으므로 source registry 운영검토는 별도다.
 
 ### 11.4 Parser
 
-- HTML text/link extraction
-- PDF page/text extraction
-- JSON bounded traversal
-- page/node/depth/string length limit
-- parser wall-time와 memory budget
-- source text를 instruction이 아닌 untrusted data로 표시
-- executable attachment와 macro format 미지원
+- `DocumentParser`가 magic byte와 declared MIME을 비교해 HTML, JSON, PDF, text, binary를
+  분류한다.
+- HTML은 script/style/template 등 active content를 무시하고 heading/element locator를 만든다.
+- JSON은 bounded traversal과 escaped JSON Pointer locator를 사용한다.
+- text는 paragraph별 line-range locator를 사용한다.
+- PDF는 `python -m psr_mcp.parser_workers.pdf` subprocess에서 pypdf로 읽고 page locator를
+  만든다.
+- PDF worker는 wall-time, page, total text, stdin/output 상한을 적용하고 지원 OS에서는
+  address-space, CPU와 file-descriptor limit을 적용한다.
+- blank scanned PDF는 `OCR_REQUIRED`, password PDF는 `ENCRYPTED_DOCUMENT`, malformed 문서는
+  `INVALID_DOCUMENT`다.
+- login, CAPTCHA/access denied, error page와 지나치게 짧은 문서는 Evidence에서 제외한다.
+- source text는 instruction이 아닌 untrusted data다.
+- executable attachment, macro document와 OCR은 현재 미지원이다.
 
 ## 12. Planner and Evidence Composer
 
@@ -469,6 +504,20 @@ Citation --> publisher/url/retrieved_at/locator/excerpt/tier
 
 FACT는 citation이 없으면 finding으로 확정하지 않고 gap 또는 inference로 낮춘다.
 
+현재 구현:
+
+- canonical URL로 Search candidate 중복 제거
+- exact document SHA-256로 mirror snapshot 중복 제거
+- normalized passage text로 재인용 구간 중복 제거
+- 각 represented track의 citation을 먼저 확보한 뒤 score 순으로 채움
+- `authority`, `primary_source`, `direct_relevance`, `original_snapshot`, `specificity`,
+  `freshness`, `independence`를 0..1 값과 설명으로 반환
+- excerpt 500자 상한, locator와 document SHA-256 필수
+
+현재 자동 finding은 과잉해석을 막기 위해 “어느 원문의 어느 구간을 확인했다”는 보수적 사실만
+만든다. 실제 정책 claim, recommendation, conflict와 법적 적용 판단은 live official-source
+검증과 citation-constrained Writer의 후속 범위다.
+
 ## 13. MCP Contract
 
 Public catalog:
@@ -506,7 +555,16 @@ PSR_MAX_RUN_BYTES=31457280
 PSR_MAX_RUN_SOURCES=12
 PSR_PUBLIC_KILL_SWITCH=false
 PSR_ABUSE_HMAC_KEY_REF=env://...
+PSR_SEARCH_PROVIDER=disabled|brave
+PSR_SEARCH_API_KEY_REF=env://...
+PSR_SEARCH_TIMEOUT_SECONDS=5
+PSR_SEARCH_MAX_RESPONSE_BYTES=1048576
+PSR_SEARCH_MAX_CONCURRENCY=7
+PSR_COLLECTION_MAX_CONCURRENCY=4
 ```
+
+fixture와 Brave를 동시에 켜면 startup이 실패한다. public production은 fixture를 금지한다.
+Search key와 abuse key는 diagnostic에 값이 아니라 설정 여부만 나타난다.
 
 Fail-closed rules:
 
@@ -681,12 +739,13 @@ Public Tool Catalog
 
 구현 순서:
 
-1. 기존 regression suite를 유지한다.
-2. `ServiceMode.PUBLIC_EPHEMERAL`을 추가한다.
-3. 기존 Project/Organization domain을 호출하지 않는 public composition root를 만든다.
-4. fake search/collector로 ephemeral lifecycle을 먼저 검증한다.
-5. legacy `crawlkit.py`를 characterization하고 SafeCollector 뒤에 필요한 fetch/parse만 추출한다.
-6. public golden scenario를 통과한 뒤 실제 search adapter를 연결한다.
+1. 기존 regression suite 유지 — 완료
+2. `ServiceMode.PUBLIC_EPHEMERAL`과 public composition root — 완료
+3. fixture quick과 purge lifecycle — 완료
+4. legacy `crawlkit.py` characterization과 SafeCollector 이식 판단 — 완료
+5. Search/robots/Collector/Parser/Evidence quick 수직 슬라이스 — 완료
+6. 실제 official-source golden scenario와 human usefulness review — 다음
+7. 필요 시 citation-constrained Writer, 이후 async lifecycle과 public edge — 후속
 
 ## 21. Extension Points
 
@@ -717,8 +776,10 @@ domain/application은 MCP SDK, PostgreSQL, 특정 search provider를 직접 impo
 | ADR-0007 | Remote HTTP boundary |
 | ADR-0008 | Capability-aware Host conformance |
 | ADR-0009 | Public Zero-Retention First |
+| ADR-0010 | Progressive Identity and Opt-in Persistence |
 
-ADR-0002·0005·0006은 폐기되지 않았으며 Account/Enterprise mode에 적용된다. Public Preview의 현재 제품 경계는 ADR-0009가 우선한다.
+ADR-0002·0005·0006은 폐기되지 않았으며 Account/Enterprise mode에 적용된다. Public Preview의
+현재 제품 경계는 ADR-0009가 우선하고, 향후 선택 가입·저장 경계는 ADR-0010을 따른다.
 
 ---
 

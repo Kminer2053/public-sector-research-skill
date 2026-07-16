@@ -8,12 +8,13 @@ from typing import Annotated, Literal
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-from pydantic import Field
+from pydantic import Field, HttpUrl
 
 from psr_mcp.bootstrap import PublicContainer
-from psr_mcp.config import Environment
+from psr_mcp.config import Environment, SearchProviderMode
 from psr_mcp.mcp.transport import transport_security
 from psr_mcp.public.schemas import (
+    ExternalServiceDisclosure,
     PublicToolErrorPayload,
     QuickResearchOutput,
     ServicePolicyOutput,
@@ -29,11 +30,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
             if settings.environment is Environment.DEVELOPMENT
             else "Public Sector Research MCP"
         ),
-        instructions=(
-            "가입 없이 공공분야 공식자료를 조사하기 위한 Public Preview 서버입니다. "
-            "현재 quick Tool은 개발 fixture 또는 명시적으로 구성된 backend만 사용하며, "
-            "결과의 retention 상태와 조사 한계를 반드시 확인해야 합니다."
-        ),
+        instructions=_server_instructions(settings.search_provider),
         website_url=settings.public_url,
         host=settings.host,
         port=settings.port,
@@ -78,6 +75,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "failed_content_ttl_seconds": settings.failed_content_ttl_seconds,
                 "orphan_max_age_seconds": settings.orphan_max_age_seconds,
             },
+            external_services=_external_services(settings.search_provider),
         )
 
     @server.tool(
@@ -115,3 +113,36 @@ def create_public_server(container: PublicContainer) -> FastMCP:
             ) from None
 
     return server
+
+
+def _external_services(
+    provider: SearchProviderMode,
+) -> list[ExternalServiceDisclosure]:
+    if provider is SearchProviderMode.DISABLED:
+        return []
+    return [
+        ExternalServiceDisclosure(
+            provider="Brave Search API",
+            purpose="공식자료 후보 URL 검색",
+            data_sent=["조사 질문에서 생성한 검색어"],
+            provider_retention=(
+                "표준 Search API는 검색 질의를 최대 90일 보관할 수 있음; Enterprise ZDR 계약은 별도"
+            ),
+            privacy_url=HttpUrl("https://api-dashboard.search.brave.com/privacy-policy"),
+        )
+    ]
+
+
+def _server_instructions(provider: SearchProviderMode) -> str:
+    base = (
+        "가입 없이 공공분야 공식자료를 조사하기 위한 Public Preview 서버입니다. "
+        "현재 quick Tool은 개발 fixture 또는 명시적으로 구성된 backend만 사용하며, "
+        "결과의 retention 상태와 조사 한계를 반드시 확인해야 합니다."
+    )
+    if provider is SearchProviderMode.DISABLED:
+        return base
+    return (
+        f"{base} Brave Search API가 구성된 경우 질문에서 만든 검색어가 외부 provider로 "
+        "전송되며, provider-side 보존정책은 PSR 서버의 무보관 정책과 별개입니다. "
+        "호출 전에 psr.service.policy를 확인하세요."
+    )

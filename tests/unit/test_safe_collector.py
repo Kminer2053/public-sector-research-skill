@@ -32,14 +32,15 @@ class Transport:
     def __init__(self, responses: dict[str, RawHttpResponse]) -> None:
         self.responses = responses
         self.calls: list[ValidatedUrl] = []
+        self.limits: list[CollectionLimits] = []
 
     async def fetch(
         self,
         target: ValidatedUrl,
         limits: CollectionLimits,
     ) -> RawHttpResponse:
-        del limits
         self.calls.append(target)
+        self.limits.append(limits)
         return self.responses[target.canonical_url]
 
 
@@ -127,6 +128,28 @@ async def test_missing_content_type_is_preserved_as_unknown() -> None:
     result = await _collector(resolver, transport).collect("https://source.go.kr")
 
     assert result.content_type is None
+
+
+@pytest.mark.anyio
+async def test_per_request_byte_budget_is_bounded_by_collector_configuration() -> None:
+    resolver = Resolver({"source.go.kr": ("93.184.216.34",)})
+    transport = Transport(
+        {
+            "https://source.go.kr/": RawHttpResponse(
+                status=200,
+                headers={"content-type": "text/plain"},
+                body=b"document",
+            )
+        }
+    )
+    collector = _collector(resolver, transport)
+
+    await collector.collect("https://source.go.kr", max_response_bytes=128)
+    await collector.collect("https://source.go.kr", max_response_bytes=4_096)
+
+    assert [limits.max_response_bytes for limits in transport.limits] == [128, 1_024]
+    with pytest.raises(ValueError, match="positive"):
+        await collector.collect("https://source.go.kr", max_response_bytes=0)
 
 
 @pytest.mark.anyio

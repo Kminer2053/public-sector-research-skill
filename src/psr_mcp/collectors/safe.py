@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from enum import StrEnum
 from typing import Protocol
 from urllib.parse import urljoin
@@ -61,11 +62,27 @@ class SafeCollector:
         self._clock = clock
         self._limits = limits
 
-    async def collect(self, url: str) -> CollectedDocument:
+    async def collect(
+        self,
+        url: str,
+        *,
+        max_response_bytes: int | None = None,
+    ) -> CollectedDocument:
+        limits = self._limits
+        if max_response_bytes is not None:
+            if max_response_bytes < 1:
+                raise ValueError("max_response_bytes must be positive")
+            limits = replace(
+                self._limits,
+                max_response_bytes=min(
+                    max_response_bytes,
+                    self._limits.max_response_bytes,
+                ),
+            )
         target = await self._policy.validate(url)
         redirect_chain: list[str] = []
         while True:
-            response = await self._transport.fetch(target, self._limits)
+            response = await self._transport.fetch(target, limits)
             if _is_redirect(response.status):
                 location = response.headers.get("location")
                 if not location:

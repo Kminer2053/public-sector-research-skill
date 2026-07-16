@@ -127,9 +127,7 @@ async def test_mixed_public_and_private_dns_answer_is_rejected() -> None:
 @pytest.mark.anyio
 async def test_dns_failure_empty_answer_redirect_and_length_limits_are_typed() -> None:
     with pytest.raises(UrlPolicyError) as failed:
-        await UrlPolicy(Resolver(failure=OSError("dns down"))).validate(
-            "https://source.go.kr"
-        )
+        await UrlPolicy(Resolver(failure=OSError("dns down"))).validate("https://source.go.kr")
     assert failed.value.code is UrlPolicyErrorCode.DNS_RESOLUTION_FAILED
     assert failed.value.retryable is True
 

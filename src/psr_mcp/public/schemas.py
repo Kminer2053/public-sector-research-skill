@@ -8,6 +8,16 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
+class ExternalServiceDisclosure(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    provider: str
+    purpose: str
+    data_sent: list[str]
+    provider_retention: str
+    privacy_url: HttpUrl
+
+
 class ServicePolicyOutput(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -20,6 +30,7 @@ class ServicePolicyOutput(BaseModel):
     supported_profiles: list[str]
     limits: dict[str, int | float]
     retention: dict[str, int | bool]
+    external_services: list[ExternalServiceDisclosure]
 
 
 class AppliedScope(BaseModel):
@@ -42,6 +53,26 @@ class Finding(BaseModel):
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
 
 
+class ScoreComponentOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    value: float = Field(ge=0.0, le=1.0)
+    explanation: str = Field(min_length=1, max_length=500)
+
+
+class EvidenceScoreOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    overall: float = Field(ge=0.0, le=1.0)
+    authority: ScoreComponentOutput
+    primary_source: ScoreComponentOutput
+    direct_relevance: ScoreComponentOutput
+    original_snapshot: ScoreComponentOutput
+    specificity: ScoreComponentOutput
+    freshness: ScoreComponentOutput
+    independence: ScoreComponentOutput
+
+
 class Citation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -53,6 +84,8 @@ class Citation(BaseModel):
     locator: str
     excerpt: str = Field(max_length=500)
     source_tier: str
+    document_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    score: EvidenceScoreOutput
 
 
 class ResearchFailure(BaseModel):
