@@ -2,11 +2,13 @@
 
 > 대상: `D0`, `F0`, `F1` · 환경: macOS, Python 3.12.13, uv 0.11.14, `mcp==1.28.1`
 
+> 후속 상태: 이 보고서는 G0~G2 시점의 증적이다. PostgreSQL G3는 이후 [별도 보고서](./2026-07-16-postgresql-g3.md)에서 통과했다.
+
 [검증 기준](../VALIDATION_CRITERIA.md) · [구현 계획](../IMPLEMENTATION_PLAN.md) · [상세설계](../DETAILED_DESIGN.md)
 
 ## 1. 결론
 
-Foundation Core와 MCP contract가 in-memory 환경에서 검증됐다. PostgreSQL durability, RLS, production OAuth, remote Host conformance는 아직 검증되지 않았다.
+Foundation Core와 MCP contract가 in-memory 환경에서 검증됐다. 아래 G3 상태는 이 보고서 작성시점의 결과이며 후속 PostgreSQL 보고서에서 갱신됐다.
 
 | Gate | 결과 | 근거 | 제한 |
 |---|---|---|---|

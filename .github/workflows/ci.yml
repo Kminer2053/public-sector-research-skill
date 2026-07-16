@@ -18,6 +18,26 @@ jobs:
     name: Foundation quality gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PSR_TEST_ADMIN_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      PSR_TEST_OWNER_DATABASE_URL: postgresql://psr_test_owner:psr_test@127.0.0.1:5432/psr_test
+      PSR_TEST_RUNTIME_DATABASE_URL: postgresql://psr_test_runtime:psr_test@127.0.0.1:5432/psr_test
+      PSR_TEST_OWNER_ROLE: psr_test_owner
+      PSR_TEST_RUNTIME_ROLE: psr_test_runtime
+      PSR_TEST_DATABASE: psr_test
+      PSR_TEST_ROLE_PASSWORD: psr_test
+    services:
+      postgres:
+        image: postgres:17.10-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -33,6 +53,9 @@ jobs:
 
       - name: Sync locked dependencies
         run: uv sync --all-groups --frozen
+
+      - name: Bootstrap PostgreSQL test roles and database
+        run: uv run --frozen python scripts/bootstrap_postgres_test.py
 
       - name: Lint
         run: uv run --frozen ruff check .

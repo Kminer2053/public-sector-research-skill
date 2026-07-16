@@ -1,0 +1,11 @@
+DROP TRIGGER IF EXISTS audit_events_no_update_or_delete ON audit_events;
+DROP FUNCTION IF EXISTS prevent_audit_event_mutation();
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS jobs;
+DROP TABLE IF EXISTS research_runs;
+DROP TABLE IF EXISTS research_plans;
+DROP TABLE IF EXISTS membership_projects;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS memberships;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS organizations;

@@ -65,7 +65,7 @@ uv run psrctl conformance --json
 | G5 | Interoperable | Streamable HTTP, 2 Hosts |
 | G6 | Foundation Exit | G0~G5 + docs/runbook/no P0/P1 |
 
-현재 구현 increment는 `G0~G2`를 통과했다. 실행 증적은 [Foundation Core 검증 보고서](./validation/2026-07-16-foundation-core.md)에 있으며, G3~G5는 환경 adapter가 완료될 때까지 open이다.
+현재 구현 increment는 `G0~G2`와 PostgreSQL 17.10 local `G3`를 통과했다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md)와 [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md)에 있다. G4~G5와 G6 release gate는 open이다.
 
 ## 5. Build와 Dependency
 
@@ -387,15 +387,15 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 
 ## 22. 현재 완료 선언 규칙
 
-현재 환경에서 F0/F1을 완료하면 다음 표현만 사용한다.
+현재 환경에서 F0~F2를 완료하면 다음 표현만 사용한다.
 
-> Foundation Core와 MCP contract가 in-memory 환경에서 검증됐다. PostgreSQL durability, RLS, production OAuth, remote Host conformance는 아직 검증되지 않았다.
+> Foundation Core, MCP contract, PostgreSQL 17.10 local durability와 RLS가 검증됐다. production OAuth와 remote Host conformance는 아직 검증되지 않았다.
 
 다음 표현은 G6 전 금지한다.
 
 - production ready
 - public-sector deployment ready
-- durable queue verified
+- production durable queue verified
 - secure multi-tenant service verified
 - MCP Host compatible
 

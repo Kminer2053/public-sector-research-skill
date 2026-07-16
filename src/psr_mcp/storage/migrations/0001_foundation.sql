@@ -1,4 +1,4 @@
--- PSR MCP Foundation schema draft for PostgreSQL 16+.
+-- PSR MCP Foundation schema for PostgreSQL 17+.
 -- Application supplies UUID values. Runtime role must not own tables or have BYPASSRLS.
 
 BEGIN;
@@ -95,7 +95,13 @@ CREATE TABLE research_runs (
         REFERENCES projects (organization_id, id),
     FOREIGN KEY (organization_id, plan_id, plan_version)
         REFERENCES research_plans (organization_id, id, version),
-    UNIQUE (organization_id, project_id, initiated_by, idempotency_key)
+    UNIQUE (organization_id, project_id, initiated_by, idempotency_key),
+    CHECK (
+        (status IN ('PARTIAL', 'SUCCEEDED', 'FAILED', 'CANCELLED') AND finished_at IS NOT NULL)
+        OR
+        (status IN ('QUEUED', 'RUNNING') AND finished_at IS NULL)
+    ),
+    CHECK (cancel_reason IS NULL OR char_length(cancel_reason) BETWEEN 10 AND 500)
 );
 
 CREATE TABLE jobs (
@@ -124,7 +130,8 @@ CREATE TABLE jobs (
         (state = 'RUNNING' AND lease_owner IS NOT NULL AND lease_expires_at IS NOT NULL)
         OR
         (state <> 'RUNNING' AND lease_owner IS NULL AND lease_expires_at IS NULL)
-    )
+    ),
+    CHECK (attempts <= max_attempts)
 );
 
 CREATE INDEX jobs_claim_idx

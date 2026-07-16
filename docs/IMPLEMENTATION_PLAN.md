@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F2 PostgreSQL Durability
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F3 OAuth Resource Server
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ROADMAP](./ROADMAP.md) · [ADR](./adr/)
 
@@ -35,7 +35,7 @@
 | D0 | Detailed Design | 상세설계·계획·검증·ADR | 완료 |
 | F0 | Foundation Core | package, domain, policy, memory UoW | 완료 (`G0~G1`) |
 | F1 | MCP Contract | Tools·Resources·Prompt와 in-memory protocol test | 완료 (`G2`, loopback) |
-| F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 진행: migration 초안만 작성 |
+| F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 완료: PostgreSQL 17.10 local G3 |
 | F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 예정 |
 | F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 예정 |
 | P0 | Planner Skeleton | Plan create/review workflow | Foundation 후 |
@@ -297,6 +297,8 @@ in-memory UoW를 production-shaped PostgreSQL adapter로 교체하고 durable Jo
 - migration tool 결정
 - ADR-0005 작성
 
+**2026-07-16 결정:** [ADR-0005](./adr/0005-postgresql-persistence-stack.md)에 따라 Psycopg 3 typed SQL과 async pool을 runtime에 사용하고 Alembic은 migration에만 사용한다. PostgreSQL 17.10에서 RLS/pool 실증 후 이 작업을 완료 처리한다.
+
 **중단 기준:** RLS context reset을 신뢰성 있게 증명하지 못하면 library를 교체한다.
 
 ### WP-F2.2 Schema and RLS
@@ -338,6 +340,8 @@ in-memory UoW를 production-shaped PostgreSQL adapter로 교체하고 durable Jo
 - backup/restore manifest
 
 **F2 exit:** `G3` 통과
+
+**2026-07-16 결과:** PostgreSQL 17.10에서 migration upgrade/downgrade, runtime RLS, repository contract, worker concurrency, backend loss, backup/restore를 검증했다. 상세 증적은 [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md)에 기록한다. PR CI와 PostgreSQL 18 matrix는 release validation으로 남긴다.
 
 ## 8. F3 — OAuth Resource Server
 
@@ -545,21 +549,14 @@ Next gate:
 
 ## 19. 현재 착수 범위
 
-이 문서 승인과 동시에 `F0 Foundation Core` 및 가능한 범위의 `F1 MCP Contract`를 시작한다.
-
-현재 환경에 실제 PostgreSQL과 기관 IdP가 없으므로:
-
-- F0/F1은 구현·자동검증한다.
-- F2용 migration과 port는 준비하되 durability 완료로 표시하지 않는다.
-- F3 production TokenVerifier는 interface와 fail-closed guard까지만 구현한다.
-- 실제 DB/OIDC 검증이 없으면 Foundation 전체 완료를 선언하지 않는다.
+`D0~F2`를 마쳤으며 현재 `F3 OAuth Resource Server`를 시작한다. PostgreSQL adapter는 구현됐지만 verified OAuth tenant identity와 lifecycle composition이 생기기 전 MCP production server에 연결하지 않는다.
 
 ### 2026-07-16 인계 상태
 
-- 완료: D0, F0, F1, CI workflow, distribution build
-- 준비됨: F2 migration 초안과 tenant/RLS 구조 test
-- 미구현·미검증: PostgreSQL adapter와 실제 RLS, OAuth TokenVerifier, remote Host 2종
-- 다음 change set: `CH-008 PostgreSQL migration`을 실제 PostgreSQL에서 실행하고 ADR-0005로 persistence library를 확정
+- 완료: D0, F0, F1, F2 local G3, PostgreSQL CI workflow, backup/restore runbook
+- 검증됨: PostgreSQL 17.10 migration·RLS·pool·repository·worker·backend loss·restore
+- 미구현·미검증: OAuth TokenVerifier, Membership resolution, protected resource metadata, remote Host 2종
+- 다음 change set: `CH-010 OAuth adapter`의 verifier와 negative token test
 
 ---
 
