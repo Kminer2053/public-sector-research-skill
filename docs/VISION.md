@@ -1,221 +1,205 @@
 # Public Sector Research MCP — 제품 비전
 
-> 문서 상태: Proposed · 기준일: 2026-07-16 · 제품 약칭: **PSR MCP**
+> 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 제품단계: **Public Preview 설계**
 
-구체 요구사항은 [PRD](./PRD.md), 기술 설계는 [ARCHITECTURE](./ARCHITECTURE.md), 구현 단계는 [ROADMAP](./ROADMAP.md)을 따른다.
+[PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md)
 
 ## 1. 한 줄 정의
 
-**PSR MCP는 공공분야 업무종사자가 MCP 호환 AI 클라이언트에서 공식 원문을 우선 조사하고, 주장과 근거를 검토·재사용하며, 변경과 책임을 추적할 수 있게 하는 다중 사용자 Evidence Research Service다.**
+**PSR MCP는 누구나 가입 없이 사용할 수 있고, 공신력 있는 공공자료를 우선 조사해 근거가 연결된 결과를 즉시 돌려준 뒤 사용자 content를 보관하지 않는 Privacy-First Public Research MCP다.**
 
-## 2. 저장소와 제품 경계
+## 2. 지금 해결할 문제
 
-이 제품은 기존 `planned-web-crawling-skill`의 v2가 아니다. 별도의 사용자와 운영 책임을 가진 신규 제품이다.
+공공정책·법령·제도·조달·기술기준을 조사하려는 사람은 다음 어려움을 겪는다.
 
-| 구분 | 기존 `planned-web-crawling-skill` | 신규 `public-sector-research-mcp` |
-|---|---|---|
-| 핵심 목표 | 처음 보는 웹 소스를 유연하게 탐색·수집 | 공공업무 판단에 쓸 수 있는 검토 가능한 근거 제공 |
-| 주요 사용자 | 개인 연구자·Codex 사용자 | 중앙·지방정부, 공공기관, 지원기관의 업무담당자와 Reviewer |
-| 기본 형태 | 로컬 Codex Skill·스크립트 | 원격 다중 사용자 MCP 서비스 + 최소 Review Console |
-| 우선 가치 | 탐색 범위와 수집 성능 | 공신력, 현행성, 추적성, 권한분리, 감사가능성 |
-| 저장 | 임의 프로젝트 폴더 snapshot | Tenant 격리 Evidence Store와 immutable object |
-| 실행 책임 | 사용자 개인 | 기관·Project·사용자·Reviewer 단위 책임 |
-| Protocol | Skill instruction과 CLI | MCP Tools·Resources·Prompts, Streamable HTTP |
+- 검색 결과가 많아도 어떤 자료가 공식 원문인지 판단하기 어렵다.
+- 기사와 블로그가 같은 보도자료를 반복 인용해 근거가 많아 보인다.
+- 법령·지침의 시행일, 관할, 적용대상과 현재 상태를 놓치기 쉽다.
+- 생성형 AI 답변은 빠르지만 어느 원문 구간을 근거로 했는지 불명확할 수 있다.
+- 전문 조사도구를 시험하려면 가입, 조직설정, 결제, 저장정책을 먼저 결정해야 한다.
 
-기존 코드에서 재사용할 수 있는 것은 fetch·parse·hash 같은 저수준 원리다. 접근 우회, 민감 header 보존, 이름 기반 덮어쓰기, 실패 격리 없는 실행 방식은 신규 제품으로 가져오지 않는다.
+현재 단계에서 가장 중요한 질문은 “기관용 Evidence Platform을 완성할 수 있는가?”가 아니다.
 
-## 3. 문제 배경
+> **실제 사람들이 이 MCP를 연결해 유용한 공공자료 조사 결과를 반복해서 받는가?**
 
-공공분야의 정책, 규정, 조달, 평가, 감사, 사업기획 업무는 다음 특성을 가진다.
+## 3. 제품 전략
 
-- 결론보다 “어느 기관의 어떤 원문을 근거로 했는가”가 중요하다.
-- 법령·지침·계획·보도자료는 시행일, 적용대상, 관할과 개정상태가 다르다.
-- 같은 보도자료를 여러 기사와 블로그가 재인용해 근거 수가 부풀려질 수 있다.
-- 보고서가 완성된 뒤 원문이 개정되면 기존 판단도 다시 검토해야 한다.
-- 여러 담당자와 외부 수행자가 같은 자료를 반복 검색하지만 조사 이력은 남지 않는다.
-- 생성형 AI가 빠르게 초안을 만들 수 있어도 사실, 해석, 권고, 최종 의사결정의 책임은 사람에게 있다.
-- 기관 자료와 Project 산출물은 사용자·조직·업무별 접근통제가 필요하다.
-
-일반 검색 서비스는 자료 발견에는 유용하지만 Project Memory, 원문 snapshot, passage-level citation, 검토 상태, 변경 영향을 제공하지 않는다. 범용 크롤러는 더 많은 자료를 모을 수 있지만 공공업무에 필요한 출처 위계와 책임 경계를 기본 제공하지 않는다.
-
-## 4. 제품 비전
-
-PSR MCP는 사용자가 이미 쓰는 AI 클라이언트에서 다음 흐름을 제공한다.
+제품은 수요가 증명되는 순서대로 성장한다.
 
 ```text
-업무 질문
-→ 공공업무 Research Profile 적용
-→ 조사 쟁점·관할·기준시점·완료조건 작성
-→ 담당자 계획 승인
-→ 공식 출처 Registry와 검색 결과에서 후보 탐색
-→ 정책을 지킨 수집과 immutable snapshot
-→ Passage·Claim·EvidenceLink·Score
-→ 상충·공백·추론 표시
-→ Reviewer 승인 또는 보완
-→ 보고서·인용자료·업무메모 생성
-→ Project Memory 축적
-→ 원문 변경과 영향받는 보고서 재검토
+Stage A Public Preview
+가입 없음 · 기본 무보관 · 즉시 결과 · 제한된 공개자료 조사
+
+        ↓ 저장·History에 대한 실제 사용자 수요
+
+Stage B Opt-in Account Beta
+선택 가입 · Personal Workspace · 저장을 켠 조사만 History·재사용
+
+        ↓ 반복 사용과 운영비 지불 의사
+
+Stage C Paid Persistent Service
+저장공간 · 높은 quota · 장기 조사 · 고급 Profile · export
+
+        ↓ 팀·기관 운영 수요
+
+Stage D Team / Public-Sector Enterprise
+기관 SSO · Organization · Review · 감사 · 보존정책 · 협업
 ```
 
-MCP는 단순한 wrapper가 아니라 제품의 공식 계약이다.
+OAuth, PostgreSQL, RLS와 durable Job foundation은 이미 구현된 미래 확장 자산이다. Public Preview에서는 사용자 content를 영구 저장하는 이유로 사용하지 않는다.
 
-- **Tools:** 조사 계획, 실행, 근거 검색, Review, 보고서 생성 같은 동작
-- **Resources:** plan, run, evidence, document, report, change를 안정적인 URI로 제공
-- **Prompts:** 공공정책 조사, 현행성 검토, 공식사례 벤치마킹 등 사용자 주도 workflow template
-- **Authorization:** 기관 Identity Provider와 연결된 사용자·Project·scope 경계
+## 4. Public Preview 경험
 
-AI 클라이언트가 바뀌어도 동일한 Evidence ID와 Review 이력이 유지되는 것이 제품의 핵심이다.
+사용자는 MCP를 연결한 뒤 바로 질문한다.
+
+```text
+사용자 질문
+→ 질문 범위와 기준일 확인
+→ 공식 출처 우선 검색
+→ 안전한 임시 작업공간에서 수집·분석
+→ 주장·출처 URL·원문 구간·한계가 포함된 결과 생성
+→ 같은 Tool 응답 또는 임시 result handle로 전달
+→ 원문·중간자료·결과 content 삭제
+```
+
+짧은 조사는 한 번의 `research.quick` 호출로 끝난다. 긴 조사는 `research.start → status → result`로 진행하지만 결과는 수령 후 또는 짧은 TTL 뒤 사라진다.
 
 ## 5. 핵심 철학
 
+### Useful Before Elaborate
+
+가입·대시보드·조직관리보다 조사 결과가 실제 업무에 도움이 되는지 먼저 검증한다.
+
 ### Official Sources First
 
-법령, 정부·공공기관, 국제기구, 표준기관, 공식 공시·기술문서를 우선한다. 기사·블로그·커뮤니티는 발견과 맥락 보조로 사용할 수 있지만 원 출처와 구분한다.
+법령, 정부·공공기관, 국제기구, 표준기관, 공식 공시와 공식 기술문서를 우선한다. 비공식 자료는 발견과 맥락 보조로 구분한다.
 
 ### Evidence Before Conclusions
 
-모든 주요 FACT Claim은 Snapshot의 Passage와 연결한다. 출처에 없는 해석·예측·제안은 `INFERENCE` 또는 `RECOMMENDATION`으로 표시한다.
+주요 사실은 출처 URL과 원문 구간을 함께 제시한다. 출처가 직접 말하지 않은 내용은 추론·제안으로 표시한다.
 
-### Currentness Is Part of Truth
+### Zero Retention by Default
 
-문서의 존재만으로 충분하지 않다. 현행 여부, 시행일, 기준시점, 적용대상과 개정 관계를 함께 관리한다.
+사용자의 질문, 검색어, 수집 원문, 추출문과 보고서 본문은 기본적으로 서비스 자산이 아니다. 결과 전달을 위해 필요한 동안만 임시 처리한다.
 
-### Human Approval for Accountable Decisions
+### User Owns the Result
 
-Model-controlled MCP Tool이라는 이유로 계획 승인이나 의사결정을 자동화하지 않는다. 조사계획, Evidence Review, 보고서 승인, destructive operation은 제품 수준의 사람 확인을 요구한다.
+결과는 사용자의 AI Host, 로컬 파일, Git 또는 사용자가 선택한 외부 저장소로 전달된다. 서비스가 자동으로 소유하거나 재사용하지 않는다.
 
-### Research Once, Reuse Institutionally
+### Safety Is the Public Price of Admission
 
-검색어, 출처, 제외 이유, Claim, Report, Review를 Project 자산으로 남겨 담당자가 바뀌어도 검증된 근거를 재사용한다.
+가입이 없기 때문에 IP quota, 비용 상한, SSRF 방어, parser 제한, TTL purge와 긴급 차단은 공개 전 필수다.
 
-### Tenant Isolation by Default
+### Persistence Must Be Earned
 
-모든 Project, Job, Resource, Object, Audit Event는 Organization과 사용자 authorization context에 묶인다. 추측 가능한 ID만으로 다른 조직 자료에 접근할 수 없어야 한다.
+History와 Evidence reuse는 내부 기대가 아니라 사용자의 명시적인 요청이 확인됐을 때만 만든다. 가입 후에도 저장은 opt-in이다.
 
 ### MCP-First, Client-Agnostic
 
-Codex, ChatGPT, Claude 계열 등 특정 AI UI에 제품 로직을 종속시키지 않는다. MCP adapter와 application service를 분리한다.
-
-### Explain Automation
-
-자동 점수, 중복 판정, 변경 분류, 후속 질문에는 판단 근거, rule version, confidence와 override 이력을 남긴다.
+특정 AI UI에 제품 로직을 종속시키지 않는다. Codex는 Tool-first로 지원하고, 다른 Host에서도 동일한 Tool schema와 결과 형식을 사용한다.
 
 ## 6. 주요 사용자
 
-| 사용자 | 대표 업무 | 필요한 제품 가치 |
+Public Preview는 직업이나 소속으로 가입을 제한하지 않는다.
+
+| 사용자 | 대표 질문 | 제공 가치 |
 |---|---|---|
-| 정책·기획 담당자 | 정책동향, 사업계획, 기본계획, 업무보고 | 공식자료 우선, 빠른 briefing, 재사용 |
-| 법무·규정 담당자 | 법령·지침 현행성, 적용대상, 의무/권고 검토 | 조항 locator, 시행일, 개정 영향 |
-| 조달·계약 담당자 | 제안요청서, 구매원칙, 계약 요구사항 | 공공조달 근거, 데이터권리, 업체종속 검토 |
-| 감사·평가 담당자 | 경영평가, 감사기준, 지표 근거 | 기준 문서 계보, 수치 정의, Review 이력 |
-| 디지털·AI 담당자 | AI·데이터 정책, 기술기준, 국내외 사례 | 공식 기술문서, 표준, 사례의 적용조건 |
-| 연구·용역 수행자 | 조사보고서와 정책연구 | Project 공유, citation bundle, provenance |
-| 관리자 | 사용자·Project·출처정책·보존관리 | Tenant/RBAC, audit, quota, source registry |
-| Reviewer·결재권자 | 계획·근거·보고서 승인 | 상충·공백·변경 diff, 책임 있는 승인 |
+| 공공기관·정부 업무담당자 | 정책·조달·평가·감사 기준 | 공식 원문과 적용조건 |
+| 기업·비영리 정책담당자 | 공공정책과 규제 동향 | 관할·시행일·공식자료 |
+| 연구자·학생 | 정책·제도 비교 | 재인용을 줄인 출처 묶음 |
+| 개발자·기획자 | 공공 AI·데이터 기준 | 공식 기술·정책문서 비교 |
+| 일반 시민 | 제도와 정부정책 이해 | 근거가 보이는 쉬운 설명 |
 
-## 7. 사용자 가치
+Stage B 이후에는 반복 사용자, Stage D에서는 팀·기관 관리자와 Reviewer가 추가된다.
 
-1. **업무시간 단축:** 이미 검토한 공식자료와 Claim을 다시 사용한다.
-2. **보고서 신뢰 향상:** 문장마다 원문 구간과 수집시점을 확인한다.
-3. **인수인계 가능성:** 개인 브라우저 기록이 아니라 Organization Project에 조사 맥락이 남는다.
-4. **변경 대응:** 기준 문서 개정 시 영향받는 Claim과 Report를 찾는다.
-5. **기관 통제:** AI 클라이언트와 무관하게 동일한 권한·Review·감사정책을 적용한다.
-6. **선택권:** 특정 LLM 또는 업무 UI를 교체해도 Evidence Store와 MCP 계약을 유지한다.
+## 7. 사용자에게 주는 현재 가치
 
-## 8. 성공한 상태의 모습
+1. 가입 없이 바로 시험할 수 있다.
+2. 일반 검색보다 공식 원문 비중이 높다.
+3. 답변과 함께 근거 URL·구간·기준일을 확인할 수 있다.
+4. 공식 원문 미확보, 상충, 불확실성을 숨기지 않는다.
+5. 질문과 조사 결과가 서비스에 장기 축적되지 않는다.
+6. 사용자는 받은 Markdown/JSON을 원하는 곳에 직접 저장한다.
 
-공공기관 담당자가 “AI 서비스 구매 원칙 초안”을 요청하면 다음이 일어난다.
+## 8. 성공한 상태
 
-1. MCP Prompt 또는 Tool이 관할, 기준일, 적용조직, 산출물을 확인한다.
-2. Planner가 법령, 개인정보, 공공조달, 데이터 권리, 기록 반환, 학습 재사용, 업체 종속을 분해한다.
-3. 담당자가 Review Console 또는 승인 가능한 MCP flow에서 계획을 확인한다.
-4. Server가 승인된 공식 출처 track을 대상으로 job을 시작하고 `research_run_id`를 반환한다.
-5. AI 클라이언트는 status tool과 run resource로 진행상태를 확인한다.
-6. 공식 원문, Snapshot, Passage, Score, 상충·공백이 Organization Evidence Store에 저장된다.
-7. Claim과 보고서가 Passage locator에 연결되고 원문 미확보 자료는 명시된다.
-8. Reviewer가 핵심 Claim을 승인한 뒤 보고서가 생성된다.
-9. 다른 담당자의 유사 과제는 기존 Evidence를 freshness와 함께 재사용한다.
-10. 기준 가이드가 개정되면 관련 Resource update와 Review queue가 생성된다.
+Public Preview의 성공은 기능 수가 아니라 실제 사용으로 판단한다.
 
-## 9. 공공성의 의미
+- MCP 연결 후 첫 유용한 결과까지 5분 이내다.
+- 완료된 조사 중 결과 수령률이 60% 이상이다.
+- 자발적 피드백에서 “업무에 도움이 됐다”가 60% 이상이다.
+- 채택한 근거의 공식 1차자료 비율이 70% 이상이다.
+- 주요 FACT 문장의 출처 연결률이 95% 이상이다.
+- 질문·원문·보고서 content가 TTL 이후 서버에 남은 사례가 0건이다.
+- 실제 사용자가 History·저장·재사용 기능을 자발적으로 요청한다.
 
-“공식자료 우선”은 정부 자료를 무조건 진실로 간주한다는 뜻이 아니다.
+수치는 초기 가설이며 운영 데이터를 통해 조정한다. 단, content 무보관과 안전 기준은 성장지표를 위해 낮추지 않는다.
 
-- 발행 권한과 법적 지위가 높은가?
-- 기준시점에 현행인가?
-- 질문의 관할과 대상에 적용되는가?
-- 원문이 직접 해당 Claim을 지지하는가?
-- 성과수치의 분모와 조건이 공개돼 있는가?
-- 다른 독립 자료와 충돌하는가?
+## 9. 지금 하지 않을 것
 
-PSR MCP는 이 질문을 구조화하고 사람이 검토할 수 있게 한다. 제품이 정책적 정답이나 법적 결론을 대신하지 않는다.
+- 최초 사용 전에 회원가입·기관승인 요구
+- 사용자 질문과 조사결과의 자동 영구 저장
+- Project Memory와 Living Report를 Public Preview에 구현
+- 팀·기관용 관리자 Console
+- 결제·요금제·저장공간 판매
+- 사용자 private document upload와 credential 수집
+- 캡차·로그인·paywall·접근제한 우회
+- 범용 검색엔진 또는 대규모 분산 crawler 개발
+- 완전 자동 법률·감사·조달 판단
+- 화려한 대시보드로 조사 품질을 대체
 
-## 10. 하지 않을 것
+## 10. Public Preview 제품 원칙
 
-- 범용 검색엔진·대규모 분산 crawler 자체 개발
-- 캡차, 로그인, paywall, 접근제한의 무단 우회
-- 유료·비공개 데이터에 대한 권한 없는 접근
-- 사용자 승인 없는 외부 network 수집과 destructive operation
-- AI에 의한 최종 법률·감사·조달 판단
-- 출처 없는 보고서 문장을 Evidence로 승격
-- 공공기관 자료라는 이유만으로 상충·오류 가능성을 숨김
-- MCP Tool 수를 늘리는 것을 제품 성과로 간주
-- AI 클라이언트 token을 downstream source에 전달
-- 초기부터 모든 기관 요구를 수용하는 거대한 SaaS 구축
-- 복잡한 graph DB와 시각화부터 구현
+1. 공개 사용 경로에는 계정과 Organization이 필요하지 않다.
+2. 질문·원문·보고서 본문은 PostgreSQL과 일반 log에 저장하지 않는다.
+3. 짧은 작업은 응답 즉시 반환하고 content를 폐기한다.
+4. 긴 작업은 opaque handle과 TTL이 있는 임시 저장만 사용한다.
+5. 성공적으로 결과를 전달하면 60초 이내 purge 대상으로 전환한다.
+6. 미수령 결과와 orphan 작업공간에는 강제 TTL이 있다.
+7. 검색·수집은 공개 HTTPS source에 한정하고 내부망 접근을 차단한다.
+8. 비용·시간·다운로드·결과 크기 상한을 넘으면 부분 결과와 한계를 반환한다.
+9. 사용량·보안 관찰은 content 없는 aggregate와 회전 HMAC counter로 제한한다.
+10. 사용자가 명시적으로 저장을 선택하기 전까지 서비스는 과거 조사를 재사용하지 않는다.
+11. OAuth·Tenant·영구저장은 선택 가입 단계의 adapter로 유지한다.
+12. 새 기능보다 결과의 유용성·근거 품질·삭제 신뢰성을 먼저 측정한다.
 
-## 11. 제품 원칙
+## 11. 성장 단계별 가치
 
-1. Organization과 Project가 모든 데이터의 소유 경계다.
-2. MCP Resource URI는 authorization context 안에서만 해석한다.
-3. Tool input/output은 versioned JSON Schema를 갖는다.
-4. 장기 작업은 짧은 Tool call과 명시적 application job으로 분리한다.
-5. 현재 실험 기능인 MCP Tasks는 핵심 의존성이 아니다.
-6. 원문은 immutable object, 관계와 상태는 transaction DB에 저장한다.
-7. HTTP 성공과 Evidence 성공을 구분한다.
-8. Claim, Evidence, Review, Report, Decision을 분리한다.
-9. Reviewer override는 원 판단을 삭제하지 않고 supersede한다.
-10. credential과 source token은 MCP client token과 분리한다.
-11. partial success를 보존하고 완전하지 않음을 명시한다.
-12. 한국어 업무 산출물과 영문 원문의 의미를 함께 보존한다.
-13. Project export는 raw 원문 제외를 기본으로 한다.
-14. protocol transport와 application service를 분리한다.
-15. client compatibility는 conformance test로 증명한다.
+| 단계 | 사용자가 얻는 것 | 서비스가 저장하는 것 |
+|---|---|---|
+| Public Preview | 가입 없는 조사, 즉시 결과 | 임시 content + 최소 비콘텐츠 운영정보 |
+| Account Beta | 선택 저장, History, 개인 Evidence reuse | 사용자가 저장을 선택한 조사 |
+| Paid Persistent | 장기 보관, 높은 quota, 고급 export | 계약된 저장공간과 운영 metadata |
+| Enterprise | 팀 공유, SSO, Review, 감사, 보존정책 | 기관 정책에 따른 격리 데이터 |
 
 ## 12. 1년 후 목표상태
 
-- 최소 2개 공공분야 조직이 pilot에서 반복 사용한다.
-- Codex 계열을 포함한 2개 이상의 MCP Host에서 같은 Project Evidence를 조회한다.
-- 원격 Streamable HTTP, 기관 IdP 연동, Tenant/RBAC, audit가 운영된다.
-- Government, Regulation, Procurement, Technology, Strategy Profile이 제공된다.
-- 공식 source registry와 source owner review workflow가 있다.
-- Project Memory, Evidence Score, Claim Review, Markdown/HTML/JSON export가 운영된다.
-- 기준문서 변경과 보고서 영향 검토가 가능하다.
-- Protocol 안정 버전과 차기 버전 adapter가 분리돼 있다.
-- 수집·보고서 생성보다 Evidence reuse, Review turnaround, stale resolution을 주요 metric으로 본다.
+- 공개 MCP가 최소 두 종류 Host에서 쉽게 연결된다.
+- 반복적으로 쓰는 실제 사용자가 존재하고 조사 유용성이 측정된다.
+- Public Preview는 기본 무보관 약속과 purge 검증을 유지한다.
+- 저장 수요가 확인되면 선택 가입과 Personal Workspace가 제공된다.
+- 유료화는 저장·장기실행·높은 quota에 대한 비용과 수요가 확인된 뒤 시작한다.
+- 기관 기능은 일반 공개 서비스의 사용성을 해치지 않는 별도 mode로 제공한다.
+- Government, Regulation, Procurement, Technology Profile이 순차적으로 확장된다.
+- 성과지표는 가입자 수보다 완료 조사, 결과 수령, 유용성, 공식 근거 비율을 우선한다.
 
 ## 13. 핵심 용어
 
 | 용어 | 정의 |
 |---|---|
-| Organization | 사용자, Project, 정책, quota, 보존기간을 공유하는 Tenant 경계 |
-| Project | 특정 업무·정책·사업의 조사 자산과 권한을 공유하는 공간 |
-| Membership | User와 Organization/Project Role의 연결 |
-| ResearchPlan | 질문, source track, 완료·중단조건, 비용, 승인상태를 가진 조사계획 |
-| ResearchRun | 승인된 Plan을 실행한 application job과 결과 단위 |
-| Source Registry | 공식 기관·domain·source type·검토상태를 관리하는 조직별/공통 registry |
-| Document | 제목·발행기관·식별자를 가진 논리 원문 |
-| Snapshot | 특정 시점에 확보한 immutable 원문 bytes와 수집 metadata |
-| Passage | Snapshot의 page·section·JSON Pointer 등 locator가 있는 근거 구간 |
-| Claim | 업무 산출물에서 검토할 사실·추론·권고 진술 |
-| EvidenceLink | Claim과 Passage의 지지·반박·한정·맥락 관계 |
-| Review | Plan, Evidence, Claim, Report를 승인·반려·보완 요청한 append-only 기록 |
-| MCP Tool | Model이 호출할 수 있는 versioned action contract |
-| MCP Resource | Host가 context로 읽는 URI 기반 Project data |
-| MCP Prompt | 사용자가 선택해 시작하는 공공업무 workflow template |
-| Scope | OAuth authorization이 허용하는 최소 capability |
-| Authorization Context | Organization, User, Role, Scope, Project restriction을 결합한 실행 경계 |
+| Public Preview | 가입 없이 제한된 공개자료 조사를 제공하는 현재 목표 단계 |
+| Zero Retention | 사용자 content를 영구 저장하지 않고 전달 또는 TTL 후 삭제하는 기본 정책 |
+| User Content | 질문, 검색어, 원문, 추출문, Passage, 보고서 본문 |
+| Operational Metadata | content를 포함하지 않는 상태, 시간, 크기 bucket, failure code, 비용 정보 |
+| Ephemeral Run | 임시 작업공간과 TTL을 가진 공개 조사 실행 |
+| Opaque Run Handle | 계정 없이 status/result를 조회하기 위한 추측 불가능한 일회성 식별자 |
+| Research Profile | 조사 유형별 공식 출처 우선순위, 질문분해, 완료조건 설정 |
+| Official Source | 법적·행정적·기술적 발행 권한이 확인되는 1차 또는 공식 자료 |
+| Citation | 출처 URL, 제목, 발행기관, 기준시점과 원문 구간을 결합한 인용정보 |
+| Opt-in Persistence | 사용자가 가입하고 특정 조사의 저장을 명시적으로 선택한 상태 |
+| Personal Workspace | Account Beta에서 개인이 저장한 조사만 관리하는 공간 |
+| Organization | Enterprise 단계에서 팀·기관의 권한과 데이터를 격리하는 경계 |
 
 ---
 
-이 제품은 “더 많이 긁는 crawler”가 아니라 “공공업무에서 다시 확인할 수 있는 근거를 안전하게 제공하는 MCP”로 성공 여부를 판단한다.
+이 제품은 처음부터 거대한 Evidence 플랫폼이 되는 것으로 성공하지 않는다. **사람들이 부담 없이 써 보고, 결과가 실제로 유용하며, 저장을 원할 만큼 다시 찾을 때** 다음 단계로 성장한다.

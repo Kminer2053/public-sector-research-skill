@@ -1,6 +1,8 @@
-# Foundation Data Dictionary
+# Foundation Persistent Data Dictionary
 
 > 기준일: 2026-07-16 · Schema revision: `0002_external_identity_membership` · 구현 기준: `c7064cd`
+>
+> 이 schema는 현재 구현된 Foundation과 미래 `ACCOUNT_OPT_IN`/`ENTERPRISE` mode의 persistent metadata용이다. `PUBLIC_EPHEMERAL` Public Preview의 질문·검색어·원문·Passage·보고서 본문은 이 schema에 저장하지 않는다. 공개 mode의 content lifecycle은 [ARCHITECTURE](../ARCHITECTURE.md)와 [ADR-0009](../adr/0009-public-zero-retention-first.md)을 따른다.
 
 [Architecture Data Model](../ARCHITECTURE.md) · [PostgreSQL Runbook](../runbooks/postgresql.md) · [Threat Model](../security/THREAT_MODEL.md)
 

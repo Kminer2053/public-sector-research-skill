@@ -1,568 +1,445 @@
 # Public Sector Research MCP — Product Requirements Document
 
-> 문서 상태: Proposed · 기준일: 2026-07-16 · 대상: MVP Internal Alpha → Public-Sector Pilot
+> 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 Release Target: **Public Preview**
 
-제품의 이유는 [VISION](./VISION.md), 구현 구조는 [ARCHITECTURE](./ARCHITECTURE.md), 단계별 계획은 [ROADMAP](./ROADMAP.md)을 따른다.
+[VISION](./VISION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md)
 
 ## 1. 문서 목적
 
-이 문서는 공공분야 다중 사용자를 위한 Evidence-First Research MCP의 제품 요구사항을 정의한다. 구현자는 다음을 추측하지 않아야 한다.
+이 문서는 누구나 가입 없이 사용하고 사용자 content를 보관하지 않는 Public Preview의 요구사항을 정의한다. 구현자는 다음을 추측하지 않아야 한다.
 
-- 누가 어떤 업무에서 쓰는가?
-- MCP Tool·Resource·Prompt가 무엇을 제공하는가?
-- 어떤 작업에 사람 승인이 필요한가?
-- Tenant와 Project 데이터가 어떻게 분리되는가?
-- 공신력, 현행성, 원문확보와 Evidence 품질을 어떻게 표현하는가?
-- long-running research를 protocol 실험 기능 없이 어떻게 실행하는가?
-- 어떤 상태가 MVP와 공공분야 Pilot의 완료를 의미하는가?
+- 사용자가 로그인하지 않고 어떻게 조사하는가?
+- 어떤 content가 임시 처리되고 언제 삭제되는가?
+- 긴 조사 결과를 연결 종료 뒤 어떻게 전달하는가?
+- 공개 endpoint의 남용·비용·SSRF를 어떻게 막는가?
+- 결과의 유용성과 근거 품질을 어떻게 검증하는가?
+- 어떤 사용자 증거가 생겨야 계정·History·유료 저장을 시작하는가?
 
 식별자:
 
-- `FR-nnn`: 기능 요구사항
-- `NFR-nnn`: 비기능 요구사항
-- `AC-nnn`: Acceptance Criterion
+- `FR-PUB-nnn`: Public Preview 기능 요구사항
+- `FR-ACC-nnn`: 선택 가입 단계 요구사항
+- `FR-PAID-nnn`: 유료 영구저장 단계 요구사항
+- `NFR-PUB-nnn`: Public Preview 비기능 요구사항
+- `AC-PUB-nnn`: Public Preview Acceptance Criterion
 - 우선순위: `Must`, `Should`, `Could`, `Won't`
-- 단계: `MVP`, `v1.0 Pilot`, `v1.5`, `v2`, `v3`
 
 ## 2. 제품 정의
 
-PSR MCP는 다음 세 부분으로 구성된다.
+Public Preview는 다음 세 부분으로 구성된다.
 
-1. **Remote MCP Server:** AI Host가 조사·근거·보고서 기능을 사용하는 공식 interface
-2. **Evidence Research Platform:** Planner, Collector, Evidence Store, Review, Report, Diff를 수행하는 application service
-3. **Review Console:** Tool 호출만으로 보장할 수 없는 사람 승인, 사용자·Project 관리, audit 확인을 위한 최소 web UI
+1. **Public MCP Gateway:** 로그인 없이 제한된 Research Tool을 제공한다.
+2. **Ephemeral Research Runtime:** Planner, Search, Collector, Parser, Evidence Composer, Writer를 임시 작업공간에서 실행한다.
+3. **Purge and Safety Control:** quota, SSRF, 비용 상한, TTL과 삭제 증거를 관리한다.
 
-MCP가 primary integration surface지만 제품은 “MCP server process 하나”가 아니다. 다중 사용자의 job, object, 권한과 Review를 운영하는 service다.
+현재 구현된 OAuth Resource Server, Organization/RLS, PostgreSQL durable Job은 폐기하지 않는다. Public Preview의 요청 경로에서는 content 저장을 위해 사용하지 않으며, Account Beta와 Enterprise mode에서 활성화한다.
 
-## 3. 배경과 확인된 출발점
+## 3. 목표 사용자
 
-기존 `adaptive-web-research` Skill은 probe-first 조사, `urllib` cookie session, HTML·JSON·PDF 구조 분석, 원문·SHA-256 snapshot의 가치가 검증됐다. 그러나 단일 사용자 로컬 script이며 다음은 제공하지 않는다.
-
-- Organization, User, Project Role, Tenant isolation
-- 원격 MCP transport, OAuth, scope, resource URI
-- concurrent research job과 durable status
-- Source Registry와 기관 관리자 정책
-- Claim·EvidenceLink·Review·Report DB
-- audit·retention·quota·backup·운영 monitoring
-
-따라서 신규 저장소는 기존 Skill을 그대로 package화하지 않는다. 저수준 수집 코드는 characterization과 보안 검토 후 adapter 단위로 선택 이식한다.
-
-## 4. 목표 사용자
-
-### 4.1 Primary Persona
-
-| Persona | 대표 업무 | 성공 기준 |
+| Persona | 대표 요구 | Public Preview 성공 |
 |---|---|---|
-| 정책·기획 담당자 | 정책동향, 업무보고, 기본계획, 신규사업 | 공식 근거가 연결된 초안을 업무시간 안에 생성 |
-| 규정·법무 담당자 | 법령·지침 현행성, 적용대상, 의무/권고 | 조항·시행일·개정상태를 추적 |
-| 조달·계약 담당자 | 구매원칙, RFP, 계약조건, 데이터 권리 | 공식 기준과 해외 공공사례를 요구사항에 연결 |
-| 감사·평가 담당자 | 지표, 평가편람, 감사기준, 실적 근거 | 기준문서와 수치 정의를 재검증 |
-| 디지털·AI 담당자 | AI 정책, 기술표준, 도입사례 | 공식 기술문서와 공공 적용조건을 비교 |
-| 연구·용역 수행자 | 정책연구와 조사보고서 | 기관 Project에서 근거와 Review를 공유 |
+| 공공업무 담당자 | 정책·제도·조달·평가 근거 조사 | 공식 원문이 연결된 초안을 바로 받음 |
+| 정책·규제 담당자 | 현행 법령·가이드 확인 | 기준일·관할·적용대상과 한계를 확인 |
+| 연구자·학생 | 공식자료 중심 비교조사 | 재인용을 줄인 출처와 비교표를 받음 |
+| 개발자·기획자 | 공공 AI·데이터 기준 조사 | 공식 정책·표준·기술문서를 함께 비교 |
+| 일반 사용자 | 공공정책을 근거와 함께 이해 | 쉬운 설명과 원문 링크를 받음 |
+| 반복 사용자(미래) | 과거 조사 저장·재사용 | Account Beta 대기수요로 기록 |
 
-### 4.2 Governance Persona
+사용자의 소속, 이메일, 기관 인증은 Public Preview 이용조건이 아니다.
 
-| Persona | 책임 |
-|---|---|
-| Organization Admin | 사용자, Role, quota, source policy, retention |
-| Research Manager | Project 개설, Plan 승인, budget 관리 |
-| Reviewer | Evidence·Claim·Report 검토와 승인 |
-| Security/Audit Viewer | 접근·Tool·export·Review audit 확인 |
-| Service Agent | 승인된 scope에서 자동 integration 수행 |
+## 4. 주요 사용 시나리오
 
-## 5. 주요 사용 시나리오
+### 4.1 빠른 조사
 
-### 5.1 공공정책 조사
+사용자가 “공공기관 생성형 AI 구매 시 데이터 권리 원칙을 알려줘”라고 요청한다. `psr.research.quick`은 범위와 기준일을 확인하고 제한된 공식 source를 조사한 뒤 Markdown과 구조화 citation을 같은 응답에 반환한다. 작업 content는 응답 완료 후 삭제한다.
 
-사용자가 MCP Host에서 “공공기관 생성형 AI 구매 원칙을 조사해줘”라고 요청한다. Prompt가 관할·기준일·산출물을 정리하고 `psr.research.plan.create`가 draft Plan을 만든다. 담당자가 승인한 뒤 `psr.research.run.start`가 job을 생성한다. Host는 status tool과 run Resource로 진행상태를 확인하고, 완료 후 Evidence와 report를 조회한다.
+### 4.2 긴 조사
 
-### 5.2 법령·지침 현행성 검토
+여러 PDF와 source가 필요한 요청은 `psr.research.start`가 opaque `run_handle`과 만료시각을 반환한다. 사용자는 `run.status`, `run.result`로 결과를 받는다. 성공적으로 전달한 content는 60초 이내 purge 대상으로 전환하며, 미수령 결과도 TTL 뒤 삭제한다.
 
-기존 Project의 Claim이 참조하는 법령·지침 Snapshot을 조회한다. Document version, effective date, freshness와 ChangeEvent를 확인하고 오래된 Claim을 Reviewer queue에 넣는다.
+### 4.3 부분 실패
 
-### 5.3 공식사례 벤치마킹
+일부 공식 source가 timeout·403·invalid document여도 성공한 근거로 결과를 만들고 실패 source와 조사 공백을 표시한다. 실패 content도 TTL 정책에 따라 삭제한다.
 
-정부·공공기관·국제기구·공식 기업자료를 source track으로 분리한다. 홍보성 성과수치의 분모와 적용조건을 Evidence Score rationale에 남기고, 재인용 기사 cluster는 독립 근거로 중복 계산하지 않는다.
+### 4.4 사용자가 결과를 저장
 
-### 5.4 Project 근거 재사용
+Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으로 반환해 AI Host, 로컬 파일, Git 또는 사용자가 선택한 저장소에 보관할 수 있게 한다.
 
-유사 질문 전에 `psr.evidence.search`가 Project 또는 Organization에서 접근 가능한 기존 Evidence를 찾는다. `CURRENT`, `CHECK_DUE`, `STALE`, `RESTRICTED`를 구분하고 재사용 또는 refresh를 제안한다.
+### 4.5 저장 기능 요청
 
-### 5.5 사람 검토
+사용자가 History·과거 조사 재사용을 원하면 기능 대기 의사를 content 없이 제출할 수 있다. 실제 수요 trigger를 충족한 뒤 Account Beta를 연다. Public Preview 사용자를 자동 가입시키거나 과거 content를 소급 저장하지 않는다.
 
-Plan 승인, Evidence override, report publish는 authenticated human action으로 기록한다. AI가 review tool을 호출해도 server는 user identity, scope, approval nonce 또는 Console confirmation을 검증한다.
+## 5. User Stories
 
-### 5.6 부분 실패
-
-일부 source가 timeout·403·empty body여도 성공 Snapshot과 Passage는 보존한다. Run은 `PARTIAL`이 되고 보고서에 질문 coverage, 실패 이유, 공식 원문 미확보가 표시된다.
-
-## 6. User Stories
-
-| ID | Story | 우선순위/단계 |
+| ID | Story | 우선순위 |
 |---|---|---|
-| US-001 | 담당자로서 익숙한 AI Host에서 기관의 Research MCP를 사용하고 싶다. | Must/MVP |
-| US-002 | 담당자로서 공식 원문과 정확한 page·section을 확인하고 싶다. | Must/MVP |
-| US-003 | Reviewer로서 조사 시작 전에 질문·source·budget을 승인하고 싶다. | Must/MVP |
-| US-004 | 관리자로서 사용자가 자기 Organization·Project 자료만 보게 하고 싶다. | Must/MVP |
-| US-005 | 담당자로서 연구가 오래 걸려도 Host 연결을 점유하지 않고 상태를 확인하고 싶다. | Must/MVP |
-| US-006 | 담당자로서 일부 수집 실패가 전체 조사 손실로 이어지지 않기를 원한다. | Must/MVP |
-| US-007 | 감사 담당자로서 누가 어떤 Tool로 무엇을 조회·생성·승인했는지 보고 싶다. | Must/v1.0 Pilot |
-| US-008 | 담당자로서 이전 Project Evidence를 freshness와 함께 재사용하고 싶다. | Should/v1.5 |
-| US-009 | Reviewer로서 기준문서 변경이 어떤 보고서에 영향을 주는지 알고 싶다. | Should/v1.5 |
-| US-010 | 기관 관리자로서 공식 Source Registry와 profile을 관리하고 싶다. | Must/v1.0 Pilot |
-| US-011 | Integration 담당자로서 두 MCP Host에서 같은 ID와 schema를 사용하고 싶다. | Must/v1.0 Pilot |
-| US-012 | 운영자로서 protocol upgrade가 application data migration을 강제하지 않기를 원한다. | Must/MVP |
+| US-PUB-001 | 사용자로서 가입 없이 MCP를 연결해 첫 조사를 하고 싶다. | Must |
+| US-PUB-002 | 공식자료와 원문 구간이 연결된 결과를 받고 싶다. | Must |
+| US-PUB-003 | 내 질문과 조사결과가 서버에 장기 보관되지 않기를 원한다. | Must |
+| US-PUB-004 | 긴 조사도 연결을 계속 유지하지 않고 결과를 받고 싶다. | Must |
+| US-PUB-005 | 일부 source 실패와 미확인 항목을 숨기지 않기를 원한다. | Must |
+| US-PUB-006 | 받은 결과를 Markdown/JSON으로 내 저장소에 보관하고 싶다. | Must |
+| US-PUB-007 | 운영자로서 한 사용자가 과도한 비용을 발생시키지 않게 하고 싶다. | Must |
+| US-PUB-008 | 반복 사용자로서 나중에 선택 가입해 저장과 재사용을 켜고 싶다. | Should/Future |
+| US-PUB-009 | 가입 후에도 저장하지 않는 조사 mode를 선택하고 싶다. | Should/Future |
 
-## 7. 제품 범위
+## 6. 제품 단계와 범위
 
-### 7.1 MVP In Scope
+### 6.1 Public Preview — In Scope
 
-- Remote Streamable HTTP MCP server
-- 현재 안정 MCP `2025-11-25` 호환
-- OAuth-protected resource server 구조와 개발용 IdP integration
-- Organization, User, Membership, Project, RBAC
-- PostgreSQL metadata store와 S3-compatible object store
-- Project·Plan·Run·Question·Document·Snapshot·Passage·Claim·EvidenceLink·Review·Report
-- Government Research Profile 1종과 curated source seed
-- 비동기 application job과 status/cancel tool
-- 공식 HTML·PDF·JSON 수집, validation, immutable snapshot
-- Evidence Score v1과 Claim/Passage 연결
-- Markdown·JSON report
-- core MCP Tools·Resources·Prompts
-- audit event와 basic quota/rate limit
-- 최소 Review Console: Plan 승인, Evidence 검토, report 승인
-- 기존 probe dataset import dry-run
+- 가입·로그인 없는 MCP Tool
+- Government/Public Research Profile v0
+- 공개 HTTPS source의 공식자료 우선 검색
+- 안전한 HTML·PDF·JSON 수집
+- 짧은 동기 조사와 긴 ephemeral Run
+- Markdown + JSON 결과
+- citation, 원문 구간, 기준일, conflict, gap, failure
+- IP·run·source별 quota와 concurrency 제한
+- SSRF·redirect·size·timeout·parser 제한
+- TTL purge와 삭제 검증
+- content 없는 aggregate metric과 선택 피드백
 
-### 7.2 v1.0 Pilot In Scope
+### 6.2 Public Preview — Out of Scope
 
-- 기관 IdP/OIDC 실연동
-- 운영 monitoring, backup/restore, admin console
-- Source Registry 관리와 domain allow/deny policy
-- 보안·개인정보·접근성 검토
-- 2개 이상 MCP Host conformance
-- HTML report와 citation bundle
-- Organization audit export
+- 회원가입, 로그인, 비밀번호, 소셜 계정
+- 개인 History, Project Memory, Living Report
+- 사용자 간 공유와 팀 Workspace
+- 원문·보고서 영구저장
+- 사용자 private file upload
+- 사용자 cookie·credential이 필요한 source
+- browser 자동화, captcha·paywall·로그인 우회
+- 결제, 저장공간 판매, SLA
+- 기관 관리자 Console과 human Review workflow
+- 의미 기반 Diff와 자동 report refresh
 
-### 7.3 Out of Scope
+### 6.3 Account Beta
 
-- 범용 검색엔진과 대규모 분산 crawler
-- 접근제한 우회, 유료 DB 무단 접근
-- 완전 자동 법률·감사·조달 결론
-- AI Model hosting 자체 개발
-- 공공기관 내부문서 DMS 전체 대체
-- 모든 기관을 위한 no-code workflow builder
-- graph DB를 primary store로 도입(MVP)
-- protocol RC 기능을 release blocker로 채택
-- MCP client 또는 범용 AI chat UI 자체 개발
+- OIDC 선택 가입
+- Personal Workspace 자동 생성
+- 조사별 `save=true` 명시적 저장
+- 저장한 조사 History·검색·Evidence reuse
+- 사용자 export/delete
+- 가입 상태에서도 기본 ephemeral mode 유지
 
-## 8. Role과 Scope
+### 6.4 Paid and Enterprise
 
-### 8.1 Organization Role
+- 저장 quota, 장기 retention, 높은 concurrency, 고급 Profile
+- billing, backup/restore, encryption key 운영
+- 팀·기관 Workspace, SSO, Membership, RLS
+- Review, audit export, legal hold, 관리 Console
 
-| Role | 핵심 권한 |
-|---|---|
-| `org_admin` | Membership, Project, profile, source policy, retention, audit |
-| `research_manager` | Project 관리, Plan 승인, budget, report publish |
-| `researcher` | Plan draft, Run 요청, Evidence/Claim 작성 |
-| `reviewer` | Evidence·Claim·Report Review |
-| `viewer` | 승인된 Resource와 Report read |
-| `service_agent` | 명시된 Project와 scope의 machine access |
+## 7. Public Tool 계약
 
-### 8.2 OAuth Scope
+### 7.1 Tool Catalog
 
-| Scope | 기능 |
-|---|---|
-| `project:read` | 접근 가능한 Project 목록·metadata |
-| `research:plan` | Plan draft와 수정 |
-| `research:run` | 승인된 Plan 실행·상태·cancel |
-| `evidence:read` | Evidence search/get |
-| `evidence:review` | Evidence·Claim Review |
-| `report:write` | report build·refresh |
-| `report:publish` | 승인된 report publish/export |
-| `admin:organization` | 사용자·정책·audit 관리 |
-
-Role은 scope의 상한이며 access token scope가 실제 호출 권한을 더 좁힌다. Project membership restriction을 추가 적용한다.
-
-## 9. 기능 요구사항
-
-### 9.1 Organization·Project·Authorization
-
-| ID | 요구사항 | 단계 | Acceptance Criteria |
+| Tool | 입력 | 출력 | content retention |
 |---|---|---|---|
-| FR-001 | 모든 domain row와 object는 `organization_id` 경계를 가져야 한다. | MVP | 다른 Organization token으로 ID를 알아도 `NOT_FOUND_OR_FORBIDDEN`이다. |
-| FR-002 | Membership은 Organization Role과 선택적 Project restriction을 가져야 한다. | MVP | Project 미가입 사용자는 resource URI를 읽을 수 없다. |
-| FR-003 | MCP request마다 token audience, issuer, expiry, scope를 검증해야 한다. | MVP | 다른 resource용 token은 401/403으로 거부된다. |
-| FR-004 | MCP client token을 downstream source/API로 전달하지 않아야 한다. | MVP | integration test에서 downstream request에 client bearer token이 없다. |
-| FR-005 | Organization Admin은 Console/API에서 Project와 Membership을 관리해야 한다. | MVP | model-controlled MCP Tool로 Organization Admin action을 노출하지 않는다. |
-| FR-006 | 모든 write는 actor, auth context, Project, operation ID를 audit해야 한다. | MVP | Review와 report에서 원 호출자를 찾을 수 있다. |
+| `psr.research.quick` | question, as_of_date?, profile?, output_format? | answer, citations, gaps, failures | 응답 완료 후 purge |
+| `psr.research.start` | question, as_of_date?, profile?, budget? | run_handle, status, expires_at | TTL 작업공간 |
+| `psr.research.run.status` | run_handle | status, progress bucket, expires_at | content 없음 |
+| `psr.research.run.result` | run_handle, consume=true | answer, citations, gaps, failures | 전달 뒤 purge |
+| `psr.research.run.cancel` | run_handle | cancelled, purge_pending | 즉시 purge |
+| `psr.service.policy` | 없음 | limits, retention summary, supported profiles | 없음 |
+| `psr.feedback.submit` | feedback_token, helpful, save_feature_interest? | accepted | 질문·결과 미포함 |
 
-### 9.2 Research Planning
+기존 Foundation의 Project/Run Tool은 Account/Enterprise adapter용으로 유지하되 Public Preview catalog에서는 노출하지 않는다.
 
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| FR-010 | Plan은 질문, decision context, 관할, 기준일, 대상, 산출물, profile을 입력받는다. | MVP | 필수값이 모호하면 `NEEDS_INPUT`을 반환한다. |
-| FR-011 | Plan은 의사결정 질문과 계층형 ResearchQuestion을 분리한다. | MVP | 각 Question에 evidence type과 source track이 있다. |
-| FR-012 | Plan은 source/request/time/cost budget과 stop condition을 포함한다. | MVP | budget 초과 전 Job이 `STOPPED_BUDGET`을 기록한다. |
-| FR-013 | Government Profile은 법령, 정책, 개인정보, 조달, 감사·평가, 공식사례 track을 제공한다. | MVP | 구매원칙 scenario에서 관련 track이 생성된다. |
-| FR-014 | Plan은 draft와 approved version을 immutable 보존한다. | MVP | 승인 후 수정은 새 version과 Review를 요구한다. |
-| FR-015 | Plan approval은 `research_manager` 이상의 authenticated human action이어야 한다. | MVP | AI service identity만으로 approval할 수 없다. |
+### 7.2 Result Schema
 
-### 9.3 비동기 Research Run
+모든 조사 결과는 최소 다음을 포함한다.
 
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| FR-020 | `run.start`는 승인된 Plan에서 durable Job을 생성하고 빠르게 `run_id`를 반환한다. | MVP | 2초 이내 accepted response, 실제 수집은 worker가 수행한다. |
-| FR-021 | Job은 Organization·Project·initiator auth context에 묶인다. | MVP | 다른 context에서 status/result/cancel이 거부된다. |
-| FR-022 | Host는 `run.status`와 Run Resource로 상태·진행·실패를 조회한다. | MVP | polling이 idempotent하고 cursor/limit이 있다. |
-| FR-023 | Job state는 `QUEUED`, `RUNNING`, `INPUT_REQUIRED`, `PARTIAL`, `SUCCEEDED`, `FAILED`, `CANCELLED`다. | MVP | terminal state는 다시 변경되지 않는다. |
-| FR-024 | 취소는 권한과 현재상태를 확인하고 cooperative cancellation을 수행한다. | MVP | terminal Job cancel은 execution error를 반환한다. |
-| FR-025 | MCP Tasks가 없어도 전체 flow가 동작해야 한다. | MVP | `execution.taskSupport=forbidden`으로 core client test가 통과한다. |
-| FR-026 | 향후 Tasks adapter는 application Job ID와 protocol Task ID를 분리한다. | v2 | protocol upgrade가 domain Job migration을 요구하지 않는다. |
-
-### 9.4 Source Registry·수집
-
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| FR-030 | Source Registry는 기관, domain, source type, jurisdiction, official status, owner review를 저장한다. | MVP | 결과에서 curated/observed/unverified source가 구분된다. |
-| FR-031 | SearchResult는 source tier와 원 출처 후보를 표시한다. | MVP | 비공식 자료가 공식 자료로 표시되지 않는다. |
-| FR-032 | Collector는 policy, rate, allowed domain, timeout, retry를 적용한다. | MVP | 금지 domain은 network 요청 전에 차단된다. |
-| FR-033 | HTTP 200 empty/login/error page를 유효 Evidence로 만들지 않는다. | MVP | invalid content는 typed failure다. |
-| FR-034 | HTML·PDF·JSON·text를 판별하고 original bytes와 SHA-256을 저장한다. | MVP | octet-stream PDF도 magic으로 식별한다. |
-| FR-035 | 일부 source 실패 시 성공 결과를 commit하고 Run을 `PARTIAL`로 둔다. | MVP | 실패 source만 retry할 수 있다. |
-| FR-036 | Cookie, Authorization, Set-Cookie, signed query를 metadata와 log에서 redact한다. | MVP | seeded secret scan 0건이다. |
-
-### 9.5 Evidence·Review
-
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| FR-040 | Snapshot은 immutable object이며 Document version과 capture method를 가진다. | MVP | 동일 bytes는 중복 object를 만들지 않는다. |
-| FR-041 | Passage는 page, heading path, char range 또는 JSON Pointer locator를 가진다. | MVP | EvidenceLink 대상 Passage locator completeness 100%다. |
-| FR-042 | Claim은 `FACT`, `INFERENCE`, `RECOMMENDATION`, `DECISION`, `QUESTION`을 구분한다. | MVP | report에서 inference가 fact처럼 표시되지 않는다. |
-| FR-043 | EvidenceLink는 `SUPPORTS`, `CONTRADICTS`, `QUALIFIES`, `CONTEXT`를 지원한다. | MVP | 한 Claim에 상충 Evidence를 함께 연결한다. |
-| FR-044 | Score는 권위성, 1차성, 직접성, 현행성, 원문확보, 독립성, 구체성, 적용범위를 차원별 설명과 저장한다. | MVP | 총점만 있는 score는 저장되지 않는다. |
-| FR-045 | Review는 append-only이며 override가 이전 판단을 supersede한다. | MVP | 수정·삭제로 과거 Review를 숨길 수 없다. |
-| FR-046 | 공식 원문 미확보, 단일 source, stale, unresolved conflict를 gap으로 표시한다. | MVP | report에 limitation이 자동 포함된다. |
-
-### 9.6 Report와 Reuse
-
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| FR-050 | Report는 Claim ID와 Evidence dependency manifest를 가져야 한다. | MVP | ReportSection에서 사용 Passage까지 탐색 가능하다. |
-| FR-051 | Markdown·JSON report는 scope, 기준일, coverage, conflicts, gaps, failures, citations를 포함한다. | MVP | 부분성공 report가 완전한 것처럼 표시되지 않는다. |
-| FR-052 | report build는 unlinked FACT를 lint한다. | MVP | unlinked FACT는 publish gate를 통과하지 못한다. |
-| FR-053 | Project Memory는 Question, Query, Source, exclusion, Claim, Review, Report를 검색한다. | v1.5 | 유사 질문에 reuse candidate와 freshness가 표시된다. |
-| FR-054 | ChangeEvent가 영향받는 Claim과 ReportSection을 `REVIEW_REQUIRED`로 만든다. | v1.5 | layout-only 변경은 impact를 전파하지 않는다. |
-| FR-055 | export는 raw original 제외가 기본이고 citation bundle을 제공한다. | v1.0 Pilot | bundle에 absolute path와 secret이 없다. |
-
-## 10. MCP Tool 요구사항
-
-### 10.1 Naming·Schema 정책
-
-- 이름은 `psr.<domain>.<action>` 형식의 ASCII와 dot을 사용한다.
-- 모든 Tool은 `inputSchema`, `outputSchema`, title, 한국어·영어 description, annotations를 갖는다.
-- Tool output은 `structuredContent`와 짧은 text summary를 함께 제공한다.
-- list 결과 순서는 deterministic하게 유지한다.
-- Tool은 authorization을 annotations에 의존하지 않는다. annotation은 UI hint일 뿐이다.
-- 모든 write input은 `idempotency_key` 또는 entity `expected_version`을 요구한다.
-
-### 10.2 MVP Tool Catalog
-
-| Tool | Scope | Annotation 요약 | 입력 | 출력 |
-|---|---|---|---|---|
-| `psr.project.list` | `project:read` | read-only, closed-world | cursor, limit | Project summaries |
-| `psr.project.get` | `project:read` | read-only, closed-world | project_id | Project/profile/role |
-| `psr.research.plan.create` | `research:plan` | additive, closed-world | project, question, context, profile | draft plan ID + resource link |
-| `psr.research.plan.get` | `project:read` | read-only | plan_id/version | plan + Review status |
-| `psr.research.plan.submit_review` | `research:plan` + human | write, non-destructive | plan, verdict, approval nonce | Review ID, approved version |
-| `psr.research.run.start` | `research:run` | write, open-world, task forbidden | approved_plan_id, idempotency_key | run_id, status URI |
-| `psr.research.run.status` | `project:read` | read-only | run_id | status, progress, failures |
-| `psr.research.run.cancel` | `research:run` | destructive | run_id, reason, expected_version | cancelled state |
-| `psr.evidence.search` | `evidence:read` | read-only, closed-world | project, query, filters, cursor | Evidence summaries |
-| `psr.evidence.get` | `evidence:read` | read-only | evidence_id | Claim, Passage, Score, Citation |
-| `psr.evidence.submit_review` | `evidence:review` + human | write, non-destructive | target, verdict, comment, nonce | Review ID |
-| `psr.report.build` | `report:write` | additive, closed-world | run_id, template, format | report_id, status/resource |
-| `psr.report.get` | `project:read` | read-only | report_id/version | report metadata/resource link |
-
-`plan.submit_review`와 `evidence.submit_review`는 MCP Host의 confirmation만 믿지 않는다. Console 또는 기관 approval service가 발급한 짧은 수명의 nonce와 human subject를 검증한다.
-
-### 10.3 Tool Error
-
-- unknown tool·malformed JSON-RPC: protocol error
-- schema는 맞지만 날짜·권한대상·상태가 잘못됨: Tool Execution Error, `isError=true`
-- retryable failure는 `retryable`, `retry_after`, `operation_id`를 structured output에 포함
-- 내부 stack trace, token, raw upstream body는 반환하지 않음
-
-### 10.4 운영·개발 CLI
-
-일반 사용자의 primary interface는 MCP와 Review Console이다. `psrctl`은 운영자·개발자용이며 MCP authorization을 우회하는 별도 business interface가 아니다.
-
-| Command | 용도 | 주요 입력 | 출력/생성물 |
-|---|---|---|---|
-| `psrctl serve mcp` | MCP Gateway 기동 | config reference, bind | structured startup log |
-| `psrctl serve worker` | Worker 기동 | queue, concurrency | worker health/log |
-| `psrctl db migrate` | 승인된 DB migration | target revision | applied revision JSON |
-| `psrctl profile validate <file>` | Profile schema·merge 검사 | YAML/JSON file | validation JSON |
-| `psrctl source import <file>` | 검토용 source seed import | signed/owned manifest | dry-run diff; `--apply` 시 audit |
-| `psrctl legacy inspect <path>` | legacy artifact dry-run 분석 | read-only directory | import manifest와 warning |
-| `psrctl doctor` | dependency·DB·object·IdP 점검 | config reference | redacted diagnostic JSON |
-| `psrctl conformance` | protocol/schema smoke | endpoint, protocol version | compatibility report |
-
-정책:
-
-- 기본 output은 사람이 읽는 text, `--json`은 versioned machine output이다.
-- `--dry-run`이 mutation command의 기본이며 `--apply`는 명시해야 한다.
-- exit code는 `0` 성공, `2` input/config, `3` authorization/policy, `4` dependency unavailable, `5` partial, `10` internal이다.
-- token·secret·raw protected content는 argument나 output에 직접 쓰지 않고 secret reference를 사용한다.
-- production mutation은 operator identity와 operation ID를 AuditEvent에 남긴다.
-- end-user research command는 `psrctl`에 중복 구현하지 않는다. 같은 기능을 MCP와 CLI가 서로 다른 정책으로 실행하는 것을 막기 위함이다.
-
-## 11. MCP Resource 요구사항
-
-### 11.1 URI
-
-```text
-psr://projects/{project_id}
-psr://projects/{project_id}/plans/{plan_id}
-psr://projects/{project_id}/runs/{run_id}
-psr://projects/{project_id}/documents/{document_id}
-psr://projects/{project_id}/snapshots/{snapshot_id}/metadata
-psr://projects/{project_id}/passages/{passage_id}
-psr://projects/{project_id}/evidence/{evidence_link_id}
-psr://projects/{project_id}/reports/{report_id}/versions/{version}
-psr://projects/{project_id}/changes/{change_event_id}
+```json
+{
+  "schema_version": "1.0",
+  "summary": "한국어 요약",
+  "findings": [
+    {
+      "claim": "검토 가능한 주장",
+      "kind": "FACT",
+      "citation_ids": ["cit-1"],
+      "confidence": "HIGH"
+    }
+  ],
+  "citations": [
+    {
+      "id": "cit-1",
+      "title": "원문 제목",
+      "publisher": "발행기관",
+      "url": "https://...",
+      "retrieved_at": "RFC3339",
+      "locator": "제3조 또는 p.12",
+      "excerpt": "저작권 한도 안의 짧은 근거 구간",
+      "source_tier": "OFFICIAL_PRIMARY"
+    }
+  ],
+  "gaps": [],
+  "conflicts": [],
+  "failures": [],
+  "retention": {
+    "server_saved": false,
+    "purge_state": "PURGE_PENDING"
+  }
+}
 ```
 
-URI에 Organization ID를 노출하지 않는다. Server가 authorization context와 Project ownership을 결합해 resolve한다.
+### 7.3 Run Handle
 
-### 11.2 정책
+- 최소 192-bit 이상의 cryptographic random opaque value다.
+- 사용자·질문·URL을 encode하지 않는다.
+- status/result/cancel capability로만 사용한다.
+- log에는 전체 handle을 남기지 않고 앞 8자도 보안 log에 저장하지 않는다.
+- 만료 후 `RUN_EXPIRED_OR_NOT_FOUND`를 반환하며 존재 여부를 더 노출하지 않는다.
+- Public Preview handle은 갱신·공유·복구할 수 없다.
 
-- `resources/list`는 접근 가능한 Project 범위만 반환한다.
-- list/read는 cursor, size limit, content classification을 적용한다.
-- Passage와 Report는 text Resource가 기본이다.
-- raw Snapshot은 list 기본 제외이며 별도 권한과 정책에 따라 expiring handle만 제공한다.
-- Resource annotations에는 audience, priority, lastModified를 제공한다.
-- `resources/subscribe`와 change notification은 v1.5에서 도입한다.
-- Resource link가 Tool result에 포함돼도 별도 authorization check를 생략하지 않는다.
+## 8. 기능 요구사항
 
-## 12. MCP Prompt 요구사항
+### 8.1 Public Access
 
-Prompts는 사용자가 선택하는 workflow template이며 business rule이나 authorization을 대체하지 않는다.
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-001 | 공개 Tool은 계정 없이 호출 가능해야 한다. | Must | OAuth token 없이 quick/policy 호출 성공 |
+| FR-PUB-002 | 공개 mode와 account/enterprise mode를 구성으로 분리해야 한다. | Must | public mode가 Membership DB를 조회하지 않음 |
+| FR-PUB-003 | 관리·영구저장 Tool은 public catalog에 없어야 한다. | Must | list 결과에 Project/Admin Tool 0개 |
+| FR-PUB-004 | 서비스 정책·한도·무보관 약속을 Tool로 조회할 수 있어야 한다. | Must | `service.policy`가 TTL과 제한을 반환 |
 
-| Prompt name | 목적 | 주요 argument |
+### 8.2 Planning and Research
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-010 | question은 10~4000자로 제한한다. | Must | 범위 밖 입력은 network 전에 거부 |
+| FR-PUB-011 | 기준일, 관할, 필요한 근거 유형을 최소 계획으로 만든다. | Must | 결과에 실제 적용된 scope가 표시됨 |
+| FR-PUB-012 | Government Profile은 법령·정부정책·공공기관·국제표준 track을 제공한다. | Must | 공식 track이 비공식 track보다 우선 |
+| FR-PUB-013 | source·시간·byte·document budget과 stop condition을 적용한다. | Must | budget 초과가 partial로 종료 |
+| FR-PUB-014 | source content를 instruction으로 실행하지 않는다. | Must | prompt-injection fixture가 정책을 변경하지 못함 |
+
+### 8.3 Collection Safety
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-020 | 공개 HTTPS URL만 수집한다. | Must | HTTP·file·ftp·data scheme 차단 |
+| FR-PUB-021 | DNS resolve와 모든 redirect에서 private/link-local/loopback/metadata IP를 차단한다. | Must | SSRF corpus 100% 차단 |
+| FR-PUB-022 | user cookie, Authorization, client token을 upstream에 전달하지 않는다. | Must | seeded credential leakage 0 |
+| FR-PUB-023 | robots.txt·약관·저작권·접근제한 상태를 typed policy result로 남긴다. | Must | 우회수집 없이 limitation 표시 |
+| FR-PUB-024 | response·압축해제·PDF page·parser time에 상한을 둔다. | Must | bomb fixture가 process를 고갈시키지 않음 |
+| FR-PUB-025 | 공식 원문 미확보를 결과에서 명시한다. | Must | 대체 기사만 있을 때 gap 생성 |
+
+### 8.4 Evidence and Output
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-030 | FACT finding은 citation과 연결한다. | Must | citation 없는 FACT 0개 또는 gap 처리 |
+| FR-PUB-031 | 공식·비공식, 1차·재인용을 구분한다. | Must | 재인용 cluster가 독립 근거로 중복 계산되지 않음 |
+| FR-PUB-032 | 원문 locator와 짧은 excerpt를 제공한다. | Must | 채택 citation locator completeness 95% 이상 |
+| FR-PUB-033 | FACT·INFERENCE·RECOMMENDATION을 구분한다. | Must | 추론이 FACT로 출력되지 않음 |
+| FR-PUB-034 | conflicts, gaps, failures, as-of date를 항상 출력한다. | Must | 빈 경우도 명시적 배열 |
+| FR-PUB-035 | Markdown과 JSON을 지원한다. | Must | 두 형식의 핵심 claim/citation ID 일치 |
+
+### 8.5 Ephemeral Lifecycle
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-040 | 질문·검색어·원문·보고서를 영구 DB와 일반 log에 저장하지 않는다. | Must | seeded canary scan 0건 |
+| FR-PUB-041 | raw source는 결과 조립 후 우선 삭제한다. | Must | 완료 Run의 raw file 0개 |
+| FR-PUB-042 | 성공적으로 수령한 결과는 60초 이내 purge 대상으로 표시한다. | Must | consume test 통과 |
+| FR-PUB-043 | 미수령 결과는 60분, 작업공간은 절대 2시간 내 삭제한다. | Must | fake clock TTL test 통과 |
+| FR-PUB-044 | startup 시 만료 orphan 작업공간을 삭제한다. | Must | crash/restart purge test 통과 |
+| FR-PUB-045 | 삭제 실패는 재시도하고 content 없는 deletion failure metric을 남긴다. | Must | transient failure 후 eventual purge |
+| FR-PUB-046 | 사용자에게 정확한 purge 상태와 만료시각을 알린다. | Must | 결과 schema에 retention block |
+
+### 8.6 Abuse and Cost
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-050 | IP, anonymous client bucket, run 기준 rate/concurrency limit을 동시에 적용한다. | Must | token/handle 변경으로 IP quota 우회 불가 |
+| FR-PUB-051 | source host별 rate와 전체 outbound concurrency를 제한한다. | Must | 한 source가 worker를 독점하지 않음 |
+| FR-PUB-052 | 1회 조사 비용·시간 상한을 초과하면 partial 종료한다. | Must | 무제한 retry 없음 |
+| FR-PUB-053 | 운영자가 public start/collection을 즉시 중지하는 kill switch를 가진다. | Must | 기존 결과 조회·purge는 계속 가능 |
+| FR-PUB-054 | abuse counter는 회전 HMAC key와 TTL을 사용한다. | Must | raw IP·question이 app DB에 없음 |
+
+### 8.7 Feedback
+
+| ID | 요구사항 | 우선순위 | Acceptance Criteria |
+|---|---|---|---|
+| FR-PUB-060 | 결과마다 content와 분리된 일회성 feedback token을 제공한다. | Should | token에서 run/question 복원 불가 |
+| FR-PUB-061 | helpful 여부와 저장기능 관심만 기본 수집한다. | Should | free-text는 기본 비활성 |
+| FR-PUB-062 | 피드백을 조사 content와 join하지 않는다. | Must | DB 관계와 log correlation 없음 |
+
+### 8.8 Future Account and Persistence
+
+| ID | 요구사항 | 단계 |
 |---|---|---|
-| `public_policy_research` | 공공정책 조사 시작 | project, question, jurisdiction, as_of_date, output |
-| `regulation_currentness_check` | 법령·지침 현행성 확인 | document/claim, jurisdiction, as_of_date |
-| `official_case_benchmark` | 공식사례 비교 | theme, organizations, metrics, period |
-| `evidence_review` | Claim·Evidence 검토 | target ID, review criteria |
-| `change_impact_review` | 변경 영향 검토 | ChangeEvent ID, report scope |
+| FR-ACC-001 | OIDC 가입은 저장기능을 원하는 사용자의 선택이어야 한다. | Account Beta |
+| FR-ACC-002 | 가입 후에도 ephemeral mode가 기본이어야 한다. | Account Beta |
+| FR-ACC-003 | `save=true`인 조사만 Personal Workspace에 저장한다. | Account Beta |
+| FR-ACC-004 | 사용자는 저장된 조사 export/delete를 수행할 수 있어야 한다. | Account Beta |
+| FR-ACC-005 | History·Evidence reuse는 저장된 조사에만 적용한다. | Account Beta |
+| FR-PAID-001 | quota·retention·가격·삭제정책을 구매 전에 명시한다. | Paid |
+| FR-PAID-002 | 저장공간과 장기 Job에 billing meter를 적용한다. | Paid |
+| FR-PAID-003 | Organization/SSO/RLS/Review는 팀·기관 mode에서 제공한다. | Enterprise |
 
-Prompt argument는 autocomplete가 가능하되 권한 없는 Project ID를 제안하지 않는다.
-
-## 13. 사용자 흐름
-
-```mermaid
-flowchart TD
-    U["공공업무 담당자"] --> H["MCP Host"]
-    H --> A["OAuth/OIDC Authorization"]
-    A --> P["Prompt 또는 plan.create"]
-    P --> D["Draft ResearchPlan Resource"]
-    D --> R{"사람 Plan 승인"}
-    R -- "보완" --> P
-    R -- "승인" --> S["run.start"]
-    S --> J["Durable Research Job"]
-    J --> C["공식 Source 수집·검증"]
-    C --> E["Evidence Store"]
-    E --> V{"Evidence Review"}
-    V -- "보완" --> J
-    V -- "승인" --> B["report.build"]
-    B --> O["Report Resource·Export"]
-    H -->|"status/read/search"| J
-    H -->|"resource context"| E
-```
-
-## 14. 상태 모델
-
-### 14.1 ResearchPlan
-
-`DRAFT → REVIEW_REQUIRED → APPROVED | CHANGES_REQUESTED | REJECTED → SUPERSEDED`
-
-### 14.2 ResearchRun
+## 9. 상태 모델
 
 ```mermaid
 stateDiagram-v2
     [*] --> QUEUED
     QUEUED --> RUNNING
-    RUNNING --> INPUT_REQUIRED
-    INPUT_REQUIRED --> RUNNING
     RUNNING --> PARTIAL
     RUNNING --> SUCCEEDED
     RUNNING --> FAILED
     QUEUED --> CANCELLED
     RUNNING --> CANCELLED
-    PARTIAL --> RUNNING: retry failed work
-    SUCCEEDED --> [*]
-    FAILED --> [*]
-    CANCELLED --> [*]
+    PARTIAL --> RESULT_READY
+    SUCCEEDED --> RESULT_READY
+    RESULT_READY --> DELIVERED: result consume
+    RESULT_READY --> EXPIRED: TTL
+    FAILED --> PURGE_PENDING
+    CANCELLED --> PURGE_PENDING
+    DELIVERED --> PURGE_PENDING
+    EXPIRED --> PURGE_PENDING
+    PURGE_PENDING --> PURGED
 ```
 
-`PARTIAL`은 terminal report 생성이 가능하지만 retry를 통해 다시 `RUNNING`이 될 수 있는 application 상태다. protocol Task 상태와 동일하다고 가정하지 않는다.
+`PURGED`가 content lifecycle의 최종 상태다. Operational metadata는 별도 TTL로 남을 수 있지만 question, source body, extracted text, result body를 포함하지 않는다.
 
-## 15. 비기능 요구사항
+## 10. 오류·부분실패
 
-| ID | 요구사항 | 단계 | Acceptance Criteria |
-|---|---|---|---|
-| NFR-001 | Python 3.12를 production 기준으로 검토하고 최소 지원버전을 ADR로 고정한다. | MVP | CI matrix와 dependency support가 일치한다. |
-| NFR-002 | 현재 안정 MCP `2025-11-25` conformance를 통과해야 한다. | MVP | 2개 Host smoke와 protocol test suite를 통과한다. |
-| NFR-003 | transport adapter가 domain/application layer를 침범하지 않아야 한다. | MVP | protocol upgrade가 DB entity를 변경하지 않는다. |
-| NFR-004 | 모든 tenant query는 Organization filter와 Project authorization을 적용한다. | MVP | cross-tenant test 100% 차단이다. |
-| NFR-005 | metadata DB는 PostgreSQL, original은 S3-compatible object store를 사용한다. | MVP | Project move 없이 service instance를 교체할 수 있다. |
-| NFR-006 | raw object는 immutable하고 checksum 검증을 제공한다. | MVP | integrity job이 tamper를 탐지한다. |
-| NFR-007 | write API는 idempotency와 optimistic concurrency를 지원한다. | MVP | duplicate start가 Job을 중복 생성하지 않는다. |
-| NFR-008 | Tool p95 응답은 비동기 수락·조회 2초, evidence search 1초를 목표로 한다. | v1.0 Pilot | 부하 test 결과를 기록한다. |
-| NFR-009 | 수집 Job은 tenant quota와 source별 rate limit을 지킨다. | MVP | noisy tenant가 다른 tenant queue를 고갈시키지 않는다. |
-| NFR-010 | 저장·전송 중 암호화와 secret manager를 사용한다. | v1.0 Pilot | token/secret이 DB·log·object에 없다. |
-| NFR-011 | audit event는 append-only이며 최소 사용자·도구·대상·결과를 포함한다. | MVP | operation ID로 end-to-end 추적 가능하다. |
-| NFR-012 | 한국어 UI·report를 기본 제공하고 원문 언어와 번역을 구분한다. | MVP | 번역문만으로 citation을 대체하지 않는다. |
-| NFR-013 | Review Console은 keyboard navigation과 명확한 상태 text를 제공한다. | v1.0 Pilot | 접근성 checklist를 통과한다. |
-| NFR-014 | backup·restore·retention·purge 절차를 제공한다. | v1.0 Pilot | restore drill과 deletion manifest가 있다. |
-| NFR-015 | Resource와 Tool list는 deterministic ordering과 pagination을 제공한다. | MVP | 동일 권한에서 반복 결과가 안정적이다. |
-| NFR-016 | source content의 prompt injection을 instruction으로 실행하지 않는다. | MVP | malicious fixture가 Tool/approval policy를 변경하지 못한다. |
-| NFR-017 | 원문 미확보와 수집 실패를 결과에서 숨기지 않는다. | MVP | report limitation completeness 100%다. |
-| NFR-018 | 서비스 장애가 성공 Snapshot과 Review를 손실시키지 않아야 한다. | MVP | worker crash recovery test가 통과한다. |
-
-## 16. 오류·부분실패·재시도
-
-| Error | 자동 재시도 | 사용자 동작 |
+| Error | 사용자 의미 | 처리 |
 |---|---|---|
-| `AUTH_REQUIRED` | 없음 | 재인증 |
-| `SCOPE_INSUFFICIENT` | 없음 | step-up authorization 또는 관리자 요청 |
-| `PROJECT_FORBIDDEN` | 없음 | Membership 확인 |
-| `PLAN_NOT_APPROVED` | 없음 | Plan Review |
-| `POLICY_BLOCKED` | 없음 | Source 정책 검토 |
-| `NETWORK_TRANSIENT` | 최대 2회 | 실패 지속 시 partial 수용/재시도 |
-| `RATE_LIMITED` | Retry-After | 대기 |
-| `CONTENT_INVALID` | 없음 | 대체 공식 source |
-| `PARSE_FAILED` | parser fallback 1회 | manual extraction 검토 |
-| `ORIGINAL_UNAVAILABLE` | 없음 | limitation 수용 또는 source 보완 |
-| `CONFLICT_REVIEW_REQUIRED` | 없음 | Reviewer 판단 |
-| `QUOTA_EXCEEDED` | 없음 | budget 조정 |
+| `INPUT_INVALID` | 질문·날짜·budget이 잘못됨 | network 전 거부 |
+| `PUBLIC_LIMIT_REACHED` | 익명 사용 한도 초과 | Retry-After |
+| `RUN_EXPIRED_OR_NOT_FOUND` | handle 없음 또는 만료 | 존재 여부 통합 |
+| `SOURCE_POLICY_BLOCKED` | 안전·약관 정책상 수집 불가 | limitation에 표시 |
+| `NETWORK_TRANSIENT` | source 일시 장애 | 제한된 retry |
+| `CONTENT_INVALID` | 로그인 페이지·빈 문서·형식 위장 | Evidence 제외 |
+| `BUDGET_EXHAUSTED` | 시간·byte·source 한도 도달 | partial 결과 |
+| `RESULT_TOO_LARGE` | MCP 응답 상한 초과 | 요약·citation 중심 축소 |
+| `PURGE_PENDING` | 삭제 재시도 중 | content 접근 차단 |
 
-Tool Execution Error는 `code`, `message`, `retryable`, `operation_id`, `details`, `suggested_action`을 structured output으로 제공한다.
+내부 stack trace, raw upstream response, token, IP와 filesystem path는 반환하지 않는다.
 
-## 17. 보존·삭제·Export
+## 11. 비기능 요구사항
 
-- Organization별 기본 retention을 설정한다.
-- Snapshot, Review, Audit은 policy가 허용하는 기간 동안 immutable 보존한다.
-- Project 삭제는 soft delete와 grace period 후 purge다.
-- purge는 DB row, object reference, cache, search index를 포함하고 deletion manifest를 남긴다.
-- Git 또는 외부 export로 나간 자료는 별도 lifecycle임을 경고한다.
-- raw 원문 export는 기본 비활성화다.
-- report/citation export는 Project classification과 사용자 scope를 확인한다.
-- 민감 Project는 Organization 간 공유와 global reuse를 금지한다.
+| ID | 요구사항 | Acceptance Criteria |
+|---|---|---|
+| NFR-PUB-001 | Python 3.12와 MCP current stable을 사용한다. | CI·conformance 통과 |
+| NFR-PUB-002 | quick 요청은 30초 내 결과 또는 async 전환을 반환한다. | p95 측정 |
+| NFR-PUB-003 | public Tool catalog는 deterministic하고 10개 이하로 유지한다. | snapshot test |
+| NFR-PUB-004 | worker crash가 TTL purge를 무력화하지 않는다. | restart test |
+| NFR-PUB-005 | log·trace·metric에 User Content가 없어야 한다. | canary scan 0건 |
+| NFR-PUB-006 | 결과 전달 전까지 content는 process/ephemeral store 경계 밖으로 복제되지 않는다. | storage inventory test |
+| NFR-PUB-007 | 모든 outbound request는 policy adapter를 통과한다. | direct network import/call test |
+| NFR-PUB-008 | 알려진 dependency critical/high 취약점은 공개 전 0건 또는 승인된 waiver다. | audit artifact |
+| NFR-PUB-009 | 서비스 정책과 실제 TTL config가 자동 비교된다. | startup fail on mismatch |
+| NFR-PUB-010 | 한국어 결과를 기본으로 하고 원문 의미를 과도하게 의역하지 않는다. | golden QA |
 
-## 18. 관찰가능성
+## 12. 관찰가능성과 개인정보
 
-필수 event:
+허용 metadata:
 
-- OAuth subject·client·scope validation 결과(토큰 값 제외)
-- MCP method/tool/resource, duration, result, operation ID
-- Plan version·approval·nonce consumption
-- Job queue/start/progress/retry/cancel/complete
-- source request policy·status·content validation
-- object hash·parser version·dedup decision
-- score/review/report/export
-- cross-tenant 또는 권한거부 시도
-- admin policy·membership·retention 변경
+- tool name
+- coarse status/failure code
+- duration bucket
+- request/result/download byte bucket
+- source count와 source tier count
+- cost bucket
+- purge latency와 deletion outcome
+- 회전 HMAC abuse bucket
 
-OpenTelemetry 도입은 v1.0 Pilot release gate로 한다. 원문 text와 token은 telemetry에 포함하지 않는다.
+금지 metadata:
 
-## 19. 성공지표
+- 질문과 검색어
+- URL query 전체와 원문 URL의 credential component
+- 원문·Passage·보고서 본문
+- raw IP와 bearer/cookie
+- full run handle
+- 모델 prompt/response
 
-| Metric | 정의 | Pilot 목표 |
-|---|---|---:|
-| Official primary source ratio | 채택 Evidence 중 공식 1차자료 비율 | ≥ 70% |
-| Claim evidence coverage | FACT Claim의 valid EvidenceLink 비율 | ≥ 95% |
-| Locator completeness | Evidence Passage locator 비율 | 100% |
-| Evidence reuse rate | 후속 조사에서 기존 Evidence 재사용 비율 | ≥ 30% |
-| Unsupported fact rate | Review에서 근거부족으로 반려된 FACT 비율 | < 5% |
-| Review turnaround | Plan/Evidence Review median | 1영업일 이내 pilot 목표 |
-| Cross-tenant incidents | unauthorized data exposure | 0 |
-| Secret leakage | artifact/log token·secret | 0 |
-| Partial preservation | 혼합 실패에서 성공 artifact 보존 | 100% |
-| Host interoperability | 지원 Host conformance | 2개 이상 |
+Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 
-## 20. Acceptance Criteria
+## 13. 성공지표
 
-### 시나리오 A — 공공정책 조사(MVP)
+| Metric | Public Preview 목표 |
+|---|---:|
+| 완료 조사 결과 수령률 | ≥ 60% |
+| 자발적 helpful 긍정률 | ≥ 60% |
+| 공식 1차 source 비율 | ≥ 70% |
+| FACT citation coverage | ≥ 95% |
+| Citation locator completeness | ≥ 95% |
+| TTL 이후 content 잔존 | 0 |
+| seeded secret leakage | 0 |
+| 공개 endpoint 비용 상한 초과 | 0 |
+| History/save 관심 사용자 | Stage B trigger로 측정 |
 
-- `AC-001`: authenticated Researcher가 접근 가능한 Project에서 Plan draft를 만든다.
-- `AC-002`: Plan은 법령·정책·개인정보·조달·데이터권리·업체종속 질문을 포함한다.
-- `AC-003`: human approval 전 `run.start`가 거부된다.
-- `AC-004`: 승인 후 `run.start`가 2초 내 run ID와 Resource link를 반환한다.
-- `AC-005`: 공식 HTML·PDF가 Snapshot·Passage로 저장된다.
-- `AC-006`: Claim이 Passage locator와 Score breakdown에 연결된다.
-- `AC-007`: Markdown report가 gaps, conflicts, failures, provenance를 포함한다.
+가입자 수, 저장량과 Tool 호출 수는 Public Preview의 핵심 성공지표가 아니다.
 
-### 시나리오 B — Tenant 격리(MVP)
+## 14. Acceptance Scenarios
 
-- `AC-020`: Organization A token은 Organization B Project 목록을 보지 못한다.
-- `AC-021`: B의 run/evidence/report ID를 알아도 read·status·cancel이 거부된다.
-- `AC-022`: service log와 error message가 B entity 존재 여부를 노출하지 않는다.
-- `AC-023`: worker와 object key에도 tenant context가 적용된다.
+### 시나리오 A — 가입 없는 빠른 조사
 
-### 시나리오 C — 사람 Review(MVP)
+- `AC-PUB-001`: token 없이 `service.policy`와 `research.quick`을 호출한다.
+- `AC-PUB-002`: 결과에 요약, FACT, citation, locator, as-of, gap이 있다.
+- `AC-PUB-003`: 응답 뒤 질문·원문·보고서 canary가 DB·log·tmp에 남지 않는다.
 
-- `AC-040`: service-agent token만으로 Plan/Evidence approval이 불가능하다.
-- `AC-041`: 만료·재사용된 approval nonce는 거부된다.
-- `AC-042`: Review supersession이 이전 판단과 actor를 보존한다.
-- `AC-043`: unreviewed material conflict가 report publish를 막는다.
+### 시나리오 B — 긴 조사와 수령
 
-### 시나리오 D — 부분 실패(MVP)
+- `AC-PUB-010`: `research.start`가 2초 내 opaque handle과 expires_at을 반환한다.
+- `AC-PUB-011`: 새 MCP 연결에서 handle로 status와 result를 조회한다.
+- `AC-PUB-012`: `consume=true` 결과 수령 뒤 60초 내 content가 접근 불가·삭제된다.
+- `AC-PUB-013`: 만료 handle은 `RUN_EXPIRED_OR_NOT_FOUND`만 반환한다.
 
-- `AC-060`: 4개 source 중 timeout과 403이 있어도 성공 Snapshot은 commit된다.
-- `AC-061`: Job은 `PARTIAL`, failure는 retryable/final로 분류된다.
-- `AC-062`: failed-only retry가 성공 source를 다시 수집하지 않는다.
-- `AC-063`: report가 incomplete coverage를 명시한다.
+### 시나리오 C — Crash와 TTL
 
-### 시나리오 E — MCP 호환(MVP/Pilot)
+- `AC-PUB-020`: worker crash 뒤 orphan workspace가 startup/sweeper에 의해 삭제된다.
+- `AC-PUB-021`: 미수령 결과가 60분 뒤 삭제된다.
+- `AC-PUB-022`: 삭제 일시 실패는 접근 차단 상태에서 재시도된다.
 
-- `AC-080`: current stable protocol에서 tools/resources/prompts capability를 선언한다.
-- `AC-081`: Tool input/output이 schema validation을 통과한다.
-- `AC-082`: structuredContent와 text compatibility output을 제공한다.
-- `AC-083`: Resource list/read가 pagination과 authorization을 적용한다.
-- `AC-084`: 두 지원 Host에서 plan→run→evidence→report flow가 동작한다.
-- `AC-085`: protocol RC 지원 여부와 무관하게 application Job이 동작한다.
+### 시나리오 D — 공개 endpoint 방어
 
-### 시나리오 F — 변경 영향(v1.5)
+- `AC-PUB-030`: private IP, localhost, link-local, cloud metadata와 redirect escape가 차단된다.
+- `AC-PUB-031`: bearer/handle을 바꿔도 동일 IP quota를 우회하지 못한다.
+- `AC-PUB-032`: oversized·decompression·PDF/parser bomb이 budget 안에서 중단된다.
+- `AC-PUB-033`: kill switch 뒤 새 Run은 거부되고 기존 purge는 계속된다.
 
-- `AC-100`: 개정 원문이 새 Snapshot과 ChangeEvent를 만든다.
-- `AC-101`: layout-only와 content change를 구분한다.
-- `AC-102`: 영향받는 Claim·Report만 Review queue에 들어간다.
-- `AC-103`: subscribed Resource client가 지원되는 경우 update notification을 받는다.
+### 시나리오 E — 조사 품질
 
-## 21. Open Questions
+- `AC-PUB-040`: 공공기관 AI 구매 원칙 질문에서 법령·조달·개인정보·데이터권리 track을 다룬다.
+- `AC-PUB-041`: 공식 원문과 재인용 기사를 구분한다.
+- `AC-PUB-042`: 공식 원문을 확보하지 못한 항목은 gap으로 표시한다.
+- `AC-PUB-043`: 일부 source 실패에도 usable partial 결과를 반환한다.
 
-| ID | 질문 | 선택지 | 추천안 | 시점 |
-|---|---|---|---|---|
-| OQ-001 | 운영 형태 | 중앙 SaaS, 기관별 배포, hybrid | **기관별 배포 가능한 shared code + 중앙 managed option** | Pilot 전 |
-| OQ-002 | Identity Provider | 자체 계정, OIDC only, 복수 방식 | **OIDC 우선, local dev identity 별도** | MVP |
-| OQ-003 | Python MCP SDK/version | stable SDK, RC beta, 직접 protocol | **stable SDK + transport abstraction, RC spike 별도** | 첫 spike |
-| OQ-004 | approval nonce 발급 | Console, Host callback, 기관 결재 API | **Console MVP, 기관 결재 adapter 확장** | MVP |
-| OQ-005 | Job queue | PostgreSQL, Redis, managed queue | **PostgreSQL-backed MVP, scale trigger 후 분리** | storage ADR |
-| OQ-006 | Source Registry 소유 | 중앙, 기관, hybrid | **공통 seed + 기관 override와 Review** | MVP |
-| OQ-007 | cross-Organization Evidence reuse | 금지, 공개자료만, 전체 | **기본 금지, 검증된 public source metadata만 shared cache** | v1.5 |
-| OQ-008 | raw Snapshot 제공 | 항상, 별도 scope, 금지 | **별도 scope+policy+expiring handle** | Pilot |
-| OQ-009 | MCP Tasks | 즉시, optional, 미사용 | **core 미의존; 안정화·Host 지원 후 adapter** | v2 |
-| OQ-010 | 2026-07-28 protocol | RC 선적용, final 대기 | **final 및 Tier SDK 지원 확인 후 opt-in** | release 후 ADR |
+## 15. Stage B 진입 기준
 
-## 22. 제품 결정사항
+다음 조건을 모두 검토한 뒤 선택 가입 구현을 시작한다.
 
-다음은 이 PRD에서 확정한다.
+1. 4주 연속 주간 완료 조사 100건 이상
+2. 결과 수령률 60% 이상
+3. helpful 응답 50건 이상, 긍정률 60% 이상
+4. 저장·History·재사용 요청 20명 이상
+5. Public Preview의 abuse·비용·purge 지표가 안정적
+6. 계정 데이터와 opt-in 저장에 대한 개인정보·보안 설계 승인
 
-1. 신규 저장소는 공공분야 Research MCP 제품이며 기존 crawler Skill과 독립한다.
-2. Remote MCP가 primary integration이고 Review Console은 책임 있는 승인 보조수단이다.
-3. 다중 사용자·Tenant isolation·OAuth·PostgreSQL은 MVP architecture에서 제외하지 않는다.
-4. MCP Tasks는 core dependency가 아니다.
-5. Project 생성·Membership·retention 같은 admin action은 MVP MCP Tool로 노출하지 않는다.
-6. 사람 승인은 Host confirmation만으로 충족하지 않는다.
-7. 공식자료 우선은 source type과 Evidence rationale로 드러내며 무비판적 신뢰를 뜻하지 않는다.
+조건이 미달하면 가입 기능 대신 조사 품질, 연결 편의, source coverage를 개선한다.
+
+## 16. Open Questions
+
+| ID | 질문 | 추천안 | 결정 시점 |
+|---|---|---|---|
+| OQ-PUB-001 | 검색 provider | official-first adapter 1종 + 직접 URL | 구현 전 |
+| OQ-PUB-002 | quick 최대시간 | 20초 목표, 30초 hard limit | load test |
+| OQ-PUB-003 | 임시 content backend | 단일 node encrypted tmpdir부터 시작 | Public Preview |
+| OQ-PUB-004 | 결과 최대크기 | Markdown 256KB, JSON 512KB 초기값 | Host test |
+| OQ-PUB-005 | feedback 수집 | boolean + save interest, free-text 없음 | Preview |
+| OQ-PUB-006 | 공개 비용상한 | 일/시간별 운영 budget kill switch | 배포 전 |
+| OQ-PUB-007 | Account IdP | Google/Microsoft 지원 OIDC broker | Stage B |
+| OQ-PUB-008 | 유료화 기준 | 저장·장기실행 비용과 지불의사 확인 후 | Stage C |
+
+## 17. 제품 결정사항
+
+1. Public Preview는 가입 없이 사용한다.
+2. 사용자 content는 기본 영구저장하지 않는다.
+3. 긴 작업에만 짧은 TTL의 임시 저장을 허용한다.
+4. 결과는 사용자에게 즉시 전달하며 저장 책임과 소유권은 사용자에게 있다.
+5. OAuth·Tenant·PostgreSQL foundation은 후속 선택 가입·팀 기능에 재사용한다.
+6. History·Project Memory·Living Report는 실제 저장 수요가 확인되기 전 구현하지 않는다.
+7. 공개 전 최소조건은 로그인 기능이 아니라 SSRF·quota·비용·purge 안전성이다.
+8. 유료화는 저장공간과 반복사용 가치가 증명된 뒤 시작한다.

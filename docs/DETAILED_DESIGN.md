@@ -1,6 +1,8 @@
 # Public Sector Research MCP — Foundation Detailed Design
 
-> 문서 상태: Approved for Implementation · 기준일: 2026-07-16 · 설계 단위: Foundation Vertical Slice
+> 문서 상태: Implemented Foundation Reference · 기준일: 2026-07-16 · 설계 단위: Foundation Vertical Slice
+>
+> 현재 제품 목표는 [ADR-0009](./adr/0009-public-zero-retention-first.md)의 `PUBLIC_EPHEMERAL` Public Preview다. 이 문서는 이미 구현된 OAuth·Tenant·durable ResearchRun 기반을 설명하며, Public Preview의 현재 상세 구현순서는 [ARCHITECTURE](./ARCHITECTURE.md)와 [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md)을 따른다. 아래 Foundation 설계를 익명 공개 요청의 필수 경로로 해석하지 않는다.
 
 [VISION](./VISION.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 

@@ -1,426 +1,449 @@
 # Public Sector Research MCP — Validation Criteria
 
-> 문서 상태: Approved for Implementation · 기준일: 2026-07-16 · 대상: Foundation F0~F4
+> 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 대상: **Public Preview PG0~PG3**
 
-[DETAILED DESIGN](./DETAILED_DESIGN.md) · [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md) · [PRD](./PRD.md)
+[PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md) · [THREAT MODEL](./security/THREAT_MODEL.md)
 
 ## 1. 목적
 
-이 문서는 “동작한다”를 관찰 가능한 증거로 바꾼다. 검증은 기능 happy path뿐 아니라 Tenant 격리, 상태 경합, 장애 복구, protocol 호환성을 포함한다.
+이 문서는 “공개 MCP가 잘 작동한다”를 검증 가능한 조건으로 정의한다. Public Preview는 다음 네 가지를 동시에 증명해야 한다.
 
-표기:
+1. 누구나 로그인 없이 사용할 수 있다.
+2. 공식자료 중심의 쓸 만한 결과를 반환한다.
+3. 익명 남용, SSRF, parser/resource 공격을 제한한다.
+4. 질문·원문·결과를 약속한 TTL보다 오래 보관하지 않는다.
 
-- **Automated:** CI에서 매 변경 실행
-- **Environment:** PostgreSQL·OIDC·Host 같은 실제 환경 필요
-- **Review:** 사람이 schema, report, threat model을 확인
-- **Gate:** 미통과 시 다음 단계로 진행 불가
+테스트 수와 coverage가 높아도 위 네 조건 중 하나가 실패하면 공개하지 않는다.
 
-## 2. 검증 환경
+## 2. Gate 체계
 
-| Environment | 목적 | 허용되는 주장 |
+| Gate | 의미 | 필수 영역 | 현재 상태 |
+|---|---|---|---|
+| G0~G5 | 기존 Foundation build/domain/MCP/DB/OAuth/Host | Foundation regression | PASS |
+| PG0 | Public Boundary Safe | mode, catalog, quota, tmp, purge, no-content telemetry | NOT IMPLEMENTED |
+| PG1 | Useful Research | planner, collector, parser, evidence, quick | NOT IMPLEMENTED |
+| PG2 | Zero-Retention Async | handle, worker, consume, TTL, crash recovery | NOT IMPLEMENTED |
+| PG3 | Public Preview Ready | edge, Host, load/cost, docs, incident rehearsal | NOT IMPLEMENTED |
+| AG0 | Account Trust | opt-in save, user isolation, export/delete, OAuth hardening | FUTURE |
+
+Foundation 통과는 Public Preview 통과를 의미하지 않는다. 특히 현재 process-local rate limiter, collector 부재, ephemeral purge 부재로 인해 공개 endpoint는 아직 열 수 없다.
+
+## 3. 검증 환경
+
+| 환경 | 목적 | 허용되는 주장 |
 |---|---|---|
-| Unit | pure domain/policy | invariant 구현됨 |
-| In-memory integration | service/UoW/MCP contract | application contract 구현됨 |
-| PostgreSQL integration | RLS/transaction/lease | durability와 DB tenant 격리 검증됨 |
-| OAuth integration | issuer/audience/scope/JWKS | production auth adapter 검증됨 |
-| Remote MCP | HTTP/proxy/Host | transport interoperability 검증됨 |
-| Pilot | 실제 사용자/기관 정책 | operational readiness |
+| Unit | policy, planner, TTL, handle, score | deterministic rule 구현 |
+| In-memory integration | application/MCP contract | public flow contract 구현 |
+| Ephemeral filesystem | permission, purge, orphan | local zero-retention 구현 |
+| Network security lab | DNS, redirect, SSRF, malformed server | outbound policy 구현 |
+| Document corpus | HTML/PDF/JSON parser | locator·limit·typed failure |
+| Remote MCP | HTTPS와 실제 Host | interoperability |
+| Staging | edge quota, egress, disk, crash, load | 공개 운영 경계 |
+| Limited Preview | 실제 사용자와 비용 | 제품 유용성 |
 
-In-memory test만으로 durability, RLS, OAuth, production readiness를 주장하지 않는다.
-
-## 3. 표준 검증 명령
+## 4. 표준 품질 명령
 
 ```bash
-uv sync --all-groups
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy src tests
-uv run pytest
-uv run pytest --cov=psr_mcp --cov-branch \
+uv sync --all-groups --frozen
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen mypy src tests scripts
+uv audit --preview-features audit --frozen
+uv run --frozen python scripts/dependency_licenses.py --check
+uv run --frozen pytest --cov=psr_mcp --cov-branch \
   --cov-report=term-missing --cov-report=json:coverage.json
-uv run python scripts/coverage_gate.py --coverage-json coverage.json
+uv run --frozen python scripts/coverage_gate.py --coverage-json coverage.json
 ```
 
-PostgreSQL 환경:
+추가 예정:
 
 ```bash
-uv run pytest -m postgres
+uv run --frozen pytest -m public
+uv run --frozen pytest -m network_security
+uv run --frozen pytest -m purge
+uv run --frozen psrctl conformance-public --endpoint https://...
+uv run --frozen psrctl verify-retention --ephemeral-root ...
 ```
 
-Remote conformance:
+실제 command가 구현될 때 CLI help, runbook, CI를 같은 change에서 갱신한다.
 
-```bash
-uv run psrctl conformance --json
-```
+## 5. PG0 — Public Boundary Safe
 
-실제 command는 해당 increment에서 구현되며, 문서와 CI를 함께 갱신한다.
-
-## 4. Gate 요약
-
-| Gate | 의미 | 필수 검증 |
-|---|---|---|
-| G0 | Buildable | BUILD, dependency, import boundary |
-| G1 | Domain Safe | DOM, AUTH, APP, PORT |
-| G2 | MCP Contract | MCP schema/flow/error |
-| G3 | Durable | DB, JOB, recovery, audit atomicity |
-| G4 | Authenticated | OAuth, Membership, security |
-| G5 | Interoperable | Streamable HTTP, 2 Hosts |
-| G6 | Foundation Exit | G0~G5 + docs/runbook/no P0/P1 |
-
-현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`, capability-aware Host conformance `G5`를 통과했다. G5는 전체 server primitive를 SDK·Inspector로 검증하고 Codex의 필수 primitive인 Tool을 실제 호출하는 [ADR-0008](./adr/0008-capability-aware-host-conformance.md)을 따른다. 실제 기관 환경과 독립 owner 승인이 필요한 `G6`는 `OPEN`이다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md), [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)에 있다.
-
-## 5. Build와 Dependency
-
-| ID | 기준 | 방법 | Gate |
-|---|---|---|---|
-| VAL-BUILD-001 | Python 3.12에서 install 가능 | clean `uv sync` | G0 |
-| VAL-BUILD-002 | `mcp` major 1 lock | lockfile 검사 | G0 |
-| VAL-BUILD-003 | package import 성공 | `python -c`/test | G0 |
-| VAL-BUILD-004 | source package에 circular import 없음 | import test | G0 |
-| VAL-BUILD-005 | ruff/mypy clean | automated | G0 |
-| VAL-BUILD-006 | domain/application이 `mcp`, DB driver import 안 함 | AST/import boundary test | G0 |
-| VAL-BUILD-007 | dependency vulnerability critical 0 | scanner, release | G6 |
-| VAL-BUILD-008 | dependency license manifest 존재 | review | G6 |
-
-## 6. Domain
+### 5.1 Mode와 Catalog
 
 | ID | 기준 | Expected |
 |---|---|---|
-| VAL-DOM-001 | 빈 Organization/User/Project ID 거부 | domain error |
-| VAL-DOM-002 | naive datetime 거부 | domain error |
-| VAL-DOM-003 | Project version은 1 이상 | invalid 거부 |
-| VAL-DOM-004 | APPROVED Plan은 approver/time 필수 | invalid 거부 |
-| VAL-DOM-005 | DRAFT Plan에 approver 없음 | invalid 거부 |
-| VAL-DOM-006 | Run은 QUEUED로 생성 | exact state |
-| VAL-DOM-007 | terminal→nonterminal 전이 거부 | `INVALID_STATE` |
-| VAL-DOM-008 | RUNNING→SUCCEEDED/PARTIAL/FAILED/CANCELLED 허용 | version 증가 |
-| VAL-DOM-009 | cancellation reason length 검증 | invalid 거부 |
-| VAL-DOM-010 | idempotency key constraint | invalid 거부 |
-| VAL-DOM-011 | Job lease expiry는 UTC로 비교 | deterministic clock |
-| VAL-DOM-012 | domain은 immutable value semantics | mutation 불가 |
+| VAL-PUB-MODE-001 | OAuth token 없이 public server initialize | 성공 |
+| VAL-PUB-MODE-002 | public `tools/list` | 승인된 public Tool만 표시 |
+| VAL-PUB-MODE-003 | Project/Admin/Persistent Tool | catalog에 0개 |
+| VAL-PUB-MODE-004 | public request 중 Membership DB spy | 호출 0회 |
+| VAL-PUB-MODE-005 | public request 중 persistent content repository spy | write 0회 |
+| VAL-PUB-MODE-006 | public production+HTTP URL | startup 실패 |
+| VAL-PUB-MODE-007 | ephemeral root 누락·unsafe permission | startup 실패 |
+| VAL-PUB-MODE-008 | TTL이 ADR 최대값 초과 | startup 실패 |
+| VAL-PUB-MODE-009 | content telemetry enabled | startup 실패 |
+| VAL-PUB-MODE-010 | `service.policy` | 실제 TTL·quota·profile과 일치 |
 
-## 7. Authorization과 Tenant
+### 5.2 Abuse와 비용
 
-### 7.1 Matrix
-
-fixture:
-
-- Organization A: Project A1, A2
-- Organization B: Project B1
-- User A-wide: A의 Researcher, org-wide
-- User A-limited: A의 Researcher, A1 only
-- Manager A: A의 Research Manager
-- User B: B의 Researcher
-- Revoked A: revoked Membership
-- Service A: service identity, no human approval capability
-
-| ID | 행위 | Expected |
+| ID | 공격/조건 | Expected |
 |---|---|---|
-| VAL-AUTH-001 | A-wide가 A1 list/get | 허용 |
-| VAL-AUTH-002 | A-wide가 B1 ID get | `NOT_FOUND_OR_FORBIDDEN` |
-| VAL-AUTH-003 | A-limited가 A2 get | `NOT_FOUND_OR_FORBIDDEN` |
-| VAL-AUTH-004 | User B가 A Run status | 거부 |
-| VAL-AUTH-005 | scope 없는 A가 A1 get | `AUTH_SCOPE_REQUIRED` |
-| VAL-AUTH-006 | role 없는 scope 보유자 | 거부 |
-| VAL-AUTH-007 | revoked Membership | 거부 |
-| VAL-AUTH-008 | Resource와 Tool의 동일 target | 동일 policy result |
-| VAL-AUTH-009 | error/log에 B entity name 없음 | leakage 0 |
-| VAL-AUTH-010 | service identity가 human approval | 거부 |
+| VAL-PUB-ABUSE-001 | 같은 IP 정상 quick 반복 | 설정된 한도 뒤 429/Tool error |
+| VAL-PUB-ABUSE-002 | 같은 IP에서 invalid bearer 100개 회전 | IP quota 추가 획득 불가 |
+| VAL-PUB-ABUSE-003 | 같은 IP에서 handle/client ID 회전 | IP quota 추가 획득 불가 |
+| VAL-PUB-ABUSE-004 | 서로 다른 IP fixture | 독립 IP bucket |
+| VAL-PUB-ABUSE-005 | raw IP 저장소·log scan | 0건 |
+| VAL-PUB-ABUSE-006 | HMAC bucket key rotation | 이전 counter TTL 뒤 삭제 |
+| VAL-PUB-ABUSE-007 | active run limit | 초과 start 거부 |
+| VAL-PUB-ABUSE-008 | global outbound limit | 동시성 상한 유지 |
+| VAL-PUB-ABUSE-009 | source host limit | 한 host가 worker 독점 불가 |
+| VAL-PUB-ABUSE-010 | cost/time/byte 상한 | partial 종료, 무한 retry 없음 |
+| VAL-PUB-ABUSE-011 | kill switch ON | 새 quick/start 거부 |
+| VAL-PUB-ABUSE-012 | kill switch ON | status/result/cancel/purge 유지 |
+| VAL-PUB-ABUSE-013 | limiter backend 장애 | 새 고비용 요청 fail closed |
 
-### 7.2 Production OAuth
-
-| ID | Token | Expected | Gate |
-|---|---|---|---|
-| VAL-OAUTH-001 | valid issuer/audience/scope | context 생성 | G4 |
-| VAL-OAUTH-002 | wrong issuer | 401 | G4 |
-| VAL-OAUTH-003 | wrong audience | 401 | G4 |
-| VAL-OAUTH-004 | expired/not-before | 401 | G4 |
-| VAL-OAUTH-005 | missing scope | 403/Tool denied | G4 |
-| VAL-OAUTH-006 | unsupported algorithm | 401 | G4 |
-| VAL-OAUTH-007 | rotated key | refresh 후 성공 | G4 |
-| VAL-OAUTH-008 | AS unavailable, unknown key | fail closed | G4 |
-| VAL-OAUTH-009 | client token in downstream | 없음 | Collector gate |
-| VAL-OAUTH-010 | Protected Resource Metadata | spec/schema valid | G4 |
-
-## 8. Port와 Transaction
+### 5.3 Ephemeral Store
 
 | ID | 기준 | Expected |
 |---|---|---|
-| VAL-PORT-001 | repository method에 organization 필수 | signature/static test |
-| VAL-PORT-002 | transaction commit | 변경 보존 |
-| VAL-PORT-003 | exception rollback | 변경 없음 |
-| VAL-PORT-004 | uncommitted context exit | rollback |
-| VAL-PORT-005 | read-your-write | transaction 내 보임 |
-| VAL-PORT-006 | duplicate idempotency unique | conflict 또는 기존 반환 |
-| VAL-PORT-007 | stale version update | `VERSION_CONFLICT` |
-| VAL-PORT-008 | audit 실패 | business write rollback |
-| VAL-PORT-009 | memory/PG adapter contract 동일 | parameterized suite |
+| VAL-PUB-TMP-001 | run directory 이름 | user input 없는 random value |
+| VAL-PUB-TMP-002 | directory/file mode | 0700/0600 |
+| VAL-PUB-TMP-003 | `../`, absolute path | 거부 |
+| VAL-PUB-TMP-004 | symlink target | follow·read·write 거부 |
+| VAL-PUB-TMP-005 | concurrent write/purge | purge가 access를 최종 차단 |
+| VAL-PUB-TMP-006 | metadata schema | User Content field 없음 |
+| VAL-PUB-TMP-007 | disk full | 새 Run 거부, purge 가능 |
+| VAL-PUB-TMP-008 | workspace locator | MCP response/log 미노출 |
 
-## 9. Application Service
-
-| ID | 기준 | Expected |
-|---|---|---|
-| VAL-APP-001 | list 기본 limit/정렬 | deterministic |
-| VAL-APP-002 | limit 0/101 | `INPUT_INVALID` |
-| VAL-APP-003 | invalid cursor | `INPUT_INVALID` |
-| VAL-APP-004 | Project filter가 tenant/restriction 적용 | authorized only |
-| VAL-APP-005 | approved Plan start | QUEUED Run/Job |
-| VAL-APP-006 | draft/rejected Plan start | `PLAN_NOT_APPROVED` |
-| VAL-APP-007 | archived Project start | `INVALID_STATE` |
-| VAL-APP-008 | 동일 key+request 재호출 | 같은 Run ID |
-| VAL-APP-009 | 동일 key+다른 Plan | `IDEMPOTENCY_CONFLICT` |
-| VAL-APP-010 | Run start audit | actor/target/outcome |
-| VAL-APP-011 | status는 lease owner 미노출 | field 없음 |
-| VAL-APP-012 | QUEUED cancel | 즉시 CANCELLED |
-| VAL-APP-013 | RUNNING cancel | request flag |
-| VAL-APP-014 | stale expected version | `VERSION_CONFLICT` |
-| VAL-APP-015 | terminal cancel | `INVALID_STATE` |
-| VAL-APP-016 | 실패 transaction | Run/Job/Audit 모두 없음 |
-
-## 10. Job과 Concurrency
-
-| ID | 기준 | Expected | Gate |
-|---|---|---|---|
-| VAL-JOB-001 | QUEUED claim | RUNNING, owner, expiry | G1 |
-| VAL-JOB-002 | 두 worker 동시 claim | 한 worker만 획득 | G1/G3 |
-| VAL-JOB-003 | owner heartbeat | expiry 연장 | G1 |
-| VAL-JOB-004 | 다른 owner heartbeat | 거부 | G1 |
-| VAL-JOB-005 | expired lease | 재claim 가능 | G1 |
-| VAL-JOB-006 | max attempts | FAILED/RETRY_EXHAUSTED | G1 |
-| VAL-JOB-007 | cancel requested | 새 step 시작 안 함 | G1 |
-| VAL-JOB-008 | complete terminal | lease clear | G1 |
-| VAL-JOB-009 | PG `SKIP LOCKED` | exclusive claim | G3 |
-| VAL-JOB-010 | worker crash | expiry 후 복구 | G3 |
-| VAL-JOB-011 | commit 전 DB loss | Run 미생성 | G3 |
-| VAL-JOB-012 | commit 후 response loss+retry | 같은 Run 반환 | G3 |
-| VAL-JOB-013 | cancel/complete race | 한 transition, 다른 conflict | G3 |
-| VAL-JOB-014 | queue fairness fixture | deterministic order | G3 |
-| VAL-JOB-015 | attempts persistent | restart 후 유지 | G3 |
-
-## 11. MCP Contract
-
-| ID | 기준 | Expected |
-|---|---|---|
-| VAL-MCP-001 | Tool 이름 | 정확한 `psr.*` 5개 |
-| VAL-MCP-002 | inputSchema | 필수/길이/범위 반영 |
-| VAL-MCP-003 | outputSchema | Pydantic schema와 일치 |
-| VAL-MCP-004 | schema version | `1.0` |
-| VAL-MCP-005 | list ordering | deterministic |
-| VAL-MCP-006 | schema snapshot 변화 | explicit review 필요 |
-| VAL-MCP-007 | success structuredContent | machine-readable |
-| VAL-MCP-008 | text fallback | 짧고 secret 없음 |
-| VAL-MCP-009 | domain error | `isError=true`, code 포함 |
-| VAL-MCP-010 | protocol malformed request | JSON-RPC error |
-| VAL-MCP-011 | internal error | operation ID만 노출 |
-| VAL-MCP-012 | Tool/Resource auth parity | 동일 결과 |
-| VAL-MCP-013 | annotations 무시해도 안전 | server auth 적용 |
-| VAL-MCP-014 | Project Resource read | authorized JSON |
-| VAL-MCP-015 | Run Resource read | authorized status |
-| VAL-MCP-016 | unauthorized URI | opaque denial |
-| VAL-MCP-017 | Prompt list/get | 등록·argument schema |
-| VAL-MCP-018 | Prompt가 authorization 대체 안 함 | protected ID 거부 |
-| VAL-MCP-019 | Tasks capability 없어도 flow | 성공 |
-| VAL-MCP-020 | disconnect 후 status | explicit ID로 조회 |
-
-## 12. PostgreSQL과 RLS
-
-| ID | 기준 | Expected |
-|---|---|---|
-| VAL-DB-001 | tenant table `organization_id NOT NULL` | 100% |
-| VAL-DB-002 | tenant composite FK | cross-org FK 불가 |
-| VAL-DB-003 | RLS enabled+forced | runtime owner에도 적용 |
-| VAL-DB-004 | no tenant context | row 0 또는 error |
-| VAL-DB-005 | Org A context | A rows only |
-| VAL-DB-006 | pool reuse A→B | A data leakage 0 |
-| VAL-DB-007 | `SET LOCAL` transaction end | context reset |
-| VAL-DB-008 | runtime role no BYPASSRLS | verified |
-| VAL-DB-009 | idempotency unique race | one row |
-| VAL-DB-010 | optimistic update | one success |
-| VAL-DB-011 | migration fresh install | success |
-| VAL-DB-012 | migration rollback/restore path | documented/tested |
-
-## 13. Audit와 Observability
-
-| ID | 기준 | Expected |
-|---|---|---|
-| VAL-AUDIT-001 | write마다 AuditEvent | 100% |
-| VAL-AUDIT-002 | actor/org/project/operation/outcome | 필수 field 완전 |
-| VAL-AUDIT-003 | idempotent replay | 별도 outcome |
-| VAL-AUDIT-004 | authorization denial | security event |
-| VAL-AUDIT-005 | bearer token/cookie/raw question | artifact/log 0 |
-| VAL-AUDIT-006 | operation ID | request→audit 추적 |
-| VAL-AUDIT-007 | metric label cardinality | tenant/user ID 없음 |
-| VAL-AUDIT-008 | audit insert failure | write rollback |
-
-## 14. Configuration
+### 5.4 Retention과 Leakage
 
 | ID | 조건 | Expected |
 |---|---|---|
-| VAL-CFG-001 | development defaults | loopback only |
-| VAL-CFG-002 | production+HTTP public URL | startup fail |
-| VAL-CFG-003 | production+static auth | startup fail |
-| VAL-CFG-004 | production+memory repository | startup fail |
-| VAL-CFG-005 | production missing issuer/DB | startup fail |
-| VAL-CFG-006 | diagnostics | secret redacted |
-| VAL-CFG-007 | invalid log level/port | input error |
-| VAL-CFG-008 | development banner | visible |
+| VAL-PUB-RET-001 | quick 응답 완료 | content 즉시 purge |
+| VAL-PUB-RET-002 | delivered async result | 60초 내 접근 불가·삭제 |
+| VAL-PUB-RET-003 | completed undelivered | 60분 내 삭제 |
+| VAL-PUB-RET-004 | failed Run content | 실패 확정 후 10분 내 삭제 |
+| VAL-PUB-RET-005 | running workspace | 기본 60분 정책 |
+| VAL-PUB-RET-006 | orphan workspace | 생성 후 절대 2시간 내 삭제 |
+| VAL-PUB-RET-007 | process restart | startup sweep 수행 |
+| VAL-PUB-RET-008 | periodic sweep | 1분 주기 이내 만료 확인 |
+| VAL-PUB-RET-009 | delete permission transient failure | access block 후 eventual delete |
+| VAL-PUB-RET-010 | question canary | DB/log/trace/metric/crash output 0건 |
+| VAL-PUB-RET-011 | source content canary | TTL 뒤 tmp/DB/log 0건 |
+| VAL-PUB-RET-012 | result canary | TTL 뒤 tmp/DB/log 0건 |
+| VAL-PUB-RET-013 | full handle canary | log/metric 0건 |
+| VAL-PUB-RET-014 | purge alert | content 없이 state/latency만 포함 |
 
-## 15. Security Tests
+### PG0 판정
 
-| ID | Attack | Expected |
+다음이 모두 필요하다.
+
+- `AC-PUB-030~033` 공개 endpoint 방어 scenario 통과
+- `VAL-PUB-MODE-*`, `ABUSE-*`, `TMP-*`, `RET-*` 100% 통과
+- 기존 Foundation regression 100% 통과
+- seeded User Content·secret leakage 0건
+- 공개 Tool은 아직 fake result여도 lifecycle이 끝까지 동작
+- unresolved public P0/P1 0건
+
+## 6. PG1 — Useful Research
+
+### 6.1 Planner
+
+| ID | 기준 | Expected |
 |---|---|---|
-| VAL-SEC-001 | guessed Project/Run ID | opaque denial |
-| VAL-SEC-002 | oversized limit/reason/key | schema reject |
-| VAL-SEC-003 | forged/modified cursor | reject |
-| VAL-SEC-004 | exception with sensitive fixture | response/log redacted |
-| VAL-SEC-005 | token passthrough | absent |
-| VAL-SEC-006 | production dev mode bypass | impossible |
-| VAL-SEC-007 | Prompt/Resource injection into ID | schema reject |
-| VAL-SEC-008 | dependency secret scan | finding 0 |
+| VAL-PUB-PLAN-001 | 10자 미만/4000자 초과 question | network 전 거부 |
+| VAL-PUB-PLAN-002 | as-of 누락 | current date 적용·표시 |
+| VAL-PUB-PLAN-003 | 공공기관 AI 구매 원칙 | 법령·조달·개인정보·데이터권리 track |
+| VAL-PUB-PLAN-004 | 업체종속 질문 | lock-in/데이터 반환·이전성 track |
+| VAL-PUB-PLAN-005 | broad question | bounded subquestion 또는 limitation |
+| VAL-PUB-PLAN-006 | plan output | evidence requirement와 stop condition 포함 |
+| VAL-PUB-PLAN-007 | same input/profile | deterministic baseline |
+| VAL-PUB-PLAN-008 | source text의 instruction | plan/policy 변경 불가 |
 
-Collector가 추가되면 SSRF, DNS rebinding, redirect escape, decompression bomb, parser bomb, prompt injection corpus를 별도 gate로 추가한다.
+### 6.2 Network와 SSRF
 
-## 16. Performance Budget
-
-Foundation Internal Alpha 기준이며 production SLO가 아니다.
-
-| Operation | 조건 | Budget |
-|---|---|---:|
-| Tool list | 20 tools 이하 | P95 100ms server time |
-| Project list | 20 rows, warm DB | P95 200ms |
-| Project/Run get | warm DB | P95 150ms |
-| Run start | DB healthy | P95 500ms; PRD 외부 2초 이내 |
-| Run status | warm DB | P95 150ms |
-| Job claim | queue 10k rows | P95 250ms |
-
-성능 테스트가 security filter나 audit를 끈 상태로 실행되면 무효다.
-
-## 17. Recovery
-
-| ID | Fault | Expected |
+| ID | 공격 | Expected |
 |---|---|---|
-| VAL-REC-001 | Gateway restart | Run status 유지 |
-| VAL-REC-002 | worker crash | lease 후 재claim |
-| VAL-REC-003 | duplicate client retry | Run 중복 없음 |
-| VAL-REC-004 | DB transient | retryable error/무허위 성공 |
-| VAL-REC-005 | audit telemetry outage | DB audit 유지 |
-| VAL-REC-006 | backup restore | Run/Job/Audit referential integrity |
+| VAL-PUB-NET-001 | `http`, `file`, `ftp`, `data` | 차단 |
+| VAL-PUB-NET-002 | URL userinfo | 차단 |
+| VAL-PUB-NET-003 | localhost/127.0.0.1/::1 | 차단 |
+| VAL-PUB-NET-004 | RFC1918, link-local, multicast, reserved | 차단 |
+| VAL-PUB-NET-005 | cloud metadata hostname/IP | 차단 |
+| VAL-PUB-NET-006 | public→private redirect | redirect 전 차단 |
+| VAL-PUB-NET-007 | redirect chain 초과 | typed failure |
+| VAL-PUB-NET-008 | DNS answer 변경/rebinding fixture | private 연결 없음 |
+| VAL-PUB-NET-009 | non-443 port | 기본 차단 |
+| VAL-PUB-NET-010 | client bearer/cookie seeded | upstream request에 없음 |
+| VAL-PUB-NET-011 | direct network call outside adapter | import/static test 실패 |
+| VAL-PUB-NET-012 | robots/terms/access restriction | 우회 없이 policy result |
 
-## 18. Coverage와 품질 기준
+### 6.3 Collector와 Parser
 
-- 전체 line coverage: Foundation 90% 이상
-- branch coverage: 85% 이상
-- domain/policy/application critical modules: line 95% 이상
-- authorization matrix에 명시된 case: 100%
-- mutation testing은 F2부터 critical state/policy에 적용 검토
-- flaky test: 100회 반복에서 0건을 목표
-- test가 wall clock, random UUID, locale, network에 직접 의존하지 않음
+| ID | 조건 | Expected |
+|---|---|---|
+| VAL-PUB-COL-001 | connect/read timeout | bounded retry 후 typed failure |
+| VAL-PUB-COL-002 | oversized response | byte limit에서 중단 |
+| VAL-PUB-COL-003 | decompression bomb | ratio/byte limit에서 중단 |
+| VAL-PUB-COL-004 | MIME 위장 | sniff 결과로 거부·재분류 |
+| VAL-PUB-COL-005 | login/error/empty page | Evidence 제외 |
+| VAL-PUB-COL-006 | 일부 source 실패 | 성공 source 보존, PARTIAL |
+| VAL-PUB-PARSE-001 | HTML heading fixture | locator 일치 |
+| VAL-PUB-PARSE-002 | PDF text fixture | page locator 일치 |
+| VAL-PUB-PARSE-003 | scanned PDF | `OCR_REQUIRED`, 허위 text 없음 |
+| VAL-PUB-PARSE-004 | JSON fixture | JSON Pointer 일치 |
+| VAL-PUB-PARSE-005 | excessive node/page/depth | budget 중단 |
+| VAL-PUB-PARSE-006 | malformed document | process crash 없이 failure |
+| VAL-PUB-PARSE-007 | malicious embedded instruction | untrusted data로 유지 |
 
-Coverage 수치만으로 Gate를 통과하지 않는다. security negative case와 environment integration이 우선한다.
+### 6.4 Evidence와 Result
 
-`pytest-cov`의 기본 combined percentage는 위 세 임계값을 개별적으로 증명하지 않는다. CI는 coverage JSON에서 statement, branch, critical module을 각각 판정한다. 2026-07-16 완료 감사와 보강 결과는 [Foundation Coverage Gate 감사 보고서](./validation/2026-07-16-foundation-coverage-audit.md)에 기록한다.
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-EVD-001 | FACT finding | citation 1개 이상 |
+| VAL-PUB-EVD-002 | citation 없는 사실 후보 | gap/inference로 하향 |
+| VAL-PUB-EVD-003 | official/primary | 명시적 tier |
+| VAL-PUB-EVD-004 | 보도자료 재인용 기사 5개 | 독립 근거 5개로 계산하지 않음 |
+| VAL-PUB-EVD-005 | 동일 PDF mirror | content hash cluster |
+| VAL-PUB-EVD-006 | locator | 채택 citation 95% 이상 완전 |
+| VAL-PUB-EVD-007 | score | component와 rationale 존재 |
+| VAL-PUB-EVD-008 | total-only score | schema 거부 |
+| VAL-PUB-EVD-009 | official original 미확보 | gap 표시 |
+| VAL-PUB-EVD-010 | conflict source | 양쪽 citation과 conflict 표시 |
+| VAL-PUB-EVD-011 | inference | FACT와 별도 kind |
+| VAL-PUB-EVD-012 | excerpt | 길이 상한과 locator 존재 |
+| VAL-PUB-EVD-013 | Markdown/JSON | claim/citation ID 동일 |
+| VAL-PUB-EVD-014 | result retention | `server_saved=false` 표시 |
 
-## 19. Schema Compatibility
+### 6.5 Golden Research Scenarios
 
-- Tool name 삭제/변경은 major application schema change다.
-- required input 추가, enum 제거, field 의미 변경은 breaking이다.
-- optional output 추가는 compatible이나 snapshot review가 필요하다.
-- `schema_version`은 protocol version과 별도다.
-- previous supported schema fixture로 regression test한다.
-- Resource URI 변경은 redirect가 아니라 resolver compatibility를 제공한다.
+#### GR-001 공공기관 AI 구매 원칙
 
-## 20. 문서 검증
+- 법령, 조달, 개인정보, 데이터 권리, 업체 종속을 다룬다.
+- 공식 source를 우선한다.
+- 데이터 반환, 학습 재사용, 기록 이전 관련 주장에 locator가 있다.
+- 확인하지 못한 요구는 gap이다.
+
+#### GR-002 법령과 가이드 현행성
+
+- 법령/시행령/행정가이드의 법적 성격을 구분한다.
+- 시행일·기준일·적용대상을 표시한다.
+- 구버전만 확보하면 stale limitation을 표시한다.
+
+#### GR-003 재인용 분리
+
+- 정부 보도자료, 재인용 기사, 블로그를 provenance chain으로 구분한다.
+- 같은 원 출처가 독립성 점수를 부풀리지 않는다.
+
+#### GR-004 부분 실패
+
+- source 5개 중 2개 timeout이어도 나머지로 결과를 만든다.
+- 실패 원인, retryability, coverage gap을 표시한다.
+
+### PG1 품질 기준
+
+| Metric | Gate |
+|---|---:|
+| FACT citation coverage | 100% schema lint, 운영 목표 ≥95% |
+| Citation locator completeness | ≥95% |
+| 공식 1차 source 비율 | golden corpus ≥70% |
+| golden 필수 track recall | 100% |
+| critical factual contradiction | 0 |
+| unsupported legal conclusion | 0 |
+| quick hard deadline | ≤30초 또는 async 안내 |
+
+## 7. PG2 — Zero-Retention Async
+
+### 7.1 Handle
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-HANDLE-001 | entropy | CSPRNG 192-bit 이상 |
+| VAL-PUB-HANDLE-002 | payload inspection | user/question/time/URL 복원 불가 |
+| VAL-PUB-HANDLE-003 | metadata storage | keyed digest만 저장 |
+| VAL-PUB-HANDLE-004 | compare | constant-time |
+| VAL-PUB-HANDLE-005 | malformed/expired/unknown | 동일 오류 |
+| VAL-PUB-HANDLE-006 | result consumed | content 권한 상실 |
+| VAL-PUB-HANDLE-007 | concurrent consume | 최대 1회 content 전달 |
+
+### 7.2 Async Flow
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-ASYNC-001 | `start` latency | 2초 내 handle/expires_at |
+| VAL-PUB-ASYNC-002 | 새 MCP session의 status | 성공 |
+| VAL-PUB-ASYNC-003 | status payload | content 없음 |
+| VAL-PUB-ASYNC-004 | result ready | schema-compliant result |
+| VAL-PUB-ASYNC-005 | cancel queued | 즉시 purge pending |
+| VAL-PUB-ASYNC-006 | cancel running | 새 source 작업 중지 |
+| VAL-PUB-ASYNC-007 | worker crash | bounded retry 또는 PARTIAL |
+| VAL-PUB-ASYNC-008 | metadata store 장애 | 새 start fail closed |
+| VAL-PUB-ASYNC-009 | temp disk full | 새 Run 거부, 기존 purge 유지 |
+| VAL-PUB-ASYNC-010 | gateway restart | 기존 handle 조회 가능 |
+| VAL-PUB-ASYNC-011 | result too large | bounded summary/citation 반환 |
+| VAL-PUB-ASYNC-012 | provider/source 장애 | usable partial |
+
+### PG2 판정
+
+- `AC-PUB-010~013`, `AC-PUB-020~022` 통과
+- delivered, expired, cancelled, failed, orphan 모든 상태의 purge 증거
+- async content가 persistent MCP Resource나 PostgreSQL evidence table에 없음
+- handle leakage 0건
+
+## 8. PG3 — Public Preview Ready
+
+### 8.1 Remote와 Edge
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-EDGE-001 | TLS endpoint | supported cipher/cert 검증 |
+| VAL-PUB-EDGE-002 | trusted client IP | proxy spoof 방지 |
+| VAL-PUB-EDGE-003 | edge IP quota | application limiter 앞에서 동작 |
+| VAL-PUB-EDGE-004 | request body/time | proxy와 app limit 일치 |
+| VAL-PUB-EDGE-005 | egress policy | private network route 없음 |
+| VAL-PUB-EDGE-006 | Host 2종 | anonymous quick 실제 호출 |
+| VAL-PUB-EDGE-007 | disconnect/reconnect | async result 조회 |
+| VAL-PUB-EDGE-008 | service policy | 배포 config와 자동 일치 |
+
+### 8.2 Load와 Cost
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-PERF-001 | `service.policy` | P95 200ms 이하 |
+| VAL-PUB-PERF-002 | async start | P95 2초 이하 |
+| VAL-PUB-PERF-003 | quick | P95 30초 이하 또는 async 전환 |
+| VAL-PUB-PERF-004 | quota saturation | memory/FD/thread 안정 |
+| VAL-PUB-PERF-005 | source slow response | global worker 고갈 없음 |
+| VAL-PUB-COST-001 | run cost ceiling | 설정 상한 초과 0 |
+| VAL-PUB-COST-002 | daily budget | 도달 시 새 collection 중지 |
+| VAL-PUB-COST-003 | kill switch rehearsal | 5분 내 운영 가능 |
+
+### 8.3 Feedback와 개인정보
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-FBK-001 | feedback token | content/run 복원 불가 |
+| VAL-PUB-FBK-002 | 기본 field | helpful/save interest만 |
+| VAL-PUB-FBK-003 | question/result join | 불가능 |
+| VAL-PUB-FBK-004 | free text | 기본 비활성 |
+| VAL-PUB-FBK-005 | deletion/retention notice | 사용자에게 명확 |
+
+### 8.4 Release Review
+
+- dependency critical/high 0 또는 승인된 waiver
+- secret scan 0
+- license/NOTICE 검토
+- threat model Public Preview section 승인
+- incident·purge failure·cost spike runbook
+- kill switch와 rollback rehearsal
+- 제한 공개 24~72시간 동안 P0/P1 0
+- User Content canary 잔존 0
+
+## 9. Product Validation
+
+PG3는 기술적 공개 가능성이다. Account Beta 시작은 다음 실제 사용 증거를 별도로 요구한다.
+
+| Metric | Trigger |
+|---|---:|
+| 주간 완료 조사 | 4주 연속 ≥100 |
+| 결과 수령률 | ≥60% |
+| helpful 응답 수/긍정률 | ≥50 / ≥60% |
+| 공식 1차 source 비율 | ≥70% |
+| FACT citation coverage | ≥95% |
+| 저장·History·reuse 관심 사용자 | ≥20 |
+| TTL 이후 content 잔존 | 0 |
+| 조사당 비용 | 운영 상한 안에서 안정 |
+
+이 조건이 부족하면 Account 기능 대신 연결 성공률, planner, source coverage, result quality를 개선한다.
+
+## 10. AG0 — Account Trust (Future)
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-ACC-001 | signup 미선택 public 사용자 | 기존 anonymous flow 유지 |
+| VAL-ACC-002 | account default | `save=false` |
+| VAL-ACC-003 | `save=false` 조사 | persistent content 0 |
+| VAL-ACC-004 | `save=true` 조사 | 해당 사용자 workspace에만 저장 |
+| VAL-ACC-005 | cross-user ID guess | opaque denial |
+| VAL-ACC-006 | actor FK | cross-tenant user reference DB 거부 |
+| VAL-ACC-007 | unknown JWT `kid` flood | bounded JWKS refresh |
+| VAL-ACC-008 | export | 저장 조사·metadata 완전 |
+| VAL-ACC-009 | delete/account close | DB/object deletion manifest 일치 |
+| VAL-ACC-010 | consent version | 저장 시점에 기록 |
+
+## 11. Foundation Regression
+
+기존 `G0~G5` 검증은 계속 실행한다.
+
+- build, lint, type, coverage
+- domain state와 idempotency
+- MCP schema/error
+- PostgreSQL migration/RLS/lease
+- OAuth issuer/audience/JWKS/Membership
+- remote Streamable HTTP conformance
+
+Public change가 Account/Enterprise foundation을 깨뜨리지 않아야 한다. 다만 Foundation G6 기관 owner 승인은 Public Preview release gate가 아니다.
+
+## 12. Coverage와 Test 품질
+
+- 전체 statement coverage 90% 이상
+- 전체 branch coverage 85% 이상
+- public quota, URL policy, handle, purge, evidence lint: statement 95% 이상
+- security corpus case 100%
+- golden required assertion 100%
+- flaky test: 100회 반복 0건 목표
+- wall clock, 실제 public internet, random nondeterminism에 직접 의존하지 않음
+- network test는 통제된 local malicious server와 resolver fixture 사용
+
+Coverage 수치가 security 또는 retention failure를 상쇄하지 않는다.
+
+## 13. 문서 검증
 
 | ID | 기준 |
 |---|---|
-| VAL-DOC-001 | README 링크가 모두 존재 |
-| VAL-DOC-002 | Mermaid/code fence가 균형 |
-| VAL-DOC-003 | PRD requirement→implementation→validation 추적 가능 |
-| VAL-DOC-004 | ADR status와 implementation이 일치 |
-| VAL-DOC-005 | command와 실제 entrypoint 일치 |
-| VAL-DOC-006 | limitation/open gate가 최신 |
+| VAL-DOC-001 | 모든 상대 링크 존재 |
+| VAL-DOC-002 | Mermaid/code fence 균형 |
+| VAL-DOC-003 | PRD→Implementation→Validation 추적 가능 |
+| VAL-DOC-004 | ADR status와 현재 제품단계 일치 |
+| VAL-DOC-005 | README가 구현/미구현을 사실대로 구분 |
+| VAL-DOC-006 | service policy 예시와 config 제한 일치 |
+| VAL-DOC-007 | Foundation 문서는 미래 mode 자산임을 표시 |
+| VAL-DOC-008 | Open Question에 추천안과 결정시점 존재 |
 
-## 21. Gate 판정
+## 14. 완료 선언 규칙
 
-### G0 Buildable
+허용:
 
-- BUILD 전부 통과
-- dependency lock 존재
-- clean checkout 재현
+> Foundation G0~G5는 검증됐고, Public Preview PG0~PG3는 별도 구현·검증 대상이다.
 
-### G1 Domain Safe
+PG3 전 금지:
 
-- DOM-001~012, AUTH-001~006·008~009, PORT-001~008, APP-001~016, JOB-001~008, CFG 통과
-- cross-tenant failure 0
-- critical coverage target 통과
+- public ready
+- anonymous production ready
+- zero retention verified
+- safe public crawler
+- public research quality verified
 
-AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, AUTH-010 human approval은 Planner review workflow가 생기는 P0에서 판정한다. PORT-009의 PostgreSQL 공통 contract는 G3에서 판정한다.
+R4 제품 지표 전 금지:
 
-### G2 MCP Contract
+- product-market fit
+- 사용자가 저장기능을 원한다
+- Account Beta가 필요하다
 
-- MCP-001~020 통과
-- canonical Tool catalog digest 승인
-- SDK v1 in-memory/transport test 통과
-- application error가 secret/target existence를 노출하지 않음
-
-### G3 Durable
-
-- DB-001~012, JOB-009~015, REC-001~006 통과
-- PostgreSQL contract test와 crash test
-- backup/restore evidence
-
-### G4 Authenticated
-
-- OAUTH-001~008·010 통과, OAUTH-009는 Collector gate로 명시 이관
-- IdP key rotation과 revoked Membership
-- security review P0/P1 0건
-
-### G5 Interoperable
-
-- MCP current stable Tool/Resource/Prompt server conformance
-- 목표 Host 2종에서 각 Host가 노출하는 필수 primitive 실제 호출
-- Codex Foundation 지원 기준은 Tool 실제 호출
-- Resource/Prompt를 노출하는 Host에서는 해당 primitive도 실제 호출
-- disconnect/reconnect
-- primitive별 compatibility matrix
-
-### G6 Foundation Exit
-
-- G0~G5 모두 통과
-- 운영 runbook, threat model, data dictionary
-- unresolved P0/P1 0건
-- Product, Architecture, Security owner 승인
-
-## 22. 현재 완료 선언 규칙
-
-현재 검증 상태에서는 다음과 같이 범위를 한정해 표현한다.
-
-> Foundation G0~G5가 local·reference·capability-aware Host 범위에서 검증됐다. Codex Tool과 Inspector 전체 primitive는 표시된 version에서 호환된다. 실제 기관 IdP/gateway와 독립 owner 승인은 아직 검증되지 않았다.
-
-다음 표현은 G6 전 금지한다.
-
-- production ready
-- public-sector deployment ready
-- production durable queue verified
-- secure multi-tenant service verified
-- 범위·Host·version을 생략한 “MCP Host compatible”
-
-## 23. 검증 결과 기록 양식
+## 15. 검증 기록 양식
 
 ```text
 Validation ID:
 Environment/commit:
-Command or procedure:
+Fixture or command:
 Expected:
 Observed:
+Content retained:
 Evidence artifact:
 Pass/Fail/Blocked:
 Reviewer:
 Date:
 ```
 
-자동 test 결과는 CI artifact에, 수동 Host/security 검토는 versioned report에 남긴다.
-
 ---
 
-검증의 목적은 test 개수를 늘리는 것이 아니라 **공공업무 사용자가 잘못된 권한·상태·근거를 정상 결과로 오인하지 않게 하는 것**이다.
+Public Preview의 최종 기준은 단순하다. **로그인 없이 유용한 근거를 돌려주고, 공격과 비용을 제한하며, 사용자의 content를 약속한 시간 안에 실제로 지워야 한다.**

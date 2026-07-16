@@ -1,12 +1,17 @@
-# Foundation Threat Model
+# Public Sector Research MCP — Threat Model
 
-> 상태: Security owner review 대기 · 기준일: 2026-07-16 · 구현 기준: `c7064cd`
+> 상태: Public Preview 설계 갱신 · 기준일: 2026-07-16 · Foundation 구현 기준: `c7064cd`
 
-[Architecture](../ARCHITECTURE.md) · [OAuth Runbook](../runbooks/oauth-resource-server.md) · [Remote Runbook](../runbooks/remote-mcp.md) · [Validation Criteria](../VALIDATION_CRITERIA.md)
+[Architecture](../ARCHITECTURE.md) · [ADR-0009](../adr/0009-public-zero-retention-first.md) · [OAuth Runbook](../runbooks/oauth-resource-server.md) · [Remote Runbook](../runbooks/remote-mcp.md) · [Validation Criteria](../VALIDATION_CRITERIA.md)
 
 ## 1. 범위
 
-현재 모델은 Foundation vertical slice만 다룬다.
+이 문서는 두 범위를 분리한다.
+
+1. 이미 구현된 OAuth·Tenant·PostgreSQL Foundation
+2. 다음 구현 대상인 가입 없는 `PUBLIC_EPHEMERAL` Public Preview
+
+Foundation 범위:
 
 - Remote MCP Streamable HTTP
 - OIDC access token verification과 RFC 9728 protected resource metadata
@@ -15,18 +20,42 @@
 - operation/audit trace
 - TLS terminating reverse proxy deployment pattern
 
-Collector, 외부 web source, object storage, Evidence/Report, Review Console은 아직 구현되지 않았으므로 현재 통제가 있다고 간주하지 않는다. 해당 module을 시작할 때 SSRF, prompt injection, 개인정보·저작권, object key isolation을 별도 threat-model increment로 추가한다.
+Public Preview 설계 범위:
+
+- 익명 MCP Tool
+- IP·anonymous bucket quota
+- 공개 HTTPS source Search/Collector
+- HTML·PDF·JSON Parser
+- 임시 workspace와 opaque run handle
+- Planner, Evidence Composer, Markdown/JSON result
+- TTL purge와 content-free observability
+
+Public Preview 기능은 아직 구현되지 않았다. 아래 설계 통제를 현재 code에 이미 존재하는 것으로 간주하지 않는다. `PG0~PG3` 검증 전 공개 endpoint를 열지 않는다.
+
+Review Console, private document, user credential, browser automation, 영구 Evidence Store, Account signup은 Public Preview 범위 밖이다.
+
+## 1.1 Mode별 자산
+
+| Mode | 주요 보호자산 | 기본 보존 |
+|---|---|---|
+| `PUBLIC_EPHEMERAL` | 질문, 검색어, source body, result, handle | 결과 전달 또는 강제 TTL까지 |
+| `ACCOUNT_OPT_IN` | 사용자 identity, 저장 consent, 저장한 조사 | 사용자 선택·정책에 따름 |
+| `ENTERPRISE` | 기관 Project, Evidence, Review, Audit | 기관 보존정책 |
+
+Public Preview에서는 “저장하지 않는 것” 자체가 핵심 보안속성이다.
 
 ## 2. 보안 목표
 
-1. 다른 Organization의 존재나 데이터를 ID를 알아도 읽거나 변경하지 못한다.
-2. access token의 외부 identity와 active Membership을 분리 검증한다.
-3. model-controlled Tool이 scope·role·Project·state guard를 우회하지 못한다.
-4. write 결과를 actor, operation, target, outcome까지 추적한다.
-5. crash, reconnect, replay가 중복 Run 또는 잘못된 terminal state를 만들지 않는다.
-6. token, DB credential, cursor key, 내부 예외가 response/log/export에 노출되지 않는다.
-7. 비정상 request가 process memory·connection·CPU를 무제한 점유하지 못한다.
-8. 자동 검증하지 않은 보안 속성을 운영 완료로 주장하지 않는다.
+1. Public Preview의 질문·원문·결과가 영구 DB·일반 log·TTL 이후 tmp에 남지 않는다.
+2. 익명 사용자가 bearer·handle을 회전해 IP·비용 quota를 우회하지 못한다.
+3. Collector가 localhost, private/link-local network, cloud metadata에 접근하지 못한다.
+4. 악성 HTML·PDF·JSON이 parser resource를 무제한 점유하거나 source instruction을 실행시키지 못한다.
+5. opaque handle을 추측하거나 log에서 획득해 결과를 읽지 못한다.
+6. kill switch가 새 고비용 조사를 막아도 기존 content purge는 계속된다.
+7. Account/Enterprise에서는 다른 User·Organization 데이터를 ID를 알아도 읽거나 참조하지 못한다.
+8. access token의 외부 identity와 active Membership을 분리 검증한다.
+9. token, DB credential, cursor key, 내부 예외가 response/log/export에 노출되지 않는다.
+10. 자동 검증하지 않은 보안 속성을 운영 완료로 주장하지 않는다.
 
 ## 3. 보호 자산과 분류
 
@@ -39,12 +68,19 @@ Collector, 외부 web source, object storage, Evidence/Report, Review Console은
 | AuditEvent | 보안·감사기록 | 책임 추적 상실 |
 | cursor signing key | Secret | pagination tampering |
 | request/operation/run IDs | Internal Identifier | 단독 secret은 아니나 상관분석 가능 |
-| source/evidence/report | 미래 업무정보 | 현재 미구현; 별도 분류 필요 |
+| public question/search query | User Content | 조사 관심사 노출, 무보관 약속 위반 |
+| source body/extracted passage | Third-party/User Content | 저작권·개인정보·악성 content 잔존 |
+| public research result | User Content | 업무정보 노출, 무보관 약속 위반 |
+| opaque run handle | Bearer Capability | 임시 결과 무단 조회 |
+| abuse HMAC key | Secret | IP bucket 역추적·quota 무력화 |
+| ephemeral root | Restricted Temporary Storage | content 유출·TTL 위반 |
 
 ## 4. 행위자와 신뢰 경계
 
 ### 정상 행위자
 
+- 가입하지 않은 Public Preview 사용자
+- MCP Host와 공개 edge operator
 - 공공업무 담당자와 Reviewer
 - Organization Admin/Security Auditor
 - 기관 IdP와 gateway operator
@@ -54,6 +90,10 @@ Collector, 외부 web source, object storage, Evidence/Report, Review Console은
 ### 위협 행위자
 
 - 인증되지 않은 internet client
+- quota 우회를 시도하는 자동화 client
+- SSRF target으로 내부망 접근을 유도하는 사용자
+- 악성 HTML·PDF·JSON을 제공하는 source operator
+- 유출된 opaque handle 보유자
 - 다른 Organization의 정상 사용자
 - 탈취·폐기·과다 scope token 사용자
 - prompt에 의해 잘못된 Tool을 선택한 AI Host
@@ -65,17 +105,28 @@ Collector, 외부 web source, object storage, Evidence/Report, Review Console은
 
 ```mermaid
 flowchart LR
-    U["User / AI Host"] -->|"HTTPS + bearer"| G["Gateway / TLS boundary"]
-    G -->|"private HTTP, canonical Host"| M["MCP HTTP boundary"]
-    M --> A["OIDC verifier"]
-    A --> I["Institution IdP"]
-    M --> P["Authorization policy"]
-    P --> D["PostgreSQL runtime role + RLS"]
-    O["Migration operator"] -->|"separate owner credential"| D
+    U["Anonymous User / AI Host"] -->|"HTTPS"| G["Public Edge\nIP quota"]
+    G --> M["Public MCP"]
+    M --> R["Ephemeral Runtime"]
+    R --> T["TTL Workspace"]
+    R --> S["Public Sources"]
+    M -.->|"Future account mode"| A["OIDC verifier"]
+    A -.-> I["Institution IdP"]
+    M -.-> P["Authorization policy"]
+    P -.-> D["PostgreSQL + RLS"]
 ```
 
 ## 5. 보안 불변조건
 
+- public mode는 OAuth token 유무와 관계없이 IP quota를 먼저 적용한다.
+- public mode의 질문·검색어·source body·result는 persistent DB와 일반 telemetry에 기록하지 않는다.
+- ephemeral directory와 file은 각각 `0700`, `0600`이며 user input을 path에 사용하지 않는다.
+- result를 전달하면 content access를 즉시 차단하고 60초 내 purge 대상으로 전환한다.
+- 미수령 result와 orphan workspace는 ADR-0009의 강제 TTL을 넘지 않는다.
+- outbound URL은 최초 요청과 모든 redirect에서 scheme, host, DNS/IP, port 정책을 다시 통과한다.
+- client bearer, cookie, certificate를 upstream source에 전달하지 않는다.
+- source text는 untrusted data이며 system/tool instruction으로 해석하지 않는다.
+- kill switch는 새 quick/start를 막아도 status/result/cancel/purge를 막지 않는다.
 - `organization_id` token claim만으로 사용자를 인증하지 않는다.
 - exact `(issuer, external_subject, requested_organization_id)`가 active external identity와 Membership에 매핑돼야 한다.
 - runtime role은 table owner 또는 `BYPASSRLS`가 아니며 transaction마다 `SET LOCAL app.organization_id`를 먼저 수행한다.
@@ -87,18 +138,37 @@ flowchart LR
 - audit row는 append-only이며 application write transaction과 함께 commit한다.
 - production은 static auth, memory storage, HTTP public URL, development cursor key로 기동하지 않는다.
 
-## 6. 위협·통제·검증
+## 6. Public Preview 위협·통제·검증
+
+| ID | 위협 | 필수 통제 | 검증 | 상태 |
+|---|---|---|---|---|
+| TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | 미구현/PG0 |
+| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~013` | 미구현/PG0 |
+| TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | 미구현/PG0 |
+| TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | 미구현/PG0 |
+| TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | 미구현/PG0 |
+| TM-PUB-006 | handle 추측·유출로 결과 탈취 | 192-bit CSPRNG, keyed digest, no log, uniform error | `VAL-PUB-HANDLE-*` | 미구현/PG2 |
+| TM-PUB-007 | localhost/private/metadata SSRF | HTTPS/port policy, DNS/IP check, redirect revalidation | `VAL-PUB-NET-001~009` | 미구현/PG1 |
+| TM-PUB-008 | client credential upstream 유출 | credential input 미지원, header allowlist | `VAL-PUB-NET-010` | 미구현/PG1 |
+| TM-PUB-009 | decompression/PDF/parser bomb | byte, ratio, page, depth, time, memory budget | `VAL-PUB-COL/PARSE` | 미구현/PG1 |
+| TM-PUB-010 | source prompt injection이 조사정책 변경 | source를 untrusted data로 tag, deterministic policy | `VAL-PUB-PLAN-008`, `PARSE-007` | 미구현/PG1 |
+| TM-PUB-011 | 악성·제한 source 우회수집 | robots/terms/access policy, no captcha/paywall bypass | `VAL-PUB-NET-012` | 미구현/PG1 |
+| TM-PUB-012 | 인용 없는 허위사실 출력 | FACT citation lint, gaps/inference 분리 | `VAL-PUB-EVD-*` | 미구현/PG1 |
+| TM-PUB-013 | edge forwarded IP spoof | trusted proxy boundary, direct header 거부 | `VAL-PUB-EDGE-002` | 미구현/PG3 |
+| TM-PUB-014 | feedback로 content 재식별 | one-time opaque token, no content join/free text | `VAL-PUB-FBK-*` | 미구현/PG3 |
+
+## 7. Foundation 위협·통제·검증
 
 | ID | 위협 | 주요 통제 | 검증 증적 | 잔여위험/상태 |
 |---|---|---|---|---|
 | TM-001 | 서명 없는/대칭 JWT 수용 | `typ`, asymmetric alg allowlist, signature verification | `test_oauth_tokens.py` | 낮음/PASS |
 | TM-002 | 다른 issuer/audience token 재사용 | exact `iss`, `aud`, RFC 9728 resource URL | OAuth G4 + PG E2E | 낮음/PASS |
 | TM-003 | stale/미래 token | `exp`, `iat`, `nbf`, bounded leeway | unit tests | 낮음/PASS |
-| TM-004 | unknown `kid`와 key rotation | 한 번 forced JWKS refresh 후 fail closed | unit tests | IdP outage 영향/통제됨 |
+| TM-004 | unknown `kid`와 key rotation | forced JWKS refresh와 fail closed | unit tests | 반복 unknown `kid` refresh 증폭; A0 전 negative cache 필요 |
 | TM-005 | malicious discovery/JWKS redirect·oversize | redirect 금지, origin policy, size/content-type/depth bounds | unit tests | parser zero-day/낮음 |
 | TM-006 | 조작한 Organization claim | tenant RLS 안에서 issuer/sub exact Membership 재검증 | `test_oauth_end_to_end.py` | 낮음/PASS |
 | TM-007 | revoked Membership 계속 사용 | request마다 DB resolve, active 상태 조건 | G4 tests | DB outage 시 fail closed/PASS |
-| TM-008 | cross-tenant IDOR | application policy + composite tenant key + FORCE RLS | PostgreSQL contract tests | owner credential 오용/운영통제 |
+| TM-008 | cross-tenant IDOR | application policy + tenant key + FORCE RLS | PostgreSQL contract tests | `research_runs.initiated_by` composite FK 보강이 A0 전 필요 |
 | TM-009 | runtime role RLS bypass | non-owner/no BYPASSRLS assertions, restricted grants | G3 report | DBA는 별도 privileged actor |
 | TM-010 | Project restriction 우회 | `project_scope`, membership_projects, role+scope intersection | membership tests | admin misconfiguration |
 | TM-011 | Tool replay로 중복 Run | safe idempotency key + fingerprint + unique constraint | service/PG/conformance tests | key 관리 책임은 client |
@@ -110,14 +180,14 @@ flowchart LR
 | TM-017 | forged forwarded header | `proxy_headers=False`, config-derived public URL | spoof integration test | gateway 자체 로그/route 설정 |
 | TM-018 | oversized/chunked request DoS | declared+observed byte limit | HTTP policy tests | proxy에도 동일/더 작은 limit 필요 |
 | TM-019 | slow request/resource exhaustion | application timeout, bounded JSON response | timeout tests | slowloris는 gateway 책임 |
-| TM-020 | brute force/traffic flood | token+IP process limiter, gateway quota contract | rate tests | multi-replica global rate 미구현 |
+| TM-020 | brute force/traffic flood | token+IP process limiter, gateway quota contract | rate tests | invalid bearer 회전이 별도 key를 만들 수 있어 Public 전 교체 필요 |
 | TM-021 | TLS MITM | production HTTPS fail closed, CA-verifying proxy test | TLS integration test | 실기관 cert 미검증 |
 | TM-022 | Host disconnect 상태 상실 | stateless HTTP, durable explicit Run ID | TCP/TLS/Inspector reconnect | Host retry behavior 차이 |
 | TM-023 | vulnerable dependency | locked dependencies, `uv audit`, SBOM | CI + 2026-07-16 audit | advisory feed 한계 |
 | TM-024 | incompatible dependency license | versioned cross-platform manifest | manifest check | project 자체 license 미결정 |
 | TM-025 | MCP source content 외부 전송 | 수동 Host test approval boundary, capability-aware gate | Codex Resource/Prompt 실행 중단·미필수화 | 향후 opt-in 검증 시 별도 승인 |
 
-## 7. 보안 검토 결과
+## 8. 보안 검토 결과
 
 ### 닫힌 P1
 
@@ -128,19 +198,30 @@ flowchart LR
 | request resource exhaustion | size, timeout, rate, request ID boundary 구현 |
 | 취약한 `pytest 8.4.2` | `pytest 9.1.1`로 lock 갱신; OSV audit 0건 |
 
-현재 구현 범위에서 미해결 P0/P1 defect는 0건이다. 아래 “미검증/의사결정”은 결함을 닫았다는 의미가 아니며 release gate를 계속 연 상태로 둔다.
+### 현재 열린 P1
 
-## 8. 미검증과 의사결정 대기
+| 항목 | 영향 | 처리 |
+|---|---|---|
+| token digest+IP rate key | invalid bearer 회전으로 공개 IP quota 우회 가능 | S0에서 IP-first limiter로 교체 |
+| `research_runs.initiated_by` global FK | 다른 tenant user ID 참조가 DB constraint로 차단되지 않음 | A0에서 composite tenant FK |
+| unknown JWT `kid` 반복 refresh | 인증 endpoint와 IdP에 요청 증폭 가능 | A0에서 negative cache/cooldown |
+
+세 항목은 감사 중 재현됐다. 첫 항목은 Public Preview blocker다. 나머지 두 항목은 Public mode가 OAuth/Tenant 경로를 사용하지 않으므로 Public Preview blocker는 아니지만 Account Beta 전에 반드시 수정한다.
+
+## 9. 미검증과 의사결정 대기
 
 | 항목 | 분류 | 다음 조치 |
 |---|---|---|
+| Public Tool과 ephemeral lifecycle | 미구현 | S0/PG0 |
+| SafeCollector와 parser | 미구현 | P1/PG1 |
+| async handle·consume·purge | 미구현 | P2/PG2 |
 | 실제 기관 IdP/JWKS/폐기 전파 | 환경 미검증 | Pilot IdP owner와 integration test |
 | 실제 gateway/WAF/TLS cipher | 환경 미검증 | 운영 topology review + penetration test |
 | project distribution license | Product/Legal decision | 배포 전에 LICENSE와 NOTICE 결정 |
 | global rate limit | 아키텍처 후속 | multi-replica 전에 gateway/Redis 정책 결정 |
 | security owner sign-off | G6 approval | 본 문서와 validation report 서명 |
 
-## 9. Collector 이전 필수 Threat Model 확장
+## 10. Collector 이전 필수 Threat Model 확장
 
 다음은 아직 통제가 구현되지 않았으므로 C0/Collector merge 전에 새 threat ID와 test가 필요하다.
 
@@ -149,19 +230,19 @@ flowchart LR
 - malicious HTML/PDF/JSON parser와 decompression bomb
 - prompt injection을 instruction과 evidence data로 분리
 - response header/cookie/URL query secret redaction
-- immutable object key와 cross-tenant bucket/prefix policy
+- ephemeral path와 후속 persistent object key isolation
 - sandboxed parser, file type sniffing, antivirus/content disarm 정책
 - upstream rate/retry/circuit breaker와 client token passthrough 음성 test
 
-## 10. Review 절차
+## 11. Review 절차
 
 Security owner는 다음을 확인하고 문서 하단에 결정 기록을 추가한다.
 
 1. 위협 범위와 제외범위가 배포 topology와 일치하는가?
 2. 미검증 항목이 운영 문서와 release note에 동일하게 표시되는가?
 3. P0/P1 분류와 수용 가능한 잔여위험이 맞는가?
-4. 기관 IdP/gateway/DB owner가 각 통제의 실제 책임을 수락했는가?
-5. G6를 승인할지, 조건부 승인할지, 거부할지 결정한다.
+4. Public Preview에서는 PG0~PG3, Account/Enterprise에서는 기관 IdP/gateway/DB 책임이 분리됐는가?
+5. Public release 또는 후속 G6를 승인할지, 조건부 승인할지, 거부할지 결정한다.
 
 ### Owner decision
 
@@ -169,7 +250,7 @@ Security owner는 다음을 확인하고 문서 하단에 결정 기록을 추�
 Security owner: PENDING
 Decision: PENDING
 Date: PENDING
-Conditions: 실제 기관 IdP/gateway 검증, project license 결정
+Conditions: Public PG0~PG3, project license, 후속 Account 시 IdP/Tenant P1 수정
 ```
 
 Codex Host의 Foundation 지원 범위는 [ADR-0008](../adr/0008-capability-aware-host-conformance.md)에 따라 Tool-first로 확정했다. Resource/Prompt model-mediated 검증은 release gate가 아니며, 향후 제품 필요가 생기면 비민감 fixture와 외부 전송 범위를 별도로 승인한다.

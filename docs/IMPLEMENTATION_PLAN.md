@@ -1,570 +1,612 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4/G5 완료, G6 owner review 대기
+> 문서 상태: Accepted · 기준일: 2026-07-16 · 다음 increment: **S0 Public Safety Core**
 
-[DETAILED DESIGN](./DETAILED_DESIGN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ROADMAP](./ROADMAP.md) · [ADR](./adr/)
+[DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
 ## 1. 목적
 
-이 문서는 제품 Roadmap을 구현 가능한 change set으로 분해한다. 각 작업은 다음을 가져야 한다.
+이 문서는 현재 Foundation codebase를 가입 없는 무보관 Public Preview로 전환하는 구현 순서를 정의한다. 각 change set은 다음을 포함해야 한다.
 
-- 요구사항과 검증 ID
-- 입력과 생성·수정 파일
-- 선행조건
-- 실패 시 중단 기준
-- Definition of Done
-- 다음 작업이 의존할 안정 interface
+- 연결된 `FR-PUB`, `NFR-PUB`, `AC-PUB`, `VAL-PUB` ID
+- 수정·생성할 package와 interface
+- 선행조건과 명시적 비범위
+- failure, retry, purge 동작
+- 자동 검증과 수동 검토 증거
+- rollback 또는 kill switch
 
-큰 기능 branch 하나에서 모든 Foundation 기능을 완성하지 않는다. 작은 vertical increment를 순서대로 통합한다.
+현재 Foundation `F0~F4/G0~G5`는 완료된 과거 increment다. 다음 작업은 `G6` 기관 배포 승인이 아니라 Public Preview 경로 구현이다.
 
-## 2. 구현 원칙
+## 2. 현재 기준선
 
-1. 먼저 domain invariant와 authorization contract를 테스트로 고정한다.
-2. in-memory adapter는 test/dev 용도이며 production readiness 증거가 아니다.
-3. PostgreSQL과 OAuth adapter가 검증되기 전 production mode는 fail closed한다.
-4. MCP decorator는 application service를 호출하는 얇은 adapter다.
-5. 새 interface는 positive test보다 cross-tenant·invalid-state negative test를 먼저 포함한다.
-6. migration, schema, runbook, test를 같은 change set에서 갱신한다.
-7. 기존 crawler code는 Foundation exit gate 전 이식하지 않는다.
-8. 문서의 `Must`를 낮추려면 Product·Architecture·Security decision을 기록한다.
+### 2.1 구현 완료
 
-## 3. Release 단위
+- Python 3.12, `src` layout, strict lint/type/test
+- MCP Streamable HTTP server와 5개 Foundation Tool
+- Project/ResearchRun application service
+- PostgreSQL repository, migration, RLS, durable Job
+- OAuth/OIDC token verifier와 Membership
+- request size, timeout, process-local rate limit
+- official SDK, Inspector, Codex Tool conformance
+- 185 tests, statement 95.02%, branch 87.10%, critical module 95% 이상
 
-| Increment | 이름 | 결과 | 구현상태 |
+### 2.2 아직 없음
+
+- public anonymous composition root
+- Public Tool catalog
+- ephemeral workspace와 TTL sweeper
+- Planner, Search, Collector, Parser
+- Evidence Composer와 실제 research result
+- quick/start/status/result/cancel public flow
+- content-free feedback와 product metric
+
+### 2.3 확인된 보강 항목
+
+| ID | 항목 | 영향 | 처리 단계 |
 |---|---|---|---|
-| D0 | Detailed Design | 상세설계·계획·검증·ADR | 완료 |
-| F0 | Foundation Core | package, domain, policy, memory UoW | 완료 (`G0~G1`) |
-| F1 | MCP Contract | Tools·Resources·Prompt와 in-memory protocol test | 완료 (`G2`, loopback) |
-| F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 완료: PostgreSQL 17.10 local G3 |
-| F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 완료: local G4 |
-| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 완료 / G5 PASS |
-| P0 | Planner Skeleton | Plan create/review workflow | Foundation 후 |
-| C0 | Collector Characterization | legacy behavior fixture와 adapter 판단 | Foundation 후 |
-
-`F0~F4` 완료는 Roadmap의 Foundation exit gate 선행조건이다. 최종 `G6`에는 운영문서와 독립 Product·Architecture·Security owner 승인이 추가로 필요하다.
-
-## 4. D0 — Detailed Design
-
-### 산출물
-
-- `docs/DETAILED_DESIGN.md`
-- `docs/IMPLEMENTATION_PLAN.md`
-- `docs/VALIDATION_CRITERIA.md`
-- ADR-0001~0004
-- README navigation
-
-### 완료 기준
-
-- runtime, SDK, protocol, auth, tenant, job queue 결정이 일치한다.
-- Foundation 포함/제외 범위가 명시돼 있다.
-- 모든 다음 작업 패키지가 검증 ID에 연결된다.
-- production readiness와 development harness를 혼동하지 않는다.
-
-## 5. F0 — Foundation Core
-
-### 목표
-
-MCP SDK나 DB 없이도 검증 가능한 domain/application core와 development/test adapter를 만든다.
-
-### WP-F0.1 Project scaffold
-
-**파일**
-
-- `pyproject.toml`
-- `uv.lock`
-- `.python-version`
-- `.gitignore`
-- `src/psr_mcp/__init__.py`
-- `src/psr_mcp/config.py`
-- `tests/conftest.py`
-
-**작업**
-
-- Python 3.12 pin
-- src layout
-- runtime `mcp>=1.28,<2`, Pydantic v2
-- dev pytest, anyio, ruff, mypy
-- strict type/lint/test configuration
-- console scripts `psr-mcp`, `psrctl`
-
-**검증:** `VAL-BUILD-001~005`
-
-**난이도:** 낮음
-
-**DoD:** clean environment에서 sync, import, test discovery 성공
-
-### WP-F0.2 Domain model and errors
-
-**파일**
-
-- `domain/errors.py`
-- `domain/identity.py`
-- `domain/projects.py`
-- `domain/research.py`
-- `domain/audit.py`
-
-**작업**
-
-- frozen dataclass/enum
-- UTC와 blank/length validation
-- ResearchRun state transition
-- Job lease state
-- stable domain error code
-
-**검증:** `VAL-DOM-001~012`
-
-**난이도:** 중간
-
-**DoD:** invalid object 생성 거부, terminal transition 거부, framework import 없음
-
-### WP-F0.3 Authorization policy
-
-**파일**
-
-- `auth/context.py`
-- `auth/policy.py`
-- `auth/providers.py`
-
-**작업**
-
-- `AuthorizationContext`
-- scope/role/project restriction evaluator
-- opaque not-found policy
-- static development provider와 production guard interface
-
-**검증:** `VAL-AUTH-001~010`
-
-**난이도:** 높음
-
-**DoD:** Organization A/B matrix와 project restriction test 전부 통과
-
-### WP-F0.4 Ports and in-memory UnitOfWork
-
-**파일**
-
-- `application/ports.py`
-- `storage/memory.py`
-
-**작업**
-
-- Organization-scoped repository interfaces
-- UnitOfWork transaction contract
-- in-memory snapshot/rollback
-- idempotency unique semantics
-- worker claim lock/lease semantics
-- deterministic Clock/ID fixtures
-
-**검증:** `VAL-PORT-001~009`, `VAL-JOB-001~008`
-
-**난이도:** 높음
-
-**DoD:** contract suite가 rollback, race, lease를 검증
-
-### WP-F0.5 Application services
-
-**파일**
-
-- `application/projects.py`
-- `application/research_runs.py`
-- `application/workers.py`
-
-**작업**
-
-- Project list/get
-- approved Plan gate
-- start/status/cancel
-- request fingerprint와 idempotency
-- expected version
-- worker claim/heartbeat/complete
-- transaction-bound AuditEvent
-
-**검증:** `VAL-APP-001~016`
-
-**난이도:** 매우 높음
-
-**DoD:** service test가 PRD FR-001~006, FR-020~025의 Foundation 부분을 추적
-
-### WP-F0.6 Configuration and CLI guard
-
-**파일**
-
-- `config.py`
-- `cli/main.py`
-- `bootstrap.py`
-
-**작업**
-
-- settings parse와 redacted diagnostics
-- production fail-closed
-- `psrctl doctor --json`
-- development seed composition
-
-**검증:** `VAL-CFG-001~008`
-
-**난이도:** 중간
-
-**DoD:** insecure production setting이 process start 전에 실패
-
-### F0 exit
-
-- `ruff`, `mypy`, unit/contract test 통과
-- line coverage 90% 이상, branch coverage 85% 이상
-- cross-tenant negative cases 100% 통과
-- in-memory라는 limitation을 README/doctor가 표시
-
-**2026-07-16 결과:** 통과. 상세 증적은 [Foundation Core 검증 보고서](./validation/2026-07-16-foundation-core.md)에 기록한다.
-
-## 6. F1 — MCP Contract
-
-### 목표
-
-F0 application service를 공식 SDK v1의 Tool·Resource·Prompt로 노출한다.
-
-### WP-F1.1 Schema
-
-**파일**
-
-- `mcp/schemas.py`
-- `tests/integration/test_mcp_contract.py`
-
-**작업**
-
-- Pydantic input/output model
-- `schema_version`, `operation_id`, URI
-- cursor, limit, ID, reason validation
-- canonical Tool catalog SHA-256 snapshot
-
-**검증:** `VAL-MCP-001~006`
-
-### WP-F1.2 Handler and error mapper
-
-**파일**
-
-- `mcp/handlers.py`
-
-**작업**
-
-- AuthContext resolve
-- DTO↔domain command mapping
-- domain error→Tool execution error
-- deny/internal error structured log context
-- no stack/tenant leakage
-
-**검증:** `VAL-MCP-007~013`, `VAL-SEC-001~004`
-
-### WP-F1.3 Server registration
-
-**파일**
-
-- `mcp/server.py`
-- `cli/main.py`
-
-**작업**
-
-- FastMCP v1 composition
-- Tool 5개
-- Resource template 2개
-- Prompt 1개
-- Streamable HTTP development entrypoint
-
-**검증:** `VAL-MCP-014~020`
-
-### WP-F1.4 In-memory protocol test
-
-- SDK-supported in-memory client/server 또는 low-level test transport
-- list tools/resources/prompts
-- call/read happy path
-- cross-tenant failure parity
-- schema snapshot
-- malformed JSON-RPC parse error
-- Tasks 없는 flow
-- 새 HTTP session에서 explicit Run ID 상태 재조회
-
-**F1 exit:** `G0~G2` 통과
-
-**2026-07-16 결과:** 공식 Python SDK의 in-memory session 및 loopback Streamable HTTP smoke test에서 통과. 두 Host 원격 호환성은 F4 범위다.
-
-## 7. F2 — PostgreSQL Durability
-
-### 목표
-
-in-memory UoW를 production-shaped PostgreSQL adapter로 교체하고 durable Job을 증명한다.
-
-### WP-F2.1 Persistence spike
-
-- SQLAlchemy 2 async와 typed SQL 비교
-- connection pool의 `SET LOCAL` safety 확인
-- migration tool 결정
-- ADR-0005 작성
-
-**2026-07-16 결정:** [ADR-0005](./adr/0005-postgresql-persistence-stack.md)에 따라 Psycopg 3 typed SQL과 async pool을 runtime에 사용하고 Alembic은 migration에만 사용한다. PostgreSQL 17.10에서 RLS/pool 실증 후 이 작업을 완료 처리한다.
-
-**중단 기준:** RLS context reset을 신뢰성 있게 증명하지 못하면 library를 교체한다.
-
-### WP-F2.2 Schema and RLS
-
-- organizations, users, memberships
-- projects, research_plans, research_runs, jobs, audit_events
-- tenant composite keys/foreign keys
-- idempotency unique index
-- RLS enable/force policy
-- least-privilege runtime role
-
-**검증:** `VAL-DB-001~012`
-
-### WP-F2.3 PostgreSQL repositories
-
-- Project/Plan/Run/Job/Audit adapter
-- UnitOfWork
-- error translation
-- keyset pagination
-- optimistic version
-
-**검증:** memory와 PostgreSQL에 같은 port contract suite 실행
-
-### WP-F2.4 Worker lease
-
-- `SKIP LOCKED` claim
-- heartbeat
-- expiry/reclaim
-- cancellation/completion race
-- attempts/exhaustion
-
-**검증:** `VAL-JOB-009~018`
-
-### WP-F2.5 Recovery
-
-- Gateway restart
-- worker kill -9 equivalent
-- DB connection loss before/after commit
-- backup/restore manifest
-
-**F2 exit:** `G3` 통과
-
-**2026-07-16 결과:** PostgreSQL 17.10에서 migration upgrade/downgrade, runtime RLS, repository contract, worker concurrency, backend loss, backup/restore를 검증했다. 상세 증적은 [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md)에 기록한다. PR CI와 PostgreSQL 18 matrix는 release validation으로 남긴다.
-
-## 8. F3 — OAuth Resource Server
-
-### 목표
-
-development static AuthContext를 실제 OAuth/OIDC 검증과 Membership resolution으로 교체한다.
-
-### WP-F3.1 Token verifier
-
-- SDK `TokenVerifier`
-- issuer metadata/JWKS discovery
-- algorithm allowlist
-- issuer/audience/expiry/not-before/scope
-- key rotation cache와 fail behavior
-- no token passthrough
-
-### WP-F3.2 Membership resolution
-
-- external subject→internal user
-- Organization selection policy
-- role/scope intersection
-- Project restriction
-- revoked Membership behavior
-
-### WP-F3.3 Protected Resource Metadata
-
-- RFC 9728 metadata
-- canonical HTTPS resource URL
-- proxy/header trust policy
-- authorization challenge
-
-### WP-F3.4 Security tests
-
-- wrong issuer/audience
-- expired/not-yet-valid
-- unsigned/algorithm confusion
-- revoked membership
-- cross-org claim manipulation
-- token/log scan
-
-**F3 exit:** `G4` 통과
-
-**2026-07-16 결과:** 실제 RSA JWT, OIDC Discovery/JWKS, RFC 9728 metadata, PostgreSQL 17 RLS/Membership을 결합한 local G4를 통과했다. 전체 135개 test와 combined line+branch coverage 91.11%를 확인했다. 상세 증적은 [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md)에 기록한다. 실제 기관 IdP와 원격 Host 검증은 F4에 남긴다.
-
-## 9. F4 — Remote Conformance
-
-### 목표
-
-실제 Streamable HTTP와 목표 Host에서 동일 계약을 검증한다.
-
-### 작업
-
-- TLS reverse proxy 환경
-- MCP Inspector 또는 공식 client conformance
-- Codex 계열 Host 1종 + 추가 Host 1종
-- initialize/capability/tools/resources/prompts
-- structuredContent/text fallback
-- disconnect/reconnect 후 Run status
-- request size, rate limit, timeout
-- operation/audit trace
-
-### 완료 기준
-
-- PRD AC-080~083, AC-085. AC-084의 plan→run→evidence→report 전체 flow는 Evidence/Report가 구현되는 MVP end-to-end gate에서 판정한다.
-- `VALIDATION CRITERIA`의 `G5`
-- known compatibility matrix
-- unresolved P0/P1 0건
-
-**2026-07-16 결과:** commit `c7064cd`에서 real TCP, TLS terminating reverse proxy, request bound, operation/audit trace와 official client conformance를 구현했다. PostgreSQL 17을 포함한 158개 test, combined line+branch coverage 90.90%, OSV known vulnerability 0건을 확인했다. MCP Inspector 0.18.0은 Tool/Resource/Prompt와 새 process Run 재조회가 통과했고 Codex CLI 0.144.2는 실제 Tool call이 통과했다. Product owner는 [ADR-0008](./adr/0008-capability-aware-host-conformance.md)에서 Codex Foundation 지원 기준을 Tool-first로 확정했다. 전체 server primitive contract와 Host별 필수 primitive를 모두 검증했으므로 F4와 G5는 `PASS`다. [Remote G5 보고서](./validation/2026-07-16-remote-g5.md)와 [Host matrix](./compatibility/host-matrix.md)를 따른다.
-
-**2026-07-16 완료 감사:** combined coverage가 별도 branch 85% 기준을 증명하지 못하는 공백을 발견했다. commit `952e173`에서 security/config/OAuth/cursor/worker negative case와 CI의 독립 threshold gate를 추가했다. PostgreSQL 17.10을 포함한 185개 test가 통과했고 statement 95.02%, branch 87.10%, critical module 최소 95.00%를 확인했다. [Coverage Gate 감사 보고서](./validation/2026-07-16-foundation-coverage-audit.md)를 따른다.
-
-## 10. P0 — Planner Skeleton
-
-Foundation 이후 첫 product increment다.
-
-- `ResearchPlan` 전체 schema
-- question/decision context/jurisdiction/as-of
-- Government Profile loading
-- deterministic rule-based minimum plan
-- optional LLM adapter port
-- Review version/nonce
-- `psr.research.plan.create/get/submit_review`
-
-LLM이 없어도 schema, required tracks, stop condition을 만들 수 있는 baseline을 먼저 둔다.
-
-## 11. C0 — Legacy Collector Characterization
-
-Foundation과 Planner 기반이 검증된 다음 진행한다.
-
-1. 기존 `crawlkit.py` command와 output fixture 생성
-2. HTML/JSON/PDF/local file happy/failure corpus
-3. header/cookie/redirect/empty-body risk characterization
-4. reuse/refactor/replace matrix
-5. `Collector` port 뒤 최소 adapter 추출
-6. SSRF/redaction/rate/retry 적용
-
-기존 code를 신규 repository로 먼저 복사하지 않는다.
-
-## 12. 작업 순서와 병렬성
-
-```mermaid
-flowchart LR
-    D0 --> F01["F0.1 Scaffold"]
-    F01 --> F02["F0.2 Domain"]
-    F02 --> F03["F0.3 Auth Policy"]
-    F02 --> F04["F0.4 Ports/Memory"]
-    F03 --> F05["F0.5 Services"]
-    F04 --> F05
-    F05 --> F06["F0.6 Config/CLI"]
-    F05 --> F1["F1 MCP Contract"]
-    F1 --> F2["F2 PostgreSQL"]
-    F1 --> F3["F3 OAuth"]
-    F2 --> F4["F4 Remote Conformance"]
-    F3 --> F4
-    F4 --> P0["Planner"]
-    F4 --> C0["Collector Characterization"]
+| FIX-001 | rate key가 token digest+IP라 invalid bearer 회전으로 별도 bucket 생성 가능 | 공개 endpoint 비용 우회 | S0 Must |
+| FIX-002 | `research_runs.initiated_by`가 global user FK | Account/Enterprise cross-tenant integrity | A0 Must |
+| FIX-003 | unknown JWT `kid`마다 JWKS 강제 refresh | Account endpoint DoS | A0 Must |
+| FIX-004 | `psrctl doctor`가 G5 완료 후에도 remote 미검증 표시 | 운영자 혼동 | P3 Should |
+
+## 3. 구현 원칙
+
+1. Public mode는 기존 OAuth/Tenant flow의 “인증 생략 옵션”이 아니라 별도 composition root다.
+2. 실제 web content를 받기 전에 quota, tmp permission, TTL, purge, telemetry 금지 규칙을 먼저 구현한다.
+3. Public content는 PostgreSQL Foundation schema에 저장하지 않는다.
+4. operational metadata model에는 User Content field를 정의하지 않는다.
+5. 모든 outbound network는 `SearchProvider` 또는 `Collector` port 뒤에 둔다.
+6. Planner v0와 Evidence lint는 LLM 없이 deterministic하게 검증 가능해야 한다.
+7. legacy `crawlkit.py`는 characterization fixture 전 복사하지 않는다.
+8. partial success는 정상 상태이며 성공한 근거와 실패를 함께 반환한다.
+9. 공개 기능은 disable 가능해야 하고 purge 경로는 disable되면 안 된다.
+10. Account/Paid 기능은 Public Preview product trigger 전 구현하지 않는다.
+
+## 4. 목표 package 구조
+
+기존 package를 유지하면서 다음 모듈을 추가한다.
+
+```text
+src/psr_mcp/
+├─ public/
+│  ├─ context.py
+│  ├─ services.py
+│  ├─ handles.py
+│  └─ schemas.py
+├─ planner/
+│  ├─ models.py
+│  ├─ government.py
+│  └─ service.py
+├─ search/
+│  ├─ ports.py
+│  └─ providers/
+├─ collectors/
+│  ├─ ports.py
+│  ├─ policy.py
+│  ├─ http.py
+│  └─ models.py
+├─ parsers/
+│  ├─ html.py
+│  ├─ pdf.py
+│  └─ json.py
+├─ evidence/
+│  ├─ models.py
+│  ├─ dedup.py
+│  ├─ scoring.py
+│  └─ composer.py
+├─ reporting/
+│  ├─ markdown.py
+│  └─ json.py
+├─ ephemeral/
+│  ├─ ports.py
+│  ├─ filesystem.py
+│  ├─ metadata.py
+│  └─ sweeper.py
+├─ abuse/
+│  ├─ ports.py
+│  └─ limiter.py
+└─ feedback/
+   ├─ models.py
+   └─ sink.py
 ```
 
-F2와 F3는 F1 후 병렬 가능하지만, 같은 integration branch에 동시에 큰 refactor를 넣지 않는다.
+`domain/`, `application/`, `auth/`, `storage/postgres/`는 후속 account/enterprise mode를 위해 유지한다.
 
-## 13. 권장 change set
+## 5. Increment 순서
 
-| Change | 범위 | Review focus |
+| Increment | 목표 | 예상 change 수 | 종료 Gate |
+|---|---|---:|---|
+| S0 | Public mode·quota·ephemeral purge | 4~6 | PG0 Public Boundary |
+| P1 | Planner·SafeCollector·quick result | 6~9 | PG1 Useful Research |
+| P2 | Ephemeral async run | 4~6 | PG2 Zero Retention |
+| P3 | 공개 배포·관찰·feedback | 3~5 | PG3 Public Preview |
+| A0 | 선택 가입 기반 보강 | product trigger 이후 | AG0 Account Trust |
+
+## 6. S0 — Public Safety Core
+
+### CH-S0.1 ServiceMode와 설정
+
+**요구사항:** `FR-PUB-001~004`, `NFR-PUB-009`
+
+**수정**
+
+- `src/psr_mcp/config.py`
+- `src/psr_mcp/bootstrap.py`
+- `src/psr_mcp/cli/main.py`
+- `tests/unit/test_config.py`
+- `tests/unit/test_cli.py`
+
+**추가**
+
+- `ServiceMode`: `FOUNDATION`, `PUBLIC_EPHEMERAL`, `ACCOUNT_OPT_IN`, `ENTERPRISE`
+- public TTL, ephemeral root, source/byte/time budget, kill switch 설정
+- public production에서 OAuth/PostgreSQL을 요구하지 않는 대신 ephemeral root, HTTPS, abuse key를 요구
+- ADR 최대 TTL보다 긴 설정 fail closed
+- `doctor`가 service mode와 실제 검증 상태를 정확히 표시
+
+**DoD**
+
+- `PSR_SERVICE_MODE=public_ephemeral` production 설정이 OAuth 없이 유효하다.
+- persistent content adapter가 public container에 주입되지 않는다.
+- unsafe TTL, writable permission, content telemetry 설정은 startup 전에 실패한다.
+
+### CH-S0.2 Public Access와 Tool Catalog Skeleton
+
+**요구사항:** `FR-PUB-001~004`
+
+**추가/수정**
+
+- `src/psr_mcp/public/context.py`
+- `src/psr_mcp/public/schemas.py`
+- `src/psr_mcp/mcp/public_server.py`
+- `src/psr_mcp/mcp/server.py`
+- `tests/integration/test_public_mcp_contract.py`
+
+**동작**
+
+- public 요청은 identity·Membership 없이 `PublicRequestContext`를 만든다.
+- 최초에는 `psr.service.policy`와 stub `psr.research.quick`만 등록한다.
+- Foundation Tool은 public catalog에 나타나지 않는다.
+- Tool schema는 `schema_version=1.0`과 stable error code를 사용한다.
+
+**DoD**
+
+- token 없는 MCP session에서 `service.policy` 성공
+- public catalog snapshot deterministic
+- public request가 `auth/`와 `storage/postgres/`를 호출하지 않는 spy test 통과
+
+### CH-S0.3 Abuse Limiter 교체
+
+**요구사항:** `FR-PUB-050~054`
+
+**수정/추가**
+
+- `src/psr_mcp/mcp/http_policy.py`
+- `src/psr_mcp/abuse/ports.py`
+- `src/psr_mcp/abuse/limiter.py`
+- `tests/unit/test_public_abuse_limiter.py`
+- `tests/integration/test_public_http_policy.py`
+
+**정책**
+
+- edge는 raw IP quota를 담당한다.
+- application은 trusted proxy가 정규화한 client IP를 rotating HMAC으로 bucket화한다.
+- token digest는 부가 bucket일 뿐 IP bucket을 대체하지 않는다.
+- quick/start/active/global/source-host limiter를 분리한다.
+- raw IP와 token은 log·DB에 저장하지 않는다.
+- kill switch는 새 quick/start만 거부한다.
+
+**DoD**
+
+- 100개의 invalid bearer를 회전해도 같은 IP budget을 초과할 수 없다.
+- 다른 IP fixture는 독립 bucket을 사용한다.
+- `Retry-After`와 `PUBLIC_LIMIT_REACHED`가 일관되다.
+- HMAC key rotation과 counter TTL test가 있다.
+
+### CH-S0.4 Ephemeral Workspace
+
+**요구사항:** `FR-PUB-040~046`, `NFR-PUB-004~006`
+
+**추가**
+
+- `src/psr_mcp/ephemeral/ports.py`
+- `src/psr_mcp/ephemeral/filesystem.py`
+- `src/psr_mcp/ephemeral/metadata.py`
+- `tests/contract/test_ephemeral_store.py`
+
+**계약**
+
+```python
+class EphemeralWorkspaceStore(Protocol):
+    async def create(self, *, expires_at: datetime) -> WorkspaceRef: ...
+    async def write_bytes(self, ref: WorkspaceRef, kind: ArtifactKind, data: bytes) -> None: ...
+    async def read_bytes(self, ref: WorkspaceRef, kind: ArtifactKind) -> bytes: ...
+    async def block_access(self, ref: WorkspaceRef) -> None: ...
+    async def purge(self, ref: WorkspaceRef) -> PurgeResult: ...
+```
+
+**불변조건**
+
+- run directory 이름은 CSPRNG 값이다.
+- directory `0700`, file `0600`
+- path traversal과 symlink follow 금지
+- file name에 user input·URL·기관명 금지
+- operational metadata에 question/content field 금지
+
+**DoD**
+
+- permission, traversal, symlink, concurrent purge contract test 통과
+- persistent DB에 content write가 발생하지 않음
+
+### CH-S0.5 Purge Sweeper와 Leakage Test
+
+**요구사항:** `AC-PUB-003`, `AC-PUB-020~022`
+
+**추가**
+
+- `src/psr_mcp/ephemeral/sweeper.py`
+- `tests/integration/test_ephemeral_purge.py`
+- `tests/security/test_content_canary.py`
+
+**동작**
+
+- startup scan
+- 1분 주기 sweep
+- delivered 60초, undelivered 60분, failed 10분, hard orphan 2시간
+- 삭제 실패 시 먼저 access block, exponential retry, content-free alert
+- process shutdown에서도 best-effort purge
+
+**DoD**
+
+- fake clock 상태별 TTL test
+- SIGKILL equivalent 후 restart purge
+- delete permission 오류 후 eventual purge
+- log, tmp, operational metadata, exception output canary 0건
+
+### S0 종료
+
+`PG0`를 통과한 뒤에만 실제 URL 수집을 시작한다.
+
+## 7. P1 — Useful Quick Research
+
+### CH-P1.1 Legacy Characterization
+
+**산출물**
+
+- `tests/fixtures/legacy_crawlkit/`
+- `docs/legacy/CRAWLKIT_CHARACTERIZATION.md`
+- `docs/legacy/REUSE_MATRIX.md`
+
+**검사**
+
+- command/subcommand
+- `probe` JSON
+- HTML/PDF/JSON output
+- hash와 filename 규칙
+- retry/timeout/redirect
+- cookie/header 처리
+- 실패 exit code와 partial artifact
+- dependency/license
+
+**DoD**
+
+- 확인하지 못한 동작은 `Assumption`으로 표시
+- `reuse`, `refactor`, `replace`, `do-not-port`가 함수/기능 단위로 분류
+
+### CH-P1.2 Planner/Profile Baseline
+
+**요구사항:** `FR-PUB-010~014`
+
+**추가**
+
+- `src/psr_mcp/planner/models.py`
+- `src/psr_mcp/planner/government.py`
+- `src/psr_mcp/planner/service.py`
+- `profiles/government-v0.yaml`
+- `profiles/schema.json`
+- `tests/unit/test_government_planner.py`
+
+**입력**
+
+- question, as_of_date, jurisdiction, budget
+
+**출력**
+
+- normalized scope
+- subquestions
+- source tracks
+- evidence requirements
+- stop conditions
+
+**DoD**
+
+- 같은 입력은 같은 baseline plan을 생성
+- 공공기관 AI 구매 원칙 fixture가 법령·조달·개인정보·데이터권리·업체종속을 포함
+- over-broad question은 budget 안의 범위로 축소하거나 limitation을 반환
+
+### CH-P1.3 Search/URL Policy
+
+**요구사항:** `FR-PUB-020~023`
+
+**추가**
+
+- `src/psr_mcp/search/ports.py`
+- `src/psr_mcp/search/providers/<provider>.py`
+- `src/psr_mcp/collectors/policy.py`
+- `tests/security/test_ssrf_policy.py`
+
+**DoD**
+
+- HTTPS 443 기본
+- userinfo, IP literal 정책, DNS private range, metadata hostname 차단
+- redirect마다 전체 재검증
+- DNS rebinding 방어 방식이 test 가능
+- user cookie, Authorization, client certificate 입력 자체를 받지 않음
+
+### CH-P1.4 Bounded Collector
+
+**요구사항:** `FR-PUB-024~025`, `FR-PUB-051~052`
+
+**추가**
+
+- `src/psr_mcp/collectors/ports.py`
+- `src/psr_mcp/collectors/models.py`
+- `src/psr_mcp/collectors/http.py`
+- `tests/contract/test_collector.py`
+
+**결과**
+
+```text
+CollectionResult
+- status: SUCCESS | PARTIAL | BLOCKED | FAILED
+- media_type
+- bytes_received
+- retrieved_at
+- redirect_chain
+- policy_results
+- retryable
+- artifact_ref
+```
+
+**DoD**
+
+- timeout, retry, rate, byte, decompression budget
+- login/error/empty page 제외
+- source별 실패가 전체 Run을 자동 실패시키지 않음
+
+### CH-P1.5 Parsers
+
+**추가**
+
+- `src/psr_mcp/parsers/html.py`
+- `src/psr_mcp/parsers/pdf.py`
+- `src/psr_mcp/parsers/json.py`
+- `tests/fixtures/documents/`
+
+**DoD**
+
+- HTML heading path locator
+- PDF page locator
+- JSON Pointer
+- scanned PDF는 허위 text 대신 `OCR_REQUIRED`
+- page/node/depth/string/time/memory budget test
+
+### CH-P1.6 Evidence and Reporting
+
+**요구사항:** `FR-PUB-030~035`
+
+**추가**
+
+- `src/psr_mcp/evidence/models.py`
+- `src/psr_mcp/evidence/dedup.py`
+- `src/psr_mcp/evidence/scoring.py`
+- `src/psr_mcp/evidence/composer.py`
+- `src/psr_mcp/reporting/markdown.py`
+- `src/psr_mcp/reporting/json.py`
+
+**Evidence Score v0**
+
+- authority
+- primary_source
+- directness
+- freshness
+- original_obtained
+- independence
+- locator_quality
+- applicability
+
+각 component는 `value`, `reason`, `observed facts`를 가진다. 하나의 total score만 저장하지 않는다.
+
+**DoD**
+
+- citation 없는 FACT lint 실패
+- official primary와 republisher cluster 구분
+- Markdown/JSON의 finding·citation ID 일치
+- excerpt 길이 상한과 저작권 고지
+
+### CH-P1.7 Quick Research Tool
+
+**요구사항:** `AC-PUB-001~003`, `AC-PUB-040~043`
+
+**추가/수정**
+
+- `src/psr_mcp/public/services.py`
+- `src/psr_mcp/mcp/public_server.py`
+- `tests/e2e/test_public_quick_research.py`
+
+**처리**
+
+```text
+validate
+→ quota
+→ create workspace
+→ plan
+→ search/collect/parse
+→ dedup/compose
+→ render
+→ return
+→ purge
+```
+
+**DoD**
+
+- 30초 hard limit
+- budget 초과는 `PARTIAL`
+- result에 as-of, citations, gaps, conflicts, failures, retention
+- response 완료 후 workspace content 0
+
+## 8. P2 — Ephemeral Async
+
+### CH-P2.1 Handle and Run Metadata
+
+- 192-bit CSPRNG handle
+- keyed digest 저장
+- full handle log 금지
+- `EphemeralRun` content-free schema
+- uniform `RUN_EXPIRED_OR_NOT_FOUND`
+
+### CH-P2.2 Async Application Service
+
+- start: 2초 안에 handle
+- status: progress bucket만
+- result: `consume=true` 기본
+- cancel: access block + purge
+- idempotency는 optional anonymous request key로 제한
+
+### CH-P2.3 Worker Lifecycle
+
+- claim, heartbeat, retry, cancellation
+- source별 partial success
+- metadata store와 workspace 상태 reconciliation
+- worker crash 후 bounded retry
+
+### CH-P2.4 MCP Contract and Fault Tests
+
+- `psr.research.start`
+- `psr.research.run.status`
+- `psr.research.run.result`
+- `psr.research.run.cancel`
+- reconnect, restart, expired handle, concurrent consume
+- delivered purge, undelivered TTL, disk full
+
+### P2 종료
+
+- `PG2 Zero Retention` 전부 통과
+- async result가 persistent Resource에 저장되지 않음
+- handle 분실 시 복구 불가를 정책에 명시
+
+## 9. P3 — Public Preview
+
+### CH-P3.1 Deployment Boundary
+
+- TLS reverse proxy/WAF
+- trusted client IP normalization
+- edge quota와 application quota 이중 적용
+- encrypted ephemeral volume
+- egress allow/deny와 DNS policy
+- public kill switch rehearsal
+
+### CH-P3.2 Feedback and Product Metrics
+
+- one-time feedback token
+- `helpful: bool`
+- `save_feature_interest: bool`
+- free text 기본 비활성
+- question/run/content와 join 불가
+- 결과 수령률, official ratio, citation coverage, cost bucket
+
+### CH-P3.3 Documentation and Host Onboarding
+
+- 공개 MCP 연결 가이드
+- 지원 Host 2종 smoke
+- 실제 `service.policy`와 config 자동 비교
+- known limitation, provider/privacy/copyright notice
+- `psrctl doctor` stale limitation 수정
+
+### CH-P3.4 Public Release Rehearsal
+
+- load/cost test
+- abuse simulation
+- purge failure game day
+- dependency/license/secret scan
+- rollback/kill switch
+- 24~72시간 제한 공개 후 gate review
+
+## 10. A0 — Account Beta 준비
+
+R4 product trigger 전에는 착수하지 않는다.
+
+### 필수 선행 수정
+
+1. `users`와 `research_runs.initiated_by`의 `(organization_id, id)` composite FK
+2. unknown `kid` negative cache와 refresh cooldown
+3. self-service OIDC provisioning
+4. Personal Workspace와 user-scoped RLS
+5. `save=false` 기본값과 explicit consent
+6. export/delete/account close
+7. persistent object encryption과 deletion manifest
+
+Public Preview deployment와 Account deployment는 mode와 data sink가 분리돼야 한다.
+
+## 11. 요구사항 추적
+
+| 요구사항 | 구현 increment | 검증 |
 |---|---|---|
-| CH-001 | docs/ADR/scaffold | dependency/protocol |
-| CH-002 | domain/errors/state | invariants |
-| CH-003 | auth context/policy | tenant negative cases |
-| CH-004 | ports/memory UoW | transaction semantics |
-| CH-005 | project/run/worker service | idempotency/concurrency |
-| CH-006 | config/CLI/bootstrap | production fail closed |
-| CH-007 | MCP schemas/handlers/server | schema/error/auth parity |
-| CH-008 | PostgreSQL migration | RLS/constraints |
-| CH-009 | PostgreSQL adapter/worker | atomicity/recovery |
-| CH-010 | OAuth adapter | token validation |
-| CH-011 | conformance/Host matrix | interoperability |
+| FR-PUB-001~004 | S0.1~S0.2 | VAL-PUB-MODE, MCP |
+| FR-PUB-010~014 | P1.2 | VAL-PUB-PLAN |
+| FR-PUB-020~025 | P1.3~P1.5 | VAL-PUB-NET, PARSE |
+| FR-PUB-030~035 | P1.6~P1.7 | VAL-PUB-EVIDENCE, QUALITY |
+| FR-PUB-040~046 | S0.4~S0.5, P2 | VAL-PUB-RETENTION |
+| FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
+| FR-PUB-060~062 | P3.2 | VAL-PUB-FEEDBACK |
+| NFR-PUB-001~010 | S0~P3 | PG0~PG3 |
+| FR-ACC-001~005 | A0 | AG0 |
 
-각 change는 이전 change의 test가 모두 통과한 상태에서 시작한다.
+## 12. Definition of Ready
 
-## 14. 요구사항 추적
-
-| PRD | Foundation 작업 | Validation |
-|---|---|---|
-| FR-001~003 | F0.3, F2, F3 | AUTH/DB/SEC |
-| FR-004 | F3, Collector later | SEC token passthrough |
-| FR-006 | F0.5, F2 | AUDIT |
-| FR-014~015 | P0; Foundation approved fixture gate | APP-approval |
-| FR-020~025 | F0.4~F2, F1 | APP/JOB/MCP |
-| NFR-002~003 | F1, F4 | MCP/ARCH |
-| NFR-004 | F0.3, F2, F3 | AUTH/DB |
-| NFR-007 | F0.5, F2 | APP/DB |
-| NFR-011 | F0.5, F2 | AUDIT |
-| NFR-015 | F1 | MCP pagination |
-| NFR-018 | F2 | RECOVERY |
-
-## 15. Definition of Ready
-
-작업 패키지를 시작하려면 다음이 있어야 한다.
-
-- owner와 reviewer
-- 연결된 requirement/validation ID
-- input/output/interface
-- sample 또는 fixture
-- security/tenant 영향
-- migration 또는 compatibility 영향
+- 연결된 requirement와 validation ID
+- input/output/error schema
+- content retention과 log 영향
+- network/secret/SSRF 영향
+- sample fixture
+- disable/rollback 방법
 - 명시적 비범위
-- rollback 또는 disable 방법
 
-## 16. Definition of Done
+## 13. Definition of Done
 
-- 구현과 test가 같은 change에 있음
-- `ruff`, `mypy`, 전체 test 통과
-- branch coverage target 충족
-- cross-tenant negative test 포함
-- structured log/audit 영향 검토
-- 문서와 schema snapshot 갱신
-- migration은 새 환경과 upgrade 환경에서 검증
-- production/development behavior가 구분됨
-- known limitation과 다음 작업이 기록됨
-- reviewer가 evidence link 또는 test output으로 확인 가능
+- 구현과 unit/contract/integration/security test가 같은 change에 있음
+- `ruff`, `mypy`, 전체 test와 독립 coverage gate 통과
+- User Content canary scan 통과
+- partial failure와 retry가 typed result로 검증됨
+- schema snapshot과 docs 갱신
+- mode별 startup fail-closed 검증
+- 운영 metric은 allowlist field만 사용
+- known limitation과 다음 gate 기록
 
-## 17. 일정 추정
+## 14. 권장 첫 세 change
 
-3~5명 팀 기준 상대 추정이며 보안심사 대기시간은 별도다.
+```text
+CH-S0.1 ServiceMode와 fail-closed config
+CH-S0.3 IP-first abuse limiter
+CH-S0.4/5 Ephemeral store와 purge
+```
 
-| Increment | 예상 | 주요 불확실성 |
-|---|---:|---|
-| D0 | 2~3일 | 용어/결정 합의 |
-| F0 | 1.5~2주 | state/idempotency contract |
-| F1 | 1주 | SDK schema/error behavior |
-| F2 | 2~3주 | RLS/pool/lease concurrency |
-| F3 | 2주 | 기관 IdP claim/rotation |
-| F4 | 1~2주 | Host interoperability |
+그 다음 public Tool skeleton과 fake research lifecycle을 완성한다. 실제 crawler 연결은 `PG0` 이후다.
 
-한 명이 순차 구현하면 2~3배의 calendar time을 예상한다.
-
-## 18. 진행 보고 형식
-
-각 increment 종료 시 다음을 보고한다.
+## 15. 진행 보고 형식
 
 ```text
 Completed:
 Validated:
+Content retained:
+Public risks changed:
 Not validated:
-Risks changed:
 Artifacts:
 Next gate:
 ```
 
-“구현 완료”와 “운영 검증 완료”를 분리한다.
-
-## 19. 현재 착수 범위
-
-`D0~F4` 구현과 `G0~G5` 검증을 마쳤다. local TLS proxy, official SDK와 MCP Inspector 전체 primitive, Codex Tool을 실제 호출했다. 실제 기관 IdP/gateway와 G6 독립 owner 승인은 남아 있다. 이 조건을 닫기 전 production-ready로 선언하지 않는다.
-
-### 2026-07-16 인계 상태
-
-- 완료: D0, F0~F4 code, PostgreSQL CI workflow, DB/OAuth/Remote runbook
-- 검증됨: PostgreSQL 17.10 durability, OIDC JWT·Membership·RFC 9728, TCP/TLS, SDK·Inspector, Codex Tool, 독립 coverage gate
-- 미검증: 실제 기관 IdP/gateway, 독립 owner review
-- 선택 검증: Codex Resource/Prompt는 제품 필요와 별도 보안 승인이 있을 때만 수행
-- 다음 change set: G6 owner review와 배포 정책 결정
+`Content retained`는 항상 명시하며 Public Preview에서 기대값은 `none beyond documented TTL`이다.
 
 ---
 
-가장 먼저 안정화할 것은 crawler 기능이 아니라 **모든 후속 기능이 공유할 authorization·transaction·MCP 계약**이다.
+현재 구현의 첫 목적은 로그인이나 저장기능이 아니다. **익명 사용자가 안전하게 조사 한 건을 받고, 서버가 그 content를 약속대로 지우는 vertical slice**다.
