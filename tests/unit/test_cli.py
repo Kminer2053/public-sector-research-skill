@@ -6,6 +6,7 @@ import pytest
 
 from psr_mcp.cli import main as cli
 from psr_mcp.config import Settings
+from psr_mcp.conformance import ConformanceError, ConformanceOptions
 
 
 def test_doctor_json_is_redacted(
@@ -101,3 +102,85 @@ def test_database_current_and_confirmed_downgrade(monkeypatch: pytest.MonkeyPatc
     assert cli.main(["db", "downgrade", "--confirm-downgrade"]) == 0
     assert current_calls == [database_url]
     assert downgrade_calls == [(database_url, "-1")]
+
+
+def test_conformance_reads_bearer_from_environment_without_printing_it(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    token = "conformance-secret-token"
+    observed: list[ConformanceOptions] = []
+
+    async def fake_conformance(options: ConformanceOptions) -> dict[str, object]:
+        observed.append(options)
+        return {"status": "PASS", "bearer_token_used": options.bearer_token is not None}
+
+    monkeypatch.setenv("TEST_CONFORMANCE_TOKEN", token)
+    monkeypatch.setattr(cli, "run_conformance", fake_conformance)
+    assert (
+        cli.main(
+            [
+                "conformance",
+                "--endpoint",
+                "https://research.example.gov/mcp",
+                "--token-env",
+                "TEST_CONFORMANCE_TOKEN",
+                "--ca-bundle",
+                "/tmp/institution-ca.pem",
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+    assert observed[0].bearer_token == token
+    assert observed[0].ca_bundle == "/tmp/institution-ca.pem"
+    assert token not in output
+    assert json.loads(output)["status"] == "PASS"
+
+
+def test_conformance_failure_is_redacted_and_has_exit_code_4(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def failed_conformance(_options: ConformanceOptions) -> dict[str, object]:
+        raise ConformanceError("sensitive remote detail")
+
+    monkeypatch.setattr(cli, "run_conformance", failed_conformance)
+    assert cli.main(["conformance", "--endpoint", "https://research.example.gov/mcp"]) == 4
+    output = capsys.readouterr().out
+    assert "conformance failed" in output
+    assert "sensitive remote detail" not in output
+
+
+def test_conformance_token_environment_name_is_validated(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        cli.main(
+            [
+                "conformance",
+                "--endpoint",
+                "https://research.example.gov/mcp",
+                "--token-env",
+                "INVALID-NAME",
+            ]
+        )
+        == 2
+    )
+    assert "configuration error" in capsys.readouterr().out
+
+
+def test_conformance_token_environment_name_rejects_unicode_identifier(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        cli.main(
+            [
+                "conformance",
+                "--endpoint",
+                "https://research.example.gov/mcp",
+                "--token-env",
+                "비밀토큰",
+            ]
+        )
+        == 2
+    )
+    assert "configuration error" in capsys.readouterr().out

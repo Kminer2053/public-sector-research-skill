@@ -19,7 +19,7 @@ from psr_mcp.common.secrets import EnvironmentSecretResolver
 from psr_mcp.config import Settings
 from psr_mcp.mcp.server import create_http_app
 
-from .conftest import ORG_A, ORG_B, TEST_ISSUER, PostgresUrls
+from .conftest import ORG_A, ORG_B, PLAN_A1, TEST_ISSUER, PostgresUrls
 
 RESOURCE = "http://127.0.0.1:8000/mcp"
 
@@ -49,7 +49,7 @@ def _token(
             "exp": now + 300,
             "iat": now,
             "client_id": "postgres-oauth-test",
-            "scope": "mcp:access project:read",
+            "scope": "mcp:access project:read research:run",
             "organization_id": organization_id,
         },
         private_key,
@@ -89,6 +89,25 @@ def _tool_request(raw_token: str) -> tuple[dict[str, str], dict[str, object]]:
             "id": 1,
             "method": "tools/call",
             "params": {"name": "psr.project.list", "arguments": {"limit": 20}},
+        },
+    )
+
+
+def _run_start_request(raw_token: str) -> tuple[dict[str, str], dict[str, object]]:
+    headers, _ = _tool_request(raw_token)
+    return (
+        headers,
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {
+                "name": "psr.research.run.start",
+                "arguments": {
+                    "approved_plan_id": PLAN_A1,
+                    "idempotency_key": "oauth-audit-trace-0001",
+                },
+            },
         },
     )
 
@@ -139,6 +158,23 @@ async def test_real_jwt_mcp_and_postgres_membership_boundary(
         headers, payload = _tool_request(valid_token)
         valid = await client.post("/mcp", headers=headers, json=payload)
 
+        headers, payload = _run_start_request(valid_token)
+        started = await client.post("/mcp", headers=headers, json=payload)
+        started_output = started.json()["result"]["structuredContent"]
+        operation_id = started_output["operation_id"]
+        run_id = started_output["run"]["id"]
+
+        with psycopg.connect(seeded_postgres.owner) as connection:
+            connection.execute("SELECT set_config('app.organization_id', %s, true)", (ORG_A,))
+            audit_row = connection.execute(
+                """
+                SELECT operation_id, operation, target_id, outcome, actor_subject_id
+                  FROM audit_events
+                 WHERE organization_id = %s AND operation_id = %s
+                """,
+                (ORG_A, operation_id),
+            ).fetchone()
+
         headers, payload = _tool_request(manipulated_token)
         manipulated = await client.post("/mcp", headers=headers, json=payload)
 
@@ -157,6 +193,14 @@ async def test_real_jwt_mcp_and_postgres_membership_boundary(
     assert valid.status_code == 200
     assert valid.json()["result"]["structuredContent"]["items"][0]["id"] == (
         "00000000-0000-0000-0000-0000000000a1"
+    )
+    assert started.status_code == 200
+    assert audit_row == (
+        operation_id,
+        "research.run.start",
+        run_id,
+        "SUCCEEDED",
+        "00000000-0000-0000-0000-00000000001a",
     )
     assert manipulated.status_code == 200
     assert manipulated.json()["result"]["isError"] is True

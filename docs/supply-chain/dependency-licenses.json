@@ -1,0 +1,217 @@
+{
+  "packages": [
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "alembic",
+      "version": "1.18.5"
+    },
+    {
+      "license": "OSI Approved :: MIT License",
+      "license_source": "Classifier",
+      "name": "annotated-types",
+      "version": "0.7.0"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "anyio",
+      "version": "4.14.2"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "attrs",
+      "version": "26.1.0"
+    },
+    {
+      "license": "MPL-2.0",
+      "license_source": "License",
+      "name": "certifi",
+      "version": "2026.6.17"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "click",
+      "version": "8.4.2"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "reviewed PyPI metadata",
+      "name": "colorama",
+      "version": "0.4.6"
+    },
+    {
+      "license": "MIT AND PSF-2.0",
+      "license_source": "reviewed PyPI metadata",
+      "name": "greenlet",
+      "version": "3.5.3"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License",
+      "name": "h11",
+      "version": "0.16.0"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "httpcore",
+      "version": "1.0.9"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License",
+      "name": "httpx",
+      "version": "0.28.1"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License",
+      "name": "httpx-sse",
+      "version": "0.4.3"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "idna",
+      "version": "3.18"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "jsonschema",
+      "version": "4.26.0"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "jsonschema-specifications",
+      "version": "2025.9.1"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License",
+      "name": "mako",
+      "version": "1.3.12"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "markupsafe",
+      "version": "3.0.3"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License",
+      "name": "mcp",
+      "version": "1.28.1"
+    },
+    {
+      "license": "LGPL-3.0-only",
+      "license_source": "License-Expression",
+      "name": "psycopg",
+      "version": "3.3.4"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "pydantic",
+      "version": "2.13.4"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "pydantic-core",
+      "version": "2.46.4"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "pydantic-settings",
+      "version": "2.14.2"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "pyjwt",
+      "version": "2.13.0"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License",
+      "name": "python-dotenv",
+      "version": "1.2.2"
+    },
+    {
+      "license": "Apache-2.0",
+      "license_source": "License-Expression",
+      "name": "python-multipart",
+      "version": "0.0.32"
+    },
+    {
+      "license": "PSF-2.0 AND bundled license files",
+      "license_source": "reviewed PyPI metadata",
+      "name": "pywin32",
+      "version": "312"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "referencing",
+      "version": "0.37.0"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "rpds-py",
+      "version": "2026.6.3"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License",
+      "name": "sqlalchemy",
+      "version": "2.0.51"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "sse-starlette",
+      "version": "3.4.5"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "starlette",
+      "version": "1.3.1"
+    },
+    {
+      "license": "PSF-2.0",
+      "license_source": "License-Expression",
+      "name": "typing-extensions",
+      "version": "4.16.0"
+    },
+    {
+      "license": "MIT",
+      "license_source": "License-Expression",
+      "name": "typing-inspection",
+      "version": "0.4.2"
+    },
+    {
+      "license": "Apache-2.0",
+      "license_source": "reviewed PyPI metadata",
+      "name": "tzdata",
+      "version": "2026.3"
+    },
+    {
+      "license": "BSD-3-Clause",
+      "license_source": "License-Expression",
+      "name": "uvicorn",
+      "version": "0.51.0"
+    }
+  ],
+  "project": "public-sector-research-mcp",
+  "schema_version": "1.0",
+  "scope": "cross-platform runtime dependency closure from uv.lock"
+}

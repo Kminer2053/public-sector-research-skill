@@ -25,7 +25,7 @@ psrctl = "psr_mcp.cli.main:main"
 [dependency-groups]
 dev = [
   "mypy>=1.17,<2",
-  "pytest>=8.4,<9",
+  "pytest>=9.0.3,<10",
   "pytest-cov>=6,<8",
   "ruff>=0.12,<1",
 ]

@@ -178,3 +178,17 @@ def test_oauth_resource_server_configuration_rejects_unsafe_values(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         Settings.from_env(overrides)
+
+
+@pytest.mark.parametrize(
+    "name, value, message",
+    [
+        ("PSR_MAX_REQUEST_BYTES", "100", "MAX_REQUEST_BYTES"),
+        ("PSR_REQUEST_TIMEOUT_SECONDS", "0", "REQUEST_TIMEOUT"),
+        ("PSR_RATE_LIMIT_REQUESTS", "0", "RATE_LIMIT_REQUESTS"),
+        ("PSR_RATE_LIMIT_WINDOW_SECONDS", "0", "RATE_LIMIT_WINDOW"),
+    ],
+)
+def test_remote_http_policy_configuration_is_bounded(name: str, value: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        Settings.from_env({name: value})

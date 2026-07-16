@@ -54,6 +54,12 @@ jobs:
       - name: Sync locked dependencies
         run: uv sync --all-groups --frozen
 
+      - name: Audit locked dependencies
+        run: uv audit --preview-features audit --frozen
+
+      - name: Verify dependency license manifest
+        run: uv run --frozen python scripts/dependency_licenses.py --check
+
       - name: Bootstrap PostgreSQL test roles and database
         run: uv run --frozen python scripts/bootstrap_postgres_test.py
 
@@ -71,3 +77,11 @@ jobs:
 
       - name: Build distribution
         run: uv build
+
+      - name: Generate release SBOM
+        run: >-
+          uv export --preview-features sbom-export --frozen --no-dev
+          --format cyclonedx1.5 --output-file dist/sbom.cdx.json
+
+      - name: Verify release SBOM
+        run: test -s dist/sbom.cdx.json

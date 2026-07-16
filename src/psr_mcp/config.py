@@ -45,6 +45,10 @@ class Settings:
     oauth_allowed_algorithms: tuple[str, ...] = ("RS256",)
     oauth_organization_claim: str = "organization_id"
     oauth_jwks_origins: tuple[str, ...] = ()
+    max_request_bytes: int = 1_048_576
+    request_timeout_seconds: float = 30.0
+    rate_limit_requests: int = 120
+    rate_limit_window_seconds: float = 60.0
     database_url_ref: str | None = None
     log_level: LogLevel = "INFO"
     cursor_signing_key: str = DEFAULT_CURSOR_SIGNING_KEY
@@ -81,6 +85,10 @@ class Settings:
                     for value in values.get("PSR_OAUTH_JWKS_ORIGINS", "").split(",")
                     if value.strip()
                 ),
+                max_request_bytes=int(values.get("PSR_MAX_REQUEST_BYTES", "1048576")),
+                request_timeout_seconds=float(values.get("PSR_REQUEST_TIMEOUT_SECONDS", "30")),
+                rate_limit_requests=int(values.get("PSR_RATE_LIMIT_REQUESTS", "120")),
+                rate_limit_window_seconds=float(values.get("PSR_RATE_LIMIT_WINDOW_SECONDS", "60")),
                 database_url_ref=values.get("PSR_DATABASE_URL_REF"),
                 log_level=cast(LogLevel, values.get("PSR_LOG_LEVEL", "INFO").upper()),
                 cursor_signing_key=values.get("PSR_CURSOR_SIGNING_KEY", DEFAULT_CURSOR_SIGNING_KEY),
@@ -97,6 +105,14 @@ class Settings:
             raise ValueError("PSR_LOG_LEVEL is invalid")
         if len(self.cursor_signing_key.encode()) < 32:
             raise ValueError("PSR_CURSOR_SIGNING_KEY must contain at least 32 bytes")
+        if self.max_request_bytes < 1_024 or self.max_request_bytes > 10_485_760:
+            raise ValueError("PSR_MAX_REQUEST_BYTES must be 1024..10485760")
+        if self.request_timeout_seconds < 1 or self.request_timeout_seconds > 300:
+            raise ValueError("PSR_REQUEST_TIMEOUT_SECONDS must be 1..300")
+        if self.rate_limit_requests < 1 or self.rate_limit_requests > 10_000:
+            raise ValueError("PSR_RATE_LIMIT_REQUESTS must be 1..10000")
+        if self.rate_limit_window_seconds < 1 or self.rate_limit_window_seconds > 3_600:
+            raise ValueError("PSR_RATE_LIMIT_WINDOW_SECONDS must be 1..3600")
         parsed_public_url = urlparse(self.public_url)
         if (
             parsed_public_url.scheme not in {"http", "https"}

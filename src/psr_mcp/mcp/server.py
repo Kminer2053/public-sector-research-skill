@@ -4,18 +4,21 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 from mcp.server.auth.provider import TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
 from psr_mcp.bootstrap import Container
-from psr_mcp.config import AuthMode, Environment
+from psr_mcp.config import AuthMode, Environment, Settings
 from psr_mcp.mcp.handlers import McpHandlers
+from psr_mcp.mcp.http_policy import compose_http_policy
 from psr_mcp.mcp.schemas import (
     ProjectGetOutput,
     ProjectPageOutput,
@@ -69,6 +72,7 @@ def create_server(
         json_response=True,
         stateless_http=True,
         auth=auth_settings,
+        transport_security=_transport_security(settings),
     )
 
     @server.tool(
@@ -187,6 +191,14 @@ def create_http_app(
 ) -> Starlette:
     """Compose process-wide adapter lifecycle around the SDK Streamable HTTP app."""
     inner = create_server(container, token_verifier=token_verifier).streamable_http_app()
+    protected = compose_http_policy(
+        inner,
+        request_id_factory=container.ids.new,
+        max_request_bytes=container.settings.max_request_bytes,
+        request_timeout_seconds=container.settings.request_timeout_seconds,
+        rate_limit_requests=container.settings.rate_limit_requests,
+        rate_limit_window_seconds=container.settings.rate_limit_window_seconds,
+    )
 
     @asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
@@ -199,6 +211,20 @@ def create_http_app(
 
     return Starlette(
         debug=False,
-        routes=[Mount("/", app=inner)],
+        routes=[Mount("/", app=protected)],
         lifespan=lifespan,
+    )
+
+
+def _transport_security(settings: Settings) -> TransportSecuritySettings:
+    parsed = urlparse(settings.public_url)
+    hostname = parsed.hostname
+    if hostname is None:
+        raise ValueError("public URL hostname is required")
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    allowed_hosts = [hostname, f"{hostname}:*", "127.0.0.1:*", "localhost:*"]
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=sorted(set(allowed_hosts)),
+        allowed_origins=[origin],
     )

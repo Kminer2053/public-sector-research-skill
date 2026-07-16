@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import os
+import re
 from collections.abc import Sequence
 
 import psycopg
@@ -14,6 +16,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from psr_mcp import __version__
 from psr_mcp.bootstrap import build_container
 from psr_mcp.config import Settings
+from psr_mcp.conformance import ConformanceError, ConformanceOptions, run_conformance
 from psr_mcp.mcp.server import create_http_app
 from psr_mcp.storage.migrations.runner import current as migration_current
 from psr_mcp.storage.migrations.runner import downgrade as migration_downgrade
@@ -32,6 +35,19 @@ def build_parser() -> argparse.ArgumentParser:
     database.add_argument("action", choices=["current", "upgrade", "downgrade"])
     database.add_argument("--revision")
     database.add_argument("--confirm-downgrade", action="store_true")
+    conformance = commands.add_parser(
+        "conformance", help="probe a remote MCP endpoint with the official SDK client"
+    )
+    conformance.add_argument("--endpoint", required=True)
+    conformance.add_argument("--token-env", default="PSR_CONFORMANCE_BEARER_TOKEN")
+    conformance.add_argument("--project-id")
+    conformance.add_argument("--approved-plan-id")
+    conformance.add_argument("--idempotency-key", default="conformance-request-0001")
+    conformance.add_argument("--timeout", type=float, default=30.0)
+    conformance.add_argument(
+        "--ca-bundle",
+        help="PEM CA bundle for an institution-managed HTTPS endpoint",
+    )
     return parser
 
 
@@ -43,6 +59,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 action=args.action,
                 revision=args.revision,
                 confirm_downgrade=args.confirm_downgrade,
+            )
+        if args.command == "conformance":
+            return _conformance_command(
+                endpoint=args.endpoint,
+                token_env=args.token_env,
+                project_id=args.project_id,
+                approved_plan_id=args.approved_plan_id,
+                idempotency_key=args.idempotency_key,
+                timeout_seconds=args.timeout,
+                ca_bundle=args.ca_bundle,
             )
         settings = Settings.from_env()
         if args.command == "doctor":
@@ -63,6 +89,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
     except KeyboardInterrupt:
         return 130
+    except ConformanceError:
+        print("conformance failed; inspect restricted diagnostic logs")
+        return 4
     except (RuntimeError, ValueError) as error:
         print(f"configuration error: {error}")
         return 2
@@ -120,6 +149,35 @@ def _limitations(settings: Settings) -> list[str]:
         limitations.append("in-memory storage")
     limitations.append("remote Host conformance is not validated")
     return limitations
+
+
+def _conformance_command(
+    *,
+    endpoint: str,
+    token_env: str,
+    project_id: str | None,
+    approved_plan_id: str | None,
+    idempotency_key: str,
+    timeout_seconds: float,
+    ca_bundle: str | None,
+) -> int:
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", token_env) is None:
+        raise ValueError("--token-env must be an environment variable name")
+    result = asyncio.run(
+        run_conformance(
+            ConformanceOptions(
+                endpoint=endpoint,
+                bearer_token=os.getenv(token_env),
+                project_id=project_id,
+                approved_plan_id=approved_plan_id,
+                idempotency_key=idempotency_key,
+                timeout_seconds=timeout_seconds,
+                ca_bundle=ca_bundle,
+            )
+        )
+    )
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
