@@ -54,9 +54,10 @@ research.quick.scope.source_discovery = curated_seed
 uv run --frozen python scripts/live_curated_smoke.py
 ```
 
-2026-07-16 관찰값은 7개 track, 12개 citation, failure 0, curated limitation gap 1,
-`PURGED`, ephemeral directory empty였다. 이 수치는 source 변경에 따라 달라질 수 있으므로
-release 전 다시 실행한다.
+2026-07-16 관찰값은 7개 track, 12개 citation, recommendation 5건, failure 0이었다.
+gap은 curated 범위 제한 1건과 government-policy·procurement missing-anchor 2건이며,
+`PURGED`, ephemeral directory empty를 확인했다. 이 수치는 source 변경에 따라 달라질 수
+있으므로 release 전 다시 실행한다.
 
 ## 4. 실제 Search adapter 실행
 
