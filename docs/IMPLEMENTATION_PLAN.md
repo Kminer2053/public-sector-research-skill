@@ -26,6 +26,7 @@
 - 완료: trusted proxy CIDR에서 온 단일 `X-PSR-Client-IP`만 정규화하고 위조 header 제거
 - 완료: direct NGINX TLS·canonical Host·TCP peer IP overwrite·edge quota 기준과 정적검증
 - 완료: filesystem ephemeral workspace, access block, TTL purge sweeper
+- 완료: blocked workspace 즉시 재시도, batch 부분성공, exponential backoff, content-free alert
 - 완료: fixture quick lifecycle, content canary, immediate purge, quick kill switch
 - 완료: deterministic Government Planner v0와 bounded stop condition
 - 완료: legacy crawlkit characterization과 reuse/refactor/replace 판단
@@ -42,8 +43,8 @@
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS·gateway TLS spoof 포함 526 tests
-- coverage gate: raw 95.27%, normalized statement 96.35%, branch 91.10%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS·gateway TLS spoof 포함 535 tests
+- coverage gate: raw 95.31%, normalized statement 96.38%, branch 91.19%,
   critical module 95% 이상
 - supply chain: project 53 package와 OCI build tool 6 package 알려진 취약점 0,
   `pypdf 6.14.2` BSD-3-Clause manifest 반영
@@ -334,6 +335,15 @@ class EphemeralWorkspaceStore(Protocol):
 - delivered 60초, undelivered 60분, failed 10분, hard orphan 2시간
 - 삭제 실패 시 먼저 access block, exponential retry, content-free alert
 - process shutdown에서도 best-effort purge
+
+**현재 상태**
+
+- quick 경로에서 purge가 실패하면 먼저 `purge.marker`로 access를 차단한다.
+- marker가 있는 workspace는 정상 TTL 전이라도 다음 sweep의 즉시 삭제 대상이다.
+- 한 workspace 삭제 실패가 같은 batch의 다른 workspace 삭제를 막지 않는다.
+- 연속 실패는 1→2→4초로 증가하고 정규 sweep 주기에서 상한을 둔다.
+- 3회 연속 실패부터 `ephemeral_purge_alert`, 회복 시 `ephemeral_purge_recovered`를 남긴다.
+- log에는 workspace ID, path, 질문·원문·결과, 예외 message를 넣지 않는다.
 
 **DoD**
 

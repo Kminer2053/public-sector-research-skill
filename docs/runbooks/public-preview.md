@@ -186,6 +186,27 @@ pause 파일은 application이 만들거나 삭제하지 않는다. control plan
 운영자가 관리하고, 외부 사용자가 해당 경로를 쓸 수 없어야 한다. file 내용은 읽지 않으므로
 운영 메모나 사용자 content를 넣지 않는다.
 
+### 6.1.1 Purge retry alert
+
+삭제 실패 시 workspace 접근은 먼저 차단되고, marker가 있는 workspace는 정상 TTL을 기다리지
+않고 재시도된다. retry는 1→2→4초로 증가하고 `PSR_PURGE_SWEEP_SECONDS`에서 상한을 둔다.
+
+허용되는 event:
+
+```text
+ephemeral_purge_retry_scheduled
+ephemeral_purge_alert
+ephemeral_purge_recovered
+```
+
+허용 field는 failure count, consecutive failure, next retry seconds, alert state와 duration
+bucket뿐이다. workspace ID/path, 질문·검색어·URL·원문·결과, exception type/message는 기록하지
+않는다.
+
+`ephemeral_purge_alert`가 발생하면 새 조사 pause, 임시 filesystem의 용량·mount·권한 확인,
+복구 후 `ephemeral_purge_recovered` 확인 순서로 대응한다. 운영자는 사용자 content나 개별
+workspace 이름을 열어보지 않는다. pause 중에도 sweeper와 shutdown final sweep은 계속된다.
+
 ## 6.2 Pre-deploy doctor
 
 일반 진단:

@@ -153,6 +153,10 @@ PASS다. multi-replica 공유 상한, provider hard cap과 failure circuit break
 | VAL-PUB-RET-013 | full handle canary | log/metric 0건 |
 | VAL-PUB-RET-014 | purge alert | content 없이 state/latency만 포함 |
 
+`VAL-PUB-RET-007~009`, `014`의 local quick 경로는
+[Purge Retry 검증 보고서](./validation/2026-07-16-purge-retry.md) 기준 PASS다. 실제
+container filesystem 권한 장애와 운영 alert 전달은 staging game day에서 다시 검증한다.
+
 ### PG0 판정
 
 다음이 모두 필요하다.

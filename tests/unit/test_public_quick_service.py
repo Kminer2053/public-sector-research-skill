@@ -509,6 +509,9 @@ async def test_repeated_purge_failure_leaves_content_inaccessible_for_sweeper(
     ref = store.created[0]
     with pytest.raises(WorkspaceAccessBlocked):
         await store.read_bytes(ref, ArtifactKind.RESULT)
+    results = await store.purge_expired()
+    assert [result.workspace_id for result in results] == [ref.workspace_id]
+    assert list(store.inner.root.iterdir()) == []
 
 
 @pytest.mark.anyio

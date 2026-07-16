@@ -392,7 +392,14 @@ EphemeralRun
 | failed content | 10분 |
 | deletion retry | 접근 차단 후 exponential retry |
 
-서비스 시작과 1분 주기 sweeper가 만료 workspace를 검사한다.
+서비스 시작과 1분 주기 sweeper가 만료 workspace를 검사한다. `purge.marker`가 있는
+workspace는 정상 TTL 전이라도 즉시 삭제 후보가 된다. batch scan은 개별 삭제 실패를
+집계하되 다른 workspace의 성공 결과를 보존한다. 실패한 sweep은 1→2→4초로 재시도하고
+정규 sweep 주기에서 상한을 두며, 3회 연속 실패부터 content-free alert를 낸다.
+
+`PurgeBatchError`는 실패한 workspace ID나 예외 message를 보유·출력하지 않고
+`failure_count`와 이미 성공한 `PurgeResult`만 전달한다. `PurgeSweeper` log는 count,
+consecutive failure, retry delay, alert state, duration bucket만 허용한다.
 
 ## 9. Handle Security
 

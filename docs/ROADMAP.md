@@ -93,8 +93,9 @@
 > trusted edge IP normalization, process-local active quick 상한, filesystem workspace,
 > process-local UTC daily quick budget, content canary, immediate purge, quick kill switch와
 > operator runtime pause-file signal, Search·robots·원문 수집 공유 global/source-host
-> outbound concurrency·token-bucket rate와 sweeper는 완료됐다. 실제 gateway quota, provider billing
-> hard cap, multi-replica 공유 quota와 삭제 retry/backoff alert가 남아 있어 R1/PG0 전체는
+> outbound concurrency·token-bucket rate, blocked workspace 즉시 삭제 재시도, batch
+> 부분성공, exponential backoff와 content-free purge alert는 완료됐다. 실제 gateway quota,
+> provider billing hard cap과 multi-replica 공유 quota가 남아 있어 R1/PG0 전체는
 > 아직 종료되지 않았다. direct NGINX 기준 구성과 Python TLS spoof 시험은 구현됐으나 실제
 > NGINX OCI·staging public IP rehearsal은 R4 gate다.
 
@@ -141,6 +142,10 @@ failure circuit breaker, provider billing hard cap과 multi-replica 공유 quota
 - 삭제 실패 시 접근 차단 후 retry
 
 **난이도:** 높음
+**현재:** quick purge 실패 marker는 정상 TTL 전에도 재시도하며, batch 내 다른 삭제는
+보존한다. process-local retry는 1→2→4초 exponential backoff 후 정규 sweep 주기에서
+상한을 두고 3회 연속 실패부터 content-free alert를 남긴다.
+
 **완료 기준:** fake clock, crash, restart, permission failure purge test 통과
 
 #### WP-R1.4 Content-Free Observability

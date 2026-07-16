@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -12,7 +13,7 @@ from psr_mcp.ephemeral.filesystem import (
     FilesystemEphemeralWorkspaceStore,
     WorkspaceAccessBlocked,
 )
-from psr_mcp.ephemeral.ports import ArtifactKind, WorkspaceRef
+from psr_mcp.ephemeral.ports import ArtifactKind, PurgeBatchError, WorkspaceRef
 
 
 class Clock:
@@ -69,6 +70,82 @@ async def test_expired_workspace_is_purged_with_fake_clock(tmp_path: Path) -> No
     results = await store.purge_expired()
     assert [result.workspace_id for result in results] == [ref.workspace_id]
     assert not (store.root / ref.workspace_id).exists()
+
+
+@pytest.mark.anyio
+async def test_blocked_workspace_is_retried_before_normal_expiry(tmp_path: Path) -> None:
+    clock = Clock(datetime(2026, 7, 16, tzinfo=UTC))
+    store = FilesystemEphemeralWorkspaceStore(
+        tmp_path / "ephemeral",
+        now=clock.now,
+        create_root=True,
+    )
+    await store.open()
+    ref = await store.create(
+        expires_at=clock.value + timedelta(hours=1),
+        hard_expires_at=clock.value + timedelta(hours=2),
+    )
+    await store.write_bytes(ref, ArtifactKind.RESULT, b"result-canary")
+    await store.block_access(ref)
+
+    results = await store.purge_expired()
+
+    assert [result.workspace_id for result in results] == [ref.workspace_id]
+    assert not (store.root / ref.workspace_id).exists()
+
+
+@pytest.mark.anyio
+async def test_purge_batch_continues_after_transient_delete_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = Clock(datetime(2026, 7, 16, tzinfo=UTC))
+    store = FilesystemEphemeralWorkspaceStore(
+        tmp_path / "ephemeral",
+        now=clock.now,
+        create_root=True,
+    )
+    await store.open()
+    failed_ref = await store.create(
+        expires_at=clock.value + timedelta(minutes=1),
+        hard_expires_at=clock.value + timedelta(hours=2),
+    )
+    successful_ref = await store.create(
+        expires_at=clock.value + timedelta(minutes=1),
+        hard_expires_at=clock.value + timedelta(hours=2),
+    )
+    await store.write_bytes(failed_ref, ArtifactKind.RESULT, b"failed-canary")
+    await store.write_bytes(successful_ref, ArtifactKind.RESULT, b"success-canary")
+    clock.value += timedelta(minutes=2)
+
+    original_rmtree = shutil.rmtree
+    failure_pending = True
+
+    def flaky_rmtree(path: str | os.PathLike[str]) -> None:
+        nonlocal failure_pending
+        if Path(path).name == failed_ref.workspace_id and failure_pending:
+            failure_pending = False
+            raise PermissionError("RESULT-CONTENT-CANARY")
+        original_rmtree(path)
+
+    monkeypatch.setattr("psr_mcp.ephemeral.filesystem.shutil.rmtree", flaky_rmtree)
+
+    with pytest.raises(PurgeBatchError) as captured:
+        await store.purge_expired()
+
+    assert captured.value.failure_count == 1
+    assert [result.workspace_id for result in captured.value.successful_results] == [
+        successful_ref.workspace_id
+    ]
+    assert (store.root / failed_ref.workspace_id).exists()
+    assert not (store.root / successful_ref.workspace_id).exists()
+    with pytest.raises(WorkspaceAccessBlocked):
+        await store.read_bytes(failed_ref, ArtifactKind.RESULT)
+
+    monkeypatch.setattr("psr_mcp.ephemeral.filesystem.shutil.rmtree", original_rmtree)
+    results = await store.purge_expired()
+    assert [result.workspace_id for result in results] == [failed_ref.workspace_id]
+    assert not (store.root / failed_ref.workspace_id).exists()
 
 
 @pytest.mark.anyio

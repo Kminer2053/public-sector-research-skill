@@ -67,7 +67,7 @@ Enterprise
 - OAuth/OIDC JWT·JWKS·Membership
 - request size·timeout·process-local rate boundary
 - official SDK, MCP Inspector, Codex Tool conformance
-- 526개 전체 회귀, normalized statement 96.35%, branch 91.10%, critical module 최소 95%
+- 535개 전체 회귀, normalized statement 96.38%, branch 91.19%, critical module 최소 95%
   coverage gate
 
 이 기능은 Account Beta와 Enterprise의 자산으로 유지합니다. Public Preview 요청에는 OAuth 로그인, Organization, persistent content storage를 사용하지 않습니다.
@@ -97,6 +97,7 @@ Account 서비스 장애가 Public endpoint를 중단시키지 않도록 배포�
 - random workspace ID, directory `0700`, file `0600`
 - path traversal·symlink·만료 workspace 접근 차단
 - startup/periodic/final purge sweeper
+- blocked workspace 즉시 재시도, batch 부분성공 보존, 1→2→4초 지수 backoff와 content-free alert
 - fake-clock 만료·corrupt lease·삭제·재시작 기반 test
 - question/source/result canary를 쓰는 quick 실행 후 즉시 purge
 - Government Profile v0의 법령·정책·조달·개인정보·국제표준 track
@@ -144,6 +145,9 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 [Outbound Limit 검증 보고서](./docs/validation/2026-07-16-outbound-concurrency.md)에
 Search·robots·redirect·원문 요청의 공유 global/source-host concurrency·rate와 취소·공정성 증적을
 기록했습니다.
+[Purge Retry 검증 보고서](./docs/validation/2026-07-16-purge-retry.md)에
+삭제 실패 시 즉시 접근 차단, 다른 workspace의 부분성공 보존, 지수 재시도와 content-free
+운영 경고 증적을 기록했습니다.
 
 ## 다음 구현 범위
 

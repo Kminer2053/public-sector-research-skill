@@ -30,6 +30,22 @@ class PurgeResult:
     already_absent: bool = False
 
 
+class PurgeBatchError(RuntimeError):
+    """Content-free aggregate failure that preserves successful deletions."""
+
+    def __init__(
+        self,
+        *,
+        failure_count: int,
+        successful_results: tuple[PurgeResult, ...] = (),
+    ) -> None:
+        if failure_count < 1:
+            raise ValueError("purge batch failure count must be positive")
+        super().__init__(f"ephemeral purge batch had {failure_count} deletion failures")
+        self.failure_count = failure_count
+        self.successful_results = successful_results
+
+
 class EphemeralWorkspaceStore(Protocol):
     async def create(
         self,

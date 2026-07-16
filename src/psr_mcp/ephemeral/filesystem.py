@@ -13,7 +13,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-from psr_mcp.ephemeral.ports import ArtifactKind, PurgeResult, WorkspaceRef
+from psr_mcp.ephemeral.ports import (
+    ArtifactKind,
+    PurgeBatchError,
+    PurgeResult,
+    WorkspaceRef,
+)
 
 _LEASE_NAME: Final = "lease.json"
 _BLOCKED_NAME: Final = "purge.marker"
@@ -148,6 +153,11 @@ class FilesystemEphemeralWorkspaceStore:
         path = self._path_for(ref.workspace_id)
         if not path.exists():
             return
+        self._block_path_sync(path)
+
+    def _block_path_sync(self, path: Path) -> None:
+        if path.is_symlink() or not path.is_dir():
+            raise ValueError("workspace path is not a safe directory")
         marker = path / _BLOCKED_NAME
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
@@ -170,22 +180,46 @@ class FilesystemEphemeralWorkspaceStore:
     def _purge_expired_sync(self) -> list[PurgeResult]:
         now = _utc(self._now())
         results: list[PurgeResult] = []
+        failure_count = 0
         if not self._root.exists():
             return results
         for path in self._root.iterdir():
             if path.is_symlink() or not path.is_dir():
                 continue
             try:
-                ref = self._read_lease(path)
-            except (OSError, ValueError, json.JSONDecodeError):
-                created = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
-                if (now - created).total_seconds() < 7_200:
-                    continue
-                results.append(self._purge_sync(path.name))
-                continue
-            if now >= ref.expires_at or now >= ref.hard_expires_at:
-                results.append(self._purge_sync(ref.workspace_id))
+                result = self._purge_candidate_sync(path, now=now)
+            except Exception:
+                failure_count += 1
+            else:
+                if result is not None:
+                    results.append(result)
+        if failure_count:
+            raise PurgeBatchError(
+                failure_count=failure_count,
+                successful_results=tuple(results),
+            )
         return results
+
+    def _purge_candidate_sync(
+        self,
+        path: Path,
+        *,
+        now: datetime,
+    ) -> PurgeResult | None:
+        if (path / _BLOCKED_NAME).exists():
+            return self._purge_sync(path.name)
+        try:
+            ref = self._read_lease(path)
+        except (OSError, ValueError, json.JSONDecodeError):
+            created = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
+            if (now - created).total_seconds() < 7_200:
+                return None
+            self._block_path_sync(path)
+            return self._purge_sync(path.name)
+        if now < ref.expires_at and now < ref.hard_expires_at:
+            return None
+        self._block_sync(ref)
+        return self._purge_sync(ref.workspace_id)
 
     def _require_accessible(self, ref: WorkspaceRef) -> Path:
         path = self._path_for(ref.workspace_id)
