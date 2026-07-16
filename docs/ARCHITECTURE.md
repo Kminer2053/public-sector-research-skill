@@ -418,7 +418,7 @@ Public Preview는 계정 대신 bearer capability인 `run_handle`을 사용한�
 3. anonymous client bucket(Host가 안정적 식별자를 제공할 때만)
 4. active run count
 5. global outbound concurrency
-6. source host rate
+6. source host concurrency와 운영 rate
 7. 일·시간 비용 budget
 
 토큰·run handle을 바꾸어도 IP quota를 새로 얻을 수 없어야 한다.
@@ -443,6 +443,15 @@ broken symlink는 모두 pause로 처리하며 예상하지 못한 stat 오류�
 새 quick admission만 막고 이미 실행 중인 coroutine, access block과 purge를 취소하지 않는다.
 Public MCP에는 pause를 생성·삭제하는 관리 Tool을 노출하지 않는다.
 
+`OutboundConcurrencyLimiter`는 Brave Search, robots 확인과 원문 `SafeCollector`가 같은
+process-local instance를 공유하게 한다. 기본값은 전체 동시 외부요청 8개,
+정규화된 source host별 2개다. 같은 host의 요청은 host slot을 먼저 획득하고 global slot을
+나중에 획득하므로, 한 기관의 대기열이 다른 기관이 쓸 global slot을 선점하지 못한다.
+redirect는 검증된 새 host로 slot을 다시 획득한다. 성공·오류·timeout·task cancellation의
+`finally` 경로에서 slot을 반환하고 active/waiting 요청이 0인 host gate는 즉시 제거한다.
+이 제한은 단일 process의 동시성 안전망이며, 시간당 요청률·multi-replica 전체 상한과 provider
+billing hard cap을 대신하지 않는다.
+
 reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
 `X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
 값은 fail closed한다. trusted network 밖에서 보낸 같은 header는 quota 계산에 사용하지 않고
@@ -456,6 +465,8 @@ quick: IP당 분당 5회
 async start: IP당 시간당 3회
 active run: IP당 1개
 active quick: process당 8개(초기 기본값)
+outbound HTTP: process당 동시 8개(초기 기본값)
+source host: host당 동시 2개(초기 기본값)
 daily quick: process·UTC 일자별 operator config
 source documents: run당 12개
 download: run당 30MB
@@ -520,11 +531,12 @@ TLS SNI와 HTTP `Host`는 원래 domain을 유지하므로 인증서 검증을 �
 - decompression ratio limit
 - MIME sniff와 declared type 비교
 - login/error/empty page detection
-- source별 rate와 retry budget
+- source별 concurrency, 운영 rate와 retry budget
 
 현재 HTTP/1.1 transport는 `Accept-Encoding: identity`, manual redirect, response byte/time limit,
 response header allowlist를 적용한다. `Set-Cookie` 등 credential-bearing header는 수집 결과에
-포함하지 않는다.
+포함하지 않는다. 실제 network fetch 직전에는 공유 outbound limiter를 통과하며 robots와
+문서 fetch, redirect target도 같은 규칙을 사용한다.
 
 production quick backend는 candidate별로 다음 순서를 강제한다.
 
@@ -692,6 +704,8 @@ PSR_SEARCH_TIMEOUT_SECONDS=5
 PSR_SEARCH_MAX_RESPONSE_BYTES=1048576
 PSR_SEARCH_MAX_CONCURRENCY=7
 PSR_COLLECTION_MAX_CONCURRENCY=4
+PSR_OUTBOUND_MAX_CONCURRENCY=8
+PSR_SOURCE_HOST_MAX_CONCURRENCY=2
 ```
 
 fixture와 curated/Brave를 동시에 켜면 startup이 실패한다. `curated`는 Search key를 허용하지

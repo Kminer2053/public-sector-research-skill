@@ -24,6 +24,7 @@ CRITICAL_PATH_PREFIXES = (
 )
 CRITICAL_EXACT_PATHS = {
     "src/psr_mcp/auth/policy.py",
+    "src/psr_mcp/common/outbound.py",
     "src/psr_mcp/config.py",
     "src/psr_mcp/mcp/http_policy.py",
 }

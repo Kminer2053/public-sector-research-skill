@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 
 import httpx
 import pytest
@@ -12,6 +13,16 @@ from psr_mcp.search import (
     SearchQuery,
     SourceTier,
 )
+
+
+class RecordingLimiter:
+    def __init__(self) -> None:
+        self.hosts: list[str] = []
+
+    @asynccontextmanager
+    async def slot(self, host: str) -> AsyncIterator[None]:
+        self.hosts.append(host)
+        yield
 
 
 def _query(
@@ -118,6 +129,22 @@ async def test_brave_search_maps_results_without_treating_them_as_evidence() -> 
     assert requests[0].url.params["search_lang"] == "ko"
     assert requests[0].url.params["safesearch"] == "strict"
     assert requests[0].url.params["result_filter"] == "web"
+
+
+@pytest.mark.anyio
+async def test_brave_search_uses_shared_outbound_limiter() -> None:
+    limiter = RecordingLimiter()
+    provider, client = _provider(
+        lambda request: _json_response({"web": {"results": []}}),
+        outbound_limiter=limiter,
+    )
+    try:
+        result = await provider.search(_query())
+    finally:
+        await client.aclose()
+
+    assert result.failures == ()
+    assert limiter.hosts == ["api.search.brave.com"]
 
 
 @pytest.mark.anyio

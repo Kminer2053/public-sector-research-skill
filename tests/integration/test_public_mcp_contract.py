@@ -61,6 +61,8 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.structuredContent["limits"]["max_active_quick"] == 8
     assert result.structuredContent["limits"]["daily_quick_budget"] == 0
     assert result.structuredContent["limits"]["feedback_token_ttl_seconds"] == 86_400
+    assert result.structuredContent["limits"]["outbound_max_concurrency"] == 8
+    assert result.structuredContent["limits"]["source_host_max_concurrency"] == 2
     assert result.structuredContent["retention"]["feedback_content_linked"] is False
     assert result.structuredContent["limits"]["trusted_proxy_networks"] == 0
 
@@ -193,6 +195,8 @@ async def test_curated_policy_is_available_without_account_or_search_processor(
             "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
             "PSR_SEARCH_PROVIDER": "curated",
             "PSR_PUBLIC_MAX_ACTIVE_QUICK": "3",
+            "PSR_OUTBOUND_MAX_CONCURRENCY": "6",
+            "PSR_SOURCE_HOST_MAX_CONCURRENCY": "1",
         }
     )
     container = build_container(settings)
@@ -215,6 +219,8 @@ async def test_curated_policy_is_available_without_account_or_search_processor(
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["source_discovery"] == "curated_seed"
     assert result.structuredContent["limits"]["max_active_quick"] == 3
+    assert result.structuredContent["limits"]["outbound_max_concurrency"] == 6
+    assert result.structuredContent["limits"]["source_host_max_concurrency"] == 1
     assert result.structuredContent["external_services"] == []
 
 

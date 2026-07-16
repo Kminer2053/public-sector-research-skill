@@ -89,6 +89,8 @@ class Settings:
     search_max_response_bytes: int = 1_048_576
     search_max_concurrency: int = 7
     collection_max_concurrency: int = 4
+    outbound_max_concurrency: int = 8
+    source_host_max_concurrency: int = 2
     abuse_hmac_key_ref: str | None = None
     trusted_proxy_cidrs: tuple[str, ...] = ()
 
@@ -163,6 +165,8 @@ class Settings:
                 ),
                 search_max_concurrency=int(values.get("PSR_SEARCH_MAX_CONCURRENCY", "7")),
                 collection_max_concurrency=int(values.get("PSR_COLLECTION_MAX_CONCURRENCY", "4")),
+                outbound_max_concurrency=int(values.get("PSR_OUTBOUND_MAX_CONCURRENCY", "8")),
+                source_host_max_concurrency=int(values.get("PSR_SOURCE_HOST_MAX_CONCURRENCY", "2")),
                 abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
                 trusted_proxy_cidrs=tuple(
                     value.strip()
@@ -224,6 +228,14 @@ class Settings:
             raise ValueError("PSR_SEARCH_MAX_CONCURRENCY must be 1..10")
         if self.collection_max_concurrency < 1 or self.collection_max_concurrency > 20:
             raise ValueError("PSR_COLLECTION_MAX_CONCURRENCY must be 1..20")
+        if self.outbound_max_concurrency < 1 or self.outbound_max_concurrency > 32:
+            raise ValueError("PSR_OUTBOUND_MAX_CONCURRENCY must be 1..32")
+        if self.source_host_max_concurrency < 1 or self.source_host_max_concurrency > 8:
+            raise ValueError("PSR_SOURCE_HOST_MAX_CONCURRENCY must be 1..8")
+        if self.source_host_max_concurrency > self.outbound_max_concurrency:
+            raise ValueError(
+                "PSR_SOURCE_HOST_MAX_CONCURRENCY must not exceed PSR_OUTBOUND_MAX_CONCURRENCY"
+            )
         canonical_proxy_cidrs: list[str] = []
         for value in self.trusted_proxy_cidrs:
             try:

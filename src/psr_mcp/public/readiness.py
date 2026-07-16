@@ -98,7 +98,7 @@ def evaluate_public_readiness(
         runtime_paused=settings.public_kill_switch or runtime_paused,
         checks=checks,
         external_gates_pending=(
-            "gateway header overwrite and spoof rehearsal",
+            "actual NGINX OCI and staging quota rehearsal",
             "multi-replica shared quota and provider hard cap",
             "staging retention canary and purge game day",
             "real-user helpfulness and save-feature-interest validation",

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 import pytest
@@ -44,12 +46,28 @@ class Transport:
         return self.responses[target.canonical_url]
 
 
-def _collector(resolver: Resolver, transport: Transport) -> SafeCollector:
+class RecordingLimiter:
+    def __init__(self) -> None:
+        self.hosts: list[str] = []
+
+    @asynccontextmanager
+    async def slot(self, host: str) -> AsyncIterator[None]:
+        self.hosts.append(host)
+        yield
+
+
+def _collector(
+    resolver: Resolver,
+    transport: Transport,
+    *,
+    outbound_limiter: RecordingLimiter | None = None,
+) -> SafeCollector:
     return SafeCollector(
         policy=UrlPolicy(resolver),
         transport=transport,
         clock=Clock(),
         limits=CollectionLimits(max_response_bytes=1_024),
+        outbound_limiter=outbound_limiter,
     )
 
 
@@ -86,6 +104,39 @@ async def test_collector_follows_validated_redirect_and_returns_hashed_document(
     assert result.sha256 == "a1573a4d6da2e12384d2a71b9477a50345b2849afc961adda53f6b23b94e3617"
     assert result.retrieved_at == datetime(2026, 7, 16, tzinfo=UTC)
     assert [call.host for call in transport.calls] == ["start.go.kr", "final.go.kr"]
+
+
+@pytest.mark.anyio
+async def test_collector_reacquires_outbound_capacity_after_redirect() -> None:
+    resolver = Resolver(
+        {
+            "start.go.kr": ("93.184.216.34",),
+            "final.go.kr": ("93.184.216.35",),
+        }
+    )
+    transport = Transport(
+        {
+            "https://start.go.kr/": RawHttpResponse(
+                status=302,
+                headers={"location": "https://final.go.kr/document"},
+                body=b"",
+            ),
+            "https://final.go.kr/document": RawHttpResponse(
+                status=200,
+                headers={"content-type": "text/plain"},
+                body=b"official evidence",
+            ),
+        }
+    )
+    limiter = RecordingLimiter()
+
+    await _collector(
+        resolver,
+        transport,
+        outbound_limiter=limiter,
+    ).collect("https://start.go.kr")
+
+    assert limiter.hosts == ["start.go.kr", "final.go.kr"]
 
 
 @pytest.mark.anyio

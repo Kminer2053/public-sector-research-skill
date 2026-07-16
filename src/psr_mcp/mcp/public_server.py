@@ -77,6 +77,8 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "rate_window_seconds": settings.rate_limit_window_seconds,
                 "max_run_sources": settings.max_run_sources,
                 "max_run_bytes": settings.max_run_bytes,
+                "outbound_max_concurrency": settings.outbound_max_concurrency,
+                "source_host_max_concurrency": settings.source_host_max_concurrency,
                 "trusted_proxy_networks": len(settings.trusted_proxy_cidrs),
             },
             retention={

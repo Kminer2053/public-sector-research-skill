@@ -67,7 +67,7 @@ Enterprise
 - OAuth/OIDC JWT·JWKS·Membership
 - request size·timeout·process-local rate boundary
 - official SDK, MCP Inspector, Codex Tool conformance
-- 501개 전체 회귀, normalized statement 96.24%, branch 90.75%, critical module 최소 95%
+- 519개 전체 회귀, normalized statement 96.30%, branch 90.94%, critical module 최소 95%
   coverage gate
 
 이 기능은 Account Beta와 Enterprise의 자산으로 유지합니다. Public Preview 요청에는 OAuth 로그인, Organization, persistent content storage를 사용하지 않습니다.
@@ -106,6 +106,8 @@ Account 서비스 장애가 Public endpoint를 중단시키지 않도록 배포�
 - official domain registry와 track별 병렬 Search query
 - 한국 공공부문 AI 조달 질문에 한정된 검토 source seed mode
 - 선택형 Brave Search adapter와 provider 오류·응답 byte·동시성 제한
+- Search·robots·원문 수집이 공유하는 process 전체 outbound 8개, source host별 2개
+  동시요청 기본 상한과 취소 시 slot 회수
 - `robots.txt` 선검사와 disallow·접근제한·정책 실패의 typed result
 - HTML heading, JSON Pointer, text line, PDF page locator
 - PDF subprocess 격리와 page·text·wall-time·memory 제한
@@ -139,6 +141,9 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 [Direct Gateway/Build Reproducibility 검증 보고서](./docs/validation/2026-07-16-direct-gateway-and-build-reproducibility.md)에
 해시 고정 OCI builder, NGINX 기준 구성과 TLS header spoof 통합시험, 남은 CI·staging gate를
 기록했습니다.
+[Outbound Concurrency 검증 보고서](./docs/validation/2026-07-16-outbound-concurrency.md)에
+Search·robots·redirect·원문 요청의 공유 global/source-host 제한과 취소·공정성 증적을
+기록했습니다.
 
 ## 다음 구현 범위
 
@@ -146,7 +151,7 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 
 1. GitHub Actions에서 OCI build, NGINX `nginx -t`, non-root·read-only·tmpfs smoke 실행
 2. staging reverse proxy의 canonical client IP·Host·quota·leakage rehearsal
-3. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
+3. source-host별 시간당 rate/circuit breaker, 일일 비용상한과 kill-switch rehearsal
 4. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
 5. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
 6. citation-constrained 조달 원칙 후보의 표현·적용범위와 conflict/gap 검증

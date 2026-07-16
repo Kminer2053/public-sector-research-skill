@@ -261,6 +261,8 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     assert settings.public_max_active_quick == 8
     assert settings.public_daily_quick_budget == 0
     assert settings.feedback_token_ttl_seconds == 86_400
+    assert settings.outbound_max_concurrency == 8
+    assert settings.source_host_max_concurrency == 2
     assert settings.diagnostics()["abuse_hmac_key_ref"] is False
 
     container = build_container(settings)
@@ -489,6 +491,31 @@ def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> 
                 "PSR_COLLECTION_MAX_CONCURRENCY": "21",
             },
             "COLLECTION_MAX_CONCURRENCY",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_OUTBOUND_MAX_CONCURRENCY": "0",
+            },
+            "OUTBOUND_MAX_CONCURRENCY",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SOURCE_HOST_MAX_CONCURRENCY": "9",
+            },
+            "SOURCE_HOST_MAX_CONCURRENCY",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_OUTBOUND_MAX_CONCURRENCY": "1",
+                "PSR_SOURCE_HOST_MAX_CONCURRENCY": "2",
+            },
+            "must not exceed",
         ),
     ],
 )

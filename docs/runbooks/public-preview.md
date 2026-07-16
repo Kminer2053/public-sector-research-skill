@@ -131,6 +131,8 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_SEARCH_MAX_RESPONSE_BYTES` | 1 MiB | 1 KiB..10 MiB |
 | `PSR_SEARCH_MAX_CONCURRENCY` | 7 | 1..10 |
 | `PSR_COLLECTION_MAX_CONCURRENCY` | 4 | 1..20 |
+| `PSR_OUTBOUND_MAX_CONCURRENCY` | 8 | Search·robots·원문 fetch를 합친 process 동시 외부요청, 1..32 |
+| `PSR_SOURCE_HOST_MAX_CONCURRENCY` | 2 | 정규화된 source host별 동시 외부요청, 1..8이며 global 이하 |
 | `PSR_TRUSTED_PROXY_CIDRS` | 빈 값 | production public mode 필수, comma-separated CIDR |
 | `PSR_QUICK_TIMEOUT_SECONDS` | 20 | 1..30, request timeout 이하 |
 | `PSR_PUBLIC_MAX_ACTIVE_QUICK` | 8 | process당 동시 quick 상한, 1..100 |
@@ -147,6 +149,11 @@ API key와 HMAC key는 diagnostics에서 값 대신 존재 여부만 표시된�
 보수적 진입 안전망이다. production 초기값은 load·provider quota를 검토해 명시해야 하며,
 예시 500은 제품 보장값이 아니다. replica가 여러 개면 gateway/shared limiter와 provider
 dashboard hard cap을 함께 설정한다.
+
+`PSR_SEARCH_MAX_CONCURRENCY`와 `PSR_COLLECTION_MAX_CONCURRENCY`는 각 작업 단계의 상한이고,
+`PSR_OUTBOUND_MAX_CONCURRENCY`는 두 단계를 합친 실제 network 상한이다. source host 제한은
+robots, 원문과 redirect마다 적용된다. 이는 동시성 제한이며 시간당 요청률과 upstream circuit
+breaker는 배포 source 정책에서 별도로 정한다.
 
 ## 6.1 Runtime pause
 

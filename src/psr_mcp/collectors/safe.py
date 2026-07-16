@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 from psr_mcp.application.ports import Clock
 from psr_mcp.collectors.models import CollectedDocument, CollectionLimits, RawHttpResponse
 from psr_mcp.collectors.url_policy import UrlPolicy, ValidatedUrl
+from psr_mcp.common.outbound import OutboundLimiter
 
 
 class CollectionErrorCode(StrEnum):
@@ -56,11 +57,13 @@ class SafeCollector:
         transport: PinnedHttpTransport,
         clock: Clock,
         limits: CollectionLimits,
+        outbound_limiter: OutboundLimiter | None = None,
     ) -> None:
         self._policy = policy
         self._transport = transport
         self._clock = clock
         self._limits = limits
+        self._outbound_limiter = outbound_limiter
 
     async def collect(
         self,
@@ -82,7 +85,7 @@ class SafeCollector:
         target = await self._policy.validate(url)
         redirect_chain: list[str] = []
         while True:
-            response = await self._transport.fetch(target, limits)
+            response = await self._fetch(target, limits)
             if _is_redirect(response.status):
                 location = response.headers.get("location")
                 if not location:
@@ -132,6 +135,16 @@ class SafeCollector:
                 sha256=hashlib.sha256(response.body).hexdigest(),
                 retrieved_at=self._clock.now(),
             )
+
+    async def _fetch(
+        self,
+        target: ValidatedUrl,
+        limits: CollectionLimits,
+    ) -> RawHttpResponse:
+        if self._outbound_limiter is None:
+            return await self._transport.fetch(target, limits)
+        async with self._outbound_limiter.slot(target.host):
+            return await self._transport.fetch(target, limits)
 
 
 def _is_redirect(status: int) -> bool:

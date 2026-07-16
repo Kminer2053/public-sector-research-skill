@@ -9,6 +9,7 @@ from html import unescape
 
 import httpx
 
+from psr_mcp.common.outbound import OutboundLimiter
 from psr_mcp.search.models import (
     SearchFailure,
     SearchQuery,
@@ -18,6 +19,7 @@ from psr_mcp.search.models import (
 from psr_mcp.search.registry import GovernmentSourceRegistry
 
 BRAVE_WEB_SEARCH_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
+BRAVE_WEB_SEARCH_HOST = "api.search.brave.com"
 
 
 class BraveSearchProvider:
@@ -30,6 +32,7 @@ class BraveSearchProvider:
         timeout_seconds: float = 5.0,
         max_response_bytes: int = 1_048_576,
         max_concurrency: int = 3,
+        outbound_limiter: OutboundLimiter | None = None,
     ) -> None:
         if len(api_key) < 16:
             raise ValueError("Brave Search API key is too short")
@@ -45,6 +48,7 @@ class BraveSearchProvider:
         self._timeout_seconds = timeout_seconds
         self._max_response_bytes = max_response_bytes
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._outbound_limiter = outbound_limiter
 
     async def search(self, query: SearchQuery) -> SearchResult:
         if (
@@ -61,44 +65,12 @@ class BraveSearchProvider:
                 retryable=False,
             )
         try:
-            async with (
-                self._semaphore,
-                asyncio.timeout(self._timeout_seconds),
-                self._client.stream(
-                    "GET",
-                    BRAVE_WEB_SEARCH_ENDPOINT,
-                    params={
-                        "q": query.text,
-                        "count": query.max_results,
-                        "country": "KR",
-                        "search_lang": "ko",
-                        "ui_lang": "ko-KR",
-                        "safesearch": "strict",
-                        "spellcheck": "false",
-                        "text_decorations": "false",
-                        "result_filter": "web",
-                    },
-                    headers={
-                        "Accept": "application/json",
-                        "Accept-Encoding": "identity",
-                        "Cache-Control": "no-cache",
-                        "User-Agent": "public-sector-research-mcp/0.1",
-                        "X-Subscription-Token": self._api_key,
-                    },
-                ) as response,
-            ):
-                status = response.status_code
-                if status != 200:
-                    return _http_failure(query, status)
-                encoding = response.headers.get("content-encoding", "identity")
-                if encoding.casefold() not in {"", "identity"}:
-                    return _failed(
-                        query,
-                        code="RESPONSE_ENCODING_INVALID",
-                        message="search provider returned an unsupported encoding",
-                        retryable=False,
-                    )
-                body = await _read_bounded(response, self._max_response_bytes)
+            async with self._semaphore, asyncio.timeout(self._timeout_seconds):
+                if self._outbound_limiter is None:
+                    response_result = await self._request(query)
+                else:
+                    async with self._outbound_limiter.slot(BRAVE_WEB_SEARCH_HOST):
+                        response_result = await self._request(query)
         except (TimeoutError, httpx.TimeoutException):
             return _failed(
                 query,
@@ -120,7 +92,45 @@ class BraveSearchProvider:
                 message="search provider response exceeded the byte limit",
                 retryable=False,
             )
-        return _parse_response(query, body, self._registry)
+        if isinstance(response_result, SearchResult):
+            return response_result
+        return _parse_response(query, response_result, self._registry)
+
+    async def _request(self, query: SearchQuery) -> bytes | SearchResult:
+        async with self._client.stream(
+            "GET",
+            BRAVE_WEB_SEARCH_ENDPOINT,
+            params={
+                "q": query.text,
+                "count": query.max_results,
+                "country": "KR",
+                "search_lang": "ko",
+                "ui_lang": "ko-KR",
+                "safesearch": "strict",
+                "spellcheck": "false",
+                "text_decorations": "false",
+                "result_filter": "web",
+            },
+            headers={
+                "Accept": "application/json",
+                "Accept-Encoding": "identity",
+                "Cache-Control": "no-cache",
+                "User-Agent": "public-sector-research-mcp/0.1",
+                "X-Subscription-Token": self._api_key,
+            },
+        ) as response:
+            status = response.status_code
+            if status != 200:
+                return _http_failure(query, status)
+            encoding = response.headers.get("content-encoding", "identity")
+            if encoding.casefold() not in {"", "identity"}:
+                return _failed(
+                    query,
+                    code="RESPONSE_ENCODING_INVALID",
+                    message="search provider returned an unsupported encoding",
+                    retryable=False,
+                )
+            return await _read_bounded(response, self._max_response_bytes)
 
 
 async def _read_bounded(response: httpx.Response, max_bytes: int) -> bytes:

@@ -149,7 +149,7 @@ flowchart LR
 | ID | 위협 | 필수 통제 | 검증 | 상태 |
 |---|---|---|---|---|
 | TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, direct NGINX 기준 구현; OCI·staging 대기 |
-| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~017` | process active·daily quick·runtime pause·run budget PASS; edge·provider cap·async·shared quota 대기 |
+| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~017` | process active·daily quick·runtime pause·shared outbound/source-host concurrency·run budget PASS; edge·시간 rate·provider cap·async·multi-replica quota 대기 |
 | TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | quick canary PASS/local; staging scan 대기 |
 | TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS; async 대기 |
 | TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | PASS/S0 |
@@ -239,7 +239,7 @@ flowchart LR
 | 실제 기관 IdP/JWKS/폐기 전파 | 환경 미검증 | Pilot IdP owner와 integration test |
 | 실제 gateway/WAF/TLS cipher | 환경 미검증 | 운영 topology review + penetration test |
 | project distribution license | Product/Legal decision | 배포 전에 LICENSE와 NOTICE 결정 |
-| global rate limit | 아키텍처 후속 | multi-replica 전에 gateway/Redis 정책 결정 |
+| 배포 전체 rate limit | 아키텍처 후속 | process outbound concurrency는 구현; multi-replica 전에 gateway/Redis 정책 결정 |
 | security owner sign-off | G6 approval | 본 문서와 validation report 서명 |
 
 ## 10. Collector 이후 남은 Threat Model 확장
@@ -252,7 +252,7 @@ flowchart LR
 - PDF worker의 Linux custom seccomp profile; container network-none/read-only fixture smoke는 구현
 - response URL query와 upstream error의 telemetry redaction
 - Search provider query retention·비용·credential rotation
-- source-host rate와 upstream circuit breaker
+- 시간 기반 source-host rate와 upstream circuit breaker
 - 향후 persistent object key가 public ephemeral path와 섞이지 않는 mode test
 
 ## 11. Review 절차

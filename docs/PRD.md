@@ -272,7 +272,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | ID | 요구사항 | 우선순위 | Acceptance Criteria |
 |---|---|---|---|
 | FR-PUB-050 | IP, anonymous client bucket, run 기준 rate/concurrency limit을 동시에 적용한다. trusted proxy의 단일 client IP header만 허용하고 직접 요청의 위조 header는 제거한다. | Must | token/handle/header 변경으로 IP quota 우회 불가 |
-| FR-PUB-051 | source host별 rate와 전체 outbound concurrency를 제한한다. | Must | 한 source가 worker를 독점하지 않음 |
+| FR-PUB-051 | Search·robots·원문 수집 전체에 process outbound concurrency를 공유 적용하고 source host별 concurrency/rate를 제한한다. | Must | 한 source 대기열이 global slot이나 worker를 독점하지 않고 redirect도 새 host 제한을 다시 획득 |
 | FR-PUB-052 | 1회 조사 비용·시간 상한을 초과하면 partial 종료한다. | Must | 무제한 retry 없음 |
 | FR-PUB-053 | 운영자가 public start/collection을 즉시 중지하는 kill switch를 가진다. | Must | 기존 결과 조회·purge는 계속 가능 |
 | FR-PUB-054 | abuse counter는 회전 HMAC key와 TTL을 사용한다. | Must | raw IP·question이 app DB에 없음 |

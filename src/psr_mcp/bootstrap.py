@@ -29,6 +29,7 @@ from psr_mcp.collectors import (
     SystemHostResolver,
     UrlPolicy,
 )
+from psr_mcp.common.outbound import OutboundConcurrencyLimiter
 from psr_mcp.common.runtime import SystemClock, Uuid4Generator
 from psr_mcp.common.secrets import EnvironmentSecretResolver, SecretResolver
 from psr_mcp.config import (
@@ -197,6 +198,10 @@ def _build_public_container(
         SearchProviderMode.BRAVE,
         SearchProviderMode.CURATED,
     }:
+        outbound_limiter = OutboundConcurrencyLimiter(
+            max_global=settings.outbound_max_concurrency,
+            max_per_host=settings.source_host_max_concurrency,
+        )
         search_provider: SearchProvider
         source_discovery: SourceDiscoveryMode
         if settings.search_provider is SearchProviderMode.BRAVE:
@@ -221,6 +226,7 @@ def _build_public_container(
                 timeout_seconds=settings.search_timeout_seconds,
                 max_response_bytes=settings.search_max_response_bytes,
                 max_concurrency=settings.search_max_concurrency,
+                outbound_limiter=outbound_limiter,
             )
             source_discovery = "brave_live_search"
         else:
@@ -240,6 +246,7 @@ def _build_public_container(
                     20.0,
                 ),
             ),
+            outbound_limiter=outbound_limiter,
         )
         backend = PublicResearchPipeline(
             query_builder=GovernmentQueryBuilder(
