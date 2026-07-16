@@ -27,6 +27,7 @@ from psr_mcp.public.pipeline import (
     _confidence,
     _select_candidates,
 )
+from psr_mcp.public.schemas import SourceDiscoveryMode
 from psr_mcp.search import (
     GovernmentQueryBuilder,
     SearchFailure,
@@ -151,6 +152,7 @@ def _pipeline(
     responses: dict[str, RawHttpResponse],
     records: dict[str, tuple[str, ...]],
     source_policy: SourceAccessPolicy | None = None,
+    source_discovery: SourceDiscoveryMode = "test_static",
 ) -> tuple[PublicResearchPipeline, Transport, SafeCollector]:
     del plan
     transport = Transport(responses)
@@ -168,6 +170,7 @@ def _pipeline(
             parser=DocumentParser(),
             evidence=EvidenceComposer(max_citations=12, max_per_document=1),
             source_policy=source_policy or AllowAllSourceAccessPolicy(),
+            source_discovery=source_discovery,
         ),
         transport,
         collector,
@@ -263,6 +266,33 @@ async def test_pipeline_collects_shared_source_once_and_preserves_track_links() 
     assert recommendation_tracks == {"privacy", "data-rights"}
     assert "조달 원칙 검토안은 2건" in draft.summary
     assert "SOURCE_LIMIT_REACHED" not in {failure.code for failure in draft.failures}
+
+
+@pytest.mark.anyio
+async def test_curated_pipeline_discloses_missing_recommendation_anchors() -> None:
+    plan = _plan()
+    procurement = _candidate("procurement", host="procurement.go.kr")
+    pipeline, _, _ = _pipeline(
+        plan=plan,
+        results={"procurement": SearchResult(candidates=(procurement,))},
+        responses={
+            procurement.url: RawHttpResponse(
+                status=200,
+                headers={"content-type": "text/html; charset=utf-8"},
+                body=(
+                    "<html><body><p>계약서에 데이터 소유권과 데이터 접근권을 "
+                    "명시합니다.</p></body></html>"
+                ).encode(),
+            )
+        },
+        records={"procurement.go.kr": ("93.184.216.34",)},
+        source_discovery="curated_seed",
+    )
+
+    draft = await pipeline.research(plan)
+
+    assert any("조달·계약(procurement) track" in gap and "데이터 삭제" in gap for gap in draft.gaps)
+    assert not any(finding.kind == "RECOMMENDATION" for finding in draft.findings)
 
 
 @pytest.mark.anyio

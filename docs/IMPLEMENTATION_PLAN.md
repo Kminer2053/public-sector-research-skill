@@ -39,8 +39,8 @@
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 415 tests
-- coverage gate: raw 95.03%, normalized statement 96.16%, branch 90.54%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 416 tests
+- coverage gate: raw 95.10%, normalized statement 96.22%, branch 90.70%,
   critical module 95% 이상
 - supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
 - 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
@@ -549,7 +549,8 @@ validate
 
 - fixed official URL 5종으로 7개 track의 실제 citation/locator 선택은 PASS
 - `CuratedOfficialSourceProvider`와 `PSR_SEARCH_PROVIDER=curated` 구현
-- 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation gap 1
+- 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation과
+  government-policy·procurement missing-anchor gap 3건
 - Writer는 12개 FACT와 근거 anchor가 충족된 5개 RECOMMENDATION을 생성
 - 실제 quick Markdown은 한국어 검토 순서와 동일 citation ID를 유지하고 약 19KB로 반환
 - 동일 PIPC·WEF URL은 각 1회만 수집하고 여러 track provenance를 보존

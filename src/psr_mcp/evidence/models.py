@@ -64,3 +64,15 @@ class EvidenceFinding:
     kind: Literal["FACT", "INFERENCE", "RECOMMENDATION"]
     citation_ids: tuple[str, ...]
     confidence: Literal["HIGH", "MEDIUM", "LOW"]
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceRecommendationGap:
+    track_id: str
+    missing_anchors: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceWriting:
+    findings: tuple[EvidenceFinding, ...]
+    recommendation_gaps: tuple[EvidenceRecommendationGap, ...]

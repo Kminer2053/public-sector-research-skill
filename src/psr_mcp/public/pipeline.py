@@ -133,15 +133,27 @@ class PublicResearchPipeline:
             terms_by_track={track.id: track.selection_terms for track in plan.tracks},
         )
         citations = tuple(_citation(citation) for citation in evidence_pack.citations)
-        findings = tuple(
-            _finding(finding) for finding in self._writer.write(evidence_pack.citations)
-        )
+        writing = self._writer.analyze(evidence_pack.citations)
+        findings = tuple(_finding(finding) for finding in writing.findings)
         gaps = _gaps(plan, evidence_pack)
         if self._source_discovery == "curated_seed":
+            track_titles = {track.id: track.title for track in plan.tracks}
             gaps = (
                 *gaps,
                 "실시간 웹 검색이 아니라 검토된 제한적 공식자료 "
                 "seed catalog 범위에서 조사했습니다.",
+            )
+            gaps = (
+                *gaps,
+                *(
+                    (
+                        f"{track_titles.get(gap.track_id, gap.track_id)}"
+                        f"({gap.track_id}) track은 조달 원칙 검토안에 필요한 "
+                        f"anchor({', '.join(gap.missing_anchors)})를 "
+                        "현재 인용 구간에서 모두 확인하지 못했습니다."
+                    )
+                    for gap in writing.recommendation_gaps
+                ),
             )
         if document_duplicates:
             gaps = (

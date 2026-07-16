@@ -6,7 +6,9 @@ from psr_mcp.evidence.models import (
     EvidenceDocument,
     EvidenceFinding,
     EvidencePack,
+    EvidenceRecommendationGap,
     EvidenceScore,
+    EvidenceWriting,
     ScoreComponent,
 )
 from psr_mcp.evidence.quality import (
@@ -26,6 +28,8 @@ __all__ = [
     "EvidenceDocument",
     "EvidenceFinding",
     "EvidencePack",
+    "EvidenceRecommendationGap",
     "EvidenceScore",
+    "EvidenceWriting",
     "ScoreComponent",
 ]

@@ -147,17 +147,20 @@ recommendation tracks: law-regulation, privacy, data-rights, international-stand
 citation track recall: 7/7
 source hosts: law.go.kr, pipc.go.kr, nist.gov, tsapps.nist.gov
 failure codes: 0
-gaps: 1 (실시간 검색이 아닌 curated 범위 제한)
+gaps: 3
+  - 실시간 검색이 아닌 curated 범위 제한
+  - 정부 정책·가이드(government-policy): 생애주기, 안전성·위험관리 anchor 미확인
+  - 조달·계약(procurement): 데이터 소유권, 데이터 접근권 anchor 미확인
 server_saved: false
 purge_state: PURGED
 ephemeral directory empty: true
 markdown: 한국어 필수 heading 9개, 약 18.7KB
 ```
 
-`PARTIAL`은 수집 실패가 아니라 curated mode가 실시간·범용 검색이 아니라는 의도적 limitation
-때문이다. 개인정보위 PDF와 WEF PDF는 각각 두 track에 쓰였지만 실제 network fetch는 URL당
-한 번만 수행했다. 정부정책·조달 track은 이번에 선택된 excerpt가 Writer의 모든 anchor를
-충족하지 않아 권고안을 만들지 않고 FACT만 보존했다.
+`PARTIAL`은 수집 실패가 아니라 curated mode가 실시간·범용 검색이 아니라는 의도적 limitation과
+두 track의 recommendation anchor 부족 때문이다. 개인정보위 PDF와 WEF PDF는 각각 두 track에
+쓰였지만 실제 network fetch는 URL당 한 번만 수행했다. 정부정책·조달 track은 권고안을 만들지
+않고 FACT와 구체적인 missing-anchor gap을 함께 보존했다.
 
 사람이 읽는 형태의 내부 검토에서 법령 원문의 `사람의 관리ㆍ감독`에 쓰인 한글 아래아
 가운데점(`ㆍ`)이 정규화되지 않아 법령 권고가 누락되는 문제를 찾았다. separator 정규화와
@@ -168,7 +171,7 @@ markdown: 한국어 필수 heading 9개, 약 18.7KB
 ### 전체 회귀
 
 ```text
-415 passed (390 non-PostgreSQL + 25 PostgreSQL)
+416 passed (391 non-PostgreSQL + 25 PostgreSQL)
 ```
 
 여기에는 PostgreSQL 17 로컬 클러스터를 사용하는 25개 test가 포함된다. Public code 추가 뒤에도
@@ -177,9 +180,9 @@ OAuth, tenant RLS, durable Job과 Foundation contract가 유지됐다.
 ### Coverage
 
 ```text
-pytest raw total coverage: 95.03%
-coverage gate normalized statement: 96.16%
-coverage gate branch: 90.54%
+pytest raw total coverage: 95.10%
+coverage gate normalized statement: 96.22%
+coverage gate branch: 90.70%
 critical module statement minimum: 95.0%
 status: pass
 ```

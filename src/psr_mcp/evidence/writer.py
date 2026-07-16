@@ -6,7 +6,12 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from psr_mcp.evidence.models import EvidenceCitation, EvidenceFinding
+from psr_mcp.evidence.models import (
+    EvidenceCitation,
+    EvidenceFinding,
+    EvidenceRecommendationGap,
+    EvidenceWriting,
+)
 from psr_mcp.search.models import SourceTier
 
 
@@ -30,19 +35,33 @@ class CitationConstrainedWriter:
         self,
         citations: tuple[EvidenceCitation, ...],
     ) -> tuple[EvidenceFinding, ...]:
-        recommendations = tuple(
-            finding
-            for rule in _CONTROL_RULES
-            if (
-                finding := self._recommendation(
-                    rule,
-                    tuple(citation for citation in citations if citation.track_id == rule.track_id),
-                )
+        return self.analyze(citations).findings
+
+    def analyze(
+        self,
+        citations: tuple[EvidenceCitation, ...],
+    ) -> EvidenceWriting:
+        recommendations: list[EvidenceFinding] = []
+        gaps: list[EvidenceRecommendationGap] = []
+        for rule in _CONTROL_RULES:
+            track_citations = tuple(
+                citation for citation in citations if citation.track_id == rule.track_id
             )
-            is not None
-        )
+            recommendation, missing_anchors = self._recommendation(rule, track_citations)
+            if recommendation is not None:
+                recommendations.append(recommendation)
+            elif track_citations:
+                gaps.append(
+                    EvidenceRecommendationGap(
+                        track_id=rule.track_id,
+                        missing_anchors=missing_anchors,
+                    )
+                )
         facts = tuple(self._fact(citation) for citation in citations)
-        return (*recommendations, *facts)
+        return EvidenceWriting(
+            findings=(*recommendations, *facts),
+            recommendation_gaps=tuple(gaps),
+        )
 
     def _fact(self, citation: EvidenceCitation) -> EvidenceFinding:
         excerpt = " ".join(citation.excerpt.split())
@@ -62,35 +81,48 @@ class CitationConstrainedWriter:
         self,
         rule: _ControlRule,
         citations: tuple[EvidenceCitation, ...],
-    ) -> EvidenceFinding | None:
+    ) -> tuple[EvidenceFinding | None, tuple[str, ...]]:
         eligible = tuple(citation for citation in citations if citation.score.overall >= 0.55)
         if not eligible:
-            return None
+            return None, ("근거 점수 기준",)
         supporting: list[EvidenceCitation] = []
+        missing_anchors: list[str] = []
         for group in rule.required_groups:
             group_matches = tuple(
                 citation
                 for citation in eligible
-                if any(_contains(citation.excerpt, term) for term in group)
+                if any(_contains(citation.excerpt, term) for term in group.terms)
             )
             if not group_matches:
-                return None
+                missing_anchors.append(group.label)
+                continue
             for citation in group_matches:
                 if citation not in supporting:
                     supporting.append(citation)
+        if missing_anchors:
+            return None, tuple(missing_anchors)
         selected = tuple(supporting[: self._max_supporting_citations])
-        return EvidenceFinding(
-            claim=f"조달 원칙 검토안: {rule.claim}",
-            kind="RECOMMENDATION",
-            citation_ids=tuple(citation.id for citation in selected),
-            confidence=_confidence(selected),
+        return (
+            EvidenceFinding(
+                claim=f"조달 원칙 검토안: {rule.claim}",
+                kind="RECOMMENDATION",
+                citation_ids=tuple(citation.id for citation in selected),
+                confidence=_confidence(selected),
+            ),
+            (),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class _AnchorGroup:
+    label: str
+    terms: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class _ControlRule:
     track_id: str
-    required_groups: tuple[tuple[str, ...], ...]
+    required_groups: tuple[_AnchorGroup, ...]
     claim: str
 
 
@@ -139,11 +171,14 @@ _CONTROL_RULES = (
     _ControlRule(
         track_id="law-regulation",
         required_groups=(
-            (
-                "사람의 관리 감독",
+            _AnchorGroup(
                 "사람의 관리·감독",
-                "human oversight",
-                "human intervention",
+                (
+                    "사람의 관리 감독",
+                    "사람의 관리·감독",
+                    "human oversight",
+                    "human intervention",
+                ),
             ),
         ),
         claim=(
@@ -154,17 +189,29 @@ _CONTROL_RULES = (
     _ControlRule(
         track_id="government-policy",
         required_groups=(
-            ("생애주기", "lifecycle"),
-            ("안전성", "안전조치", "risk management", "safety"),
+            _AnchorGroup("생애주기", ("생애주기", "lifecycle")),
+            _AnchorGroup(
+                "안전성·위험관리",
+                ("안전성", "안전조치", "risk management", "safety"),
+            ),
         ),
         claim="AI 도입 전 과정에 생애주기별 법적 검토와 안전성 확인 절차를 둔다.",
     ),
     _ControlRule(
         track_id="procurement",
         required_groups=(
-            ("data ownership", "데이터 소유권", "소유권"),
-            ("access to data", "데이터 접근", "접근권"),
-            ("data deletion", "데이터 삭제", "삭제"),
+            _AnchorGroup(
+                "데이터 소유권",
+                ("data ownership", "데이터 소유권", "소유권"),
+            ),
+            _AnchorGroup(
+                "데이터 접근권",
+                ("access to data", "데이터 접근", "접근권"),
+            ),
+            _AnchorGroup(
+                "데이터 삭제",
+                ("data deletion", "deletion", "데이터 삭제", "삭제"),
+            ),
         ),
         claim=(
             "계약서에 입력·산출 데이터의 소유권, 기관의 접근권과 계약 종료 시 "
@@ -174,24 +221,36 @@ _CONTROL_RULES = (
     _ControlRule(
         track_id="privacy",
         required_groups=(
-            ("보유기간", "retention period", "retention"),
-            ("파기", "data deletion", "deletion"),
+            _AnchorGroup(
+                "보유기간",
+                ("보유기간", "retention period", "retention"),
+            ),
+            _AnchorGroup(
+                "파기·삭제",
+                ("파기", "data deletion", "deletion"),
+            ),
         ),
         claim="개인정보의 보유기간, 파기 시점과 검증 가능한 삭제 절차를 계약조건으로 둔다.",
     ),
     _ControlRule(
         track_id="international-standards",
         required_groups=(
-            ("monitoring", "모니터링"),
-            ("human intervention", "human oversight", "shutdown", "중단"),
+            _AnchorGroup("운영 모니터링", ("monitoring", "모니터링")),
+            _AnchorGroup(
+                "사람의 개입·중단",
+                ("human intervention", "human oversight", "shutdown", "중단"),
+            ),
         ),
         claim="운영 중 모니터링과 사람의 개입·중단 기준을 위험관리 절차에 포함한다.",
     ),
     _ControlRule(
         track_id="vendor-lock-in",
         required_groups=(
-            ("interoperability", "상호운용성"),
-            ("vendor lock-in", "open licensing", "open standards", "업체 종속"),
+            _AnchorGroup("상호운용성", ("interoperability", "상호운용성")),
+            _AnchorGroup(
+                "개방형 표준·라이선스·업체 종속",
+                ("vendor lock-in", "open licensing", "open standards", "업체 종속"),
+            ),
         ),
         claim=(
             "상호운용성, 개방형 표준 또는 라이선스 조건과 계약 종료 시 전환지원을 "
@@ -201,8 +260,14 @@ _CONTROL_RULES = (
     _ControlRule(
         track_id="data-rights",
         required_groups=(
-            ("학습 재사용", "training reuse", "opt-out", "옵트아웃"),
-            ("보유기간", "retention", "파기", "deletion"),
+            _AnchorGroup(
+                "학습 재사용 선택권",
+                ("학습 재사용", "training reuse", "opt-out", "옵트아웃"),
+            ),
+            _AnchorGroup(
+                "보유기간·파기",
+                ("보유기간", "retention", "파기", "deletion"),
+            ),
         ),
         claim=(
             "기관 데이터의 모델 학습 재사용 여부와 선택권, 보유기간·파기 조건을 계약 전에 확정한다."

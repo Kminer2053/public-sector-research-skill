@@ -226,6 +226,7 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-EVD-017 | recommendation anchor 하나 누락 | recommendation 생성 안 함 |
 | VAL-PUB-EVD-018 | recommendation 생성 | kind 분리, citation 1개 이상 |
 | VAL-PUB-EVD-019 | Markdown 결과 | 한국어 필수 heading과 JSON 동일 citation ID |
+| VAL-PUB-EVD-020 | recommendation anchor 부족 | track ID와 missing anchor 이름을 gap에 표시 |
 
 ### 6.5 Golden Research Scenarios
 

@@ -534,7 +534,8 @@ FACT는 citation이 없으면 finding으로 확정하지 않고 gap 또는 infer
 현재 `CitationConstrainedWriter`는 모든 citation을 extractive FACT로 남기고, 사전 검토된
 track별 anchor group이 모두 excerpt에서 확인될 때만 “조달 원칙 검토안”을
 `RECOMMENDATION`으로 추가한다. recommendation은 citation ID를 필수로 가지며, anchor가 하나라도
-없으면 생성하지 않는다. 이는 적용대상·법적 의무 여부를 판정하는 법률 Writer가 아니고,
+없으면 생성하지 않고 curated mode에서는 부족한 anchor label을 track별 gap으로 반환한다.
+이는 적용대상·법적 의무 여부를 판정하는 법률 Writer가 아니고,
 conflict synthesis와 최종 규정문 생성은 여전히 사람 QA 후속 범위다.
 
 ## 13. MCP Contract

@@ -80,10 +80,14 @@ def test_writer_does_not_invent_control_when_required_anchor_is_missing() -> Non
         excerpt="The contract describes data ownership and access to data.",
     )
 
-    findings = CitationConstrainedWriter().write((citation,))
+    writer = CitationConstrainedWriter()
+    analysis = writer.analyze((citation,))
+    findings = analysis.findings
 
     assert [finding.kind for finding in findings] == ["FACT"]
     assert "data ownership" in findings[0].claim
+    assert analysis.recommendation_gaps[0].track_id == "procurement"
+    assert analysis.recommendation_gaps[0].missing_anchors == ("데이터 삭제",)
 
 
 def test_writer_matches_compact_korean_and_caps_extractive_fact() -> None:

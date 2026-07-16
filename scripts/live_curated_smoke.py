@@ -90,6 +90,7 @@ async def _run() -> int:
                     ),
                     "failure_codes": sorted({failure.code for failure in output.failures}),
                     "gap_count": len(output.gaps),
+                    "gaps": output.gaps,
                     "server_saved": output.retention.server_saved,
                     "purge_state": output.retention.purge_state,
                     "ephemeral_empty": _empty(root),

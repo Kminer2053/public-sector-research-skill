@@ -233,6 +233,7 @@ MIME sniff, HTML·JSON·text locator와 subprocess PDF parser를 구현했다. �
 component score, track-aware URL/passage/document hash dedup, citation `track_id`, 한·영 passage
 선택, shared URL single fetch, Markdown/JSON, partial failure와 purge-after-quick을 구현했다.
 anchor-complete track에만 조달 원칙 후보를 만드는 deterministic Writer도 구현했다.
+권고를 만들지 못한 track은 부족한 anchor 이름을 확인 필요사항으로 공개한다.
 Markdown은 조사 요약, 조달 원칙 검토안, 확인한 사실, 근거, 확인 필요사항을 분리한 한국어
 검토 문서로 렌더링한다.
 공공업무 담당자의 초안 유용성, live Search recall과 conflict/recommendation 표현 품질은
