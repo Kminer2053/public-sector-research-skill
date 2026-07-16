@@ -30,6 +30,7 @@ class StorageMode(StrEnum):
 
 class SearchProviderMode(StrEnum):
     DISABLED = "disabled"
+    CURATED = "curated"
     BRAVE = "brave"
 
 
@@ -218,6 +219,17 @@ class Settings:
                 raise ValueError("Brave search requires PSR_SEARCH_API_KEY_REF")
             if self.public_fixture_research_enabled:
                 raise ValueError("fixture research and Brave search cannot be enabled together")
+        elif self.search_provider is SearchProviderMode.CURATED:
+            if self.service_mode is not ServiceMode.PUBLIC_EPHEMERAL:
+                raise ValueError(
+                    "curated source discovery is available only in public ephemeral mode"
+                )
+            if self.search_api_key_ref:
+                raise ValueError("PSR_SEARCH_API_KEY_REF requires PSR_SEARCH_PROVIDER=brave")
+            if self.public_fixture_research_enabled:
+                raise ValueError(
+                    "fixture research and curated source discovery cannot be enabled together"
+                )
         elif self.search_api_key_ref:
             raise ValueError("PSR_SEARCH_API_KEY_REF requires PSR_SEARCH_PROVIDER=brave")
         parsed_public_url = urlparse(self.public_url)

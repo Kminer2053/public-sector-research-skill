@@ -28,6 +28,7 @@ from psr_mcp.public.schemas import (
     Finding,
     ResearchFailure,
     ScoreComponentOutput,
+    SourceDiscoveryMode,
 )
 from psr_mcp.public.service import ResearchDraft
 from psr_mcp.search import (
@@ -54,6 +55,7 @@ class PublicResearchPipeline:
         source_policy: SourceAccessPolicy,
         quality: DocumentQualityAssessor | None = None,
         max_collection_concurrency: int = 4,
+        source_discovery: SourceDiscoveryMode = "test_static",
     ) -> None:
         if max_collection_concurrency < 1 or max_collection_concurrency > 20:
             raise ValueError("max_collection_concurrency must be 1..20")
@@ -65,6 +67,7 @@ class PublicResearchPipeline:
         self._source_policy = source_policy
         self._quality = quality or DocumentQualityAssessor()
         self._collection_semaphore = asyncio.Semaphore(max_collection_concurrency)
+        self._source_discovery = source_discovery
 
     @property
     def available(self) -> bool:
@@ -78,8 +81,11 @@ class PublicResearchPipeline:
             plan,
             tuple(candidate for batch in search_batches for candidate in batch.candidates),
         )
-        selected = candidates[: plan.stop_conditions.max_sources]
-        if len(candidates) > len(selected):
+        selected, omitted_sources = _limit_candidates_by_source(
+            candidates,
+            plan.stop_conditions.max_sources,
+        )
+        if omitted_sources:
             failures.append(
                 ResearchFailure(
                     code="SOURCE_LIMIT_REACHED",
@@ -88,18 +94,28 @@ class PublicResearchPipeline:
                 )
             )
 
+        collection_groups = _group_candidates_by_url(selected)
         per_source_budget = (
-            max(1, plan.stop_conditions.max_bytes // len(selected)) if selected else 0
+            max(1, plan.stop_conditions.max_bytes // len(collection_groups))
+            if collection_groups
+            else 0
         )
         collection_results = await asyncio.gather(
-            *(self._collect_candidate(candidate, per_source_budget) for candidate in selected)
+            *(self._collect_candidate(group[0], per_source_budget) for group in collection_groups)
         )
         documents: list[EvidenceDocument] = []
-        for result in collection_results:
+        for group, result in zip(collection_groups, collection_results, strict=True):
             if result.failure is not None:
                 failures.append(result.failure)
             if result.document is not None:
-                documents.append(result.document)
+                documents.extend(
+                    EvidenceDocument(
+                        candidate=candidate,
+                        collected=result.document.collected,
+                        parsed=result.document.parsed,
+                    )
+                    for candidate in group
+                )
 
         unique_documents, document_duplicates = _deduplicate_documents(documents)
         evidence_pack = self._evidence.compose(
@@ -111,6 +127,12 @@ class PublicResearchPipeline:
         citations = tuple(_citation(citation) for citation in evidence_pack.citations)
         findings = tuple(_finding(citation) for citation in evidence_pack.citations)
         gaps = _gaps(plan, evidence_pack)
+        if self._source_discovery == "curated_seed":
+            gaps = (
+                *gaps,
+                "실시간 웹 검색이 아니라 검토된 제한적 공식자료 "
+                "seed catalog 범위에서 조사했습니다.",
+            )
         if document_duplicates:
             gaps = (
                 *gaps,
@@ -133,6 +155,7 @@ class PublicResearchPipeline:
         )
         return ResearchDraft(
             status=status,
+            source_discovery=self._source_discovery,
             summary=summary,
             findings=findings,
             citations=citations,
@@ -345,6 +368,35 @@ def _deduplicate_documents(
         if _authority(document.candidate.source_tier) > _authority(existing.candidate.source_tier):
             by_hash[key] = document
     return list(by_hash.values()), duplicates
+
+
+def _limit_candidates_by_source(
+    candidates: tuple[SourceCandidate, ...],
+    max_sources: int,
+) -> tuple[tuple[SourceCandidate, ...], int]:
+    selected: list[SourceCandidate] = []
+    selected_urls: set[str] = set()
+    omitted_urls: set[str] = set()
+    for candidate in candidates:
+        key = _candidate_url_key(candidate.url)
+        if key in selected_urls:
+            selected.append(candidate)
+            continue
+        if len(selected_urls) < max_sources:
+            selected_urls.add(key)
+            selected.append(candidate)
+            continue
+        omitted_urls.add(key)
+    return tuple(selected), len(omitted_urls)
+
+
+def _group_candidates_by_url(
+    candidates: tuple[SourceCandidate, ...],
+) -> tuple[tuple[SourceCandidate, ...], ...]:
+    groups: dict[str, list[SourceCandidate]] = {}
+    for candidate in candidates:
+        groups.setdefault(_candidate_url_key(candidate.url), []).append(candidate)
+    return tuple(tuple(group) for group in groups.values())
 
 
 def _candidate_url_key(url: str) -> str:

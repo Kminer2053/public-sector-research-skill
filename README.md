@@ -3,11 +3,11 @@
 누구나 가입 없이 공신력 있는 공공자료를 조사하고, 원문 근거가 연결된 결과를 받은 뒤 서버에는 질문·원문·보고서가 남지 않도록 만드는 Evidence-First Public Research MCP입니다.
 
 > 현재 상태: OAuth·PostgreSQL·Tenant 기반 Foundation과 Public Safety Core에 이어,
-> official-first Search port, 선택형 Brave adapter, robots 정책, SafeCollector,
-> HTML·JSON·PDF parser, Evidence Composer와 실제 quick pipeline까지 연결됐습니다.
-> 로컬 결정론적 수직 슬라이스는 통과했지만 실제 공식 웹 source 유용성, edge quota,
-> async lifecycle과 운영 배포는 아직 검증되지 않았으므로 공개 완성품으로 표현하거나
-> 배포하면 안 됩니다.
+> official-first Search port, API key가 필요 없는 제한적 curated source mode, 선택형 Brave
+> adapter, robots 정책, SafeCollector, HTML·JSON·PDF parser, Evidence Composer와 실제 quick
+> pipeline까지 연결됐습니다. curated mode의 실제 검토 원문 5종·7개 track smoke와 즉시 purge는
+> 통과했지만 사람 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았으므로
+> 공개 완성품으로 표현하거나 배포하면 안 됩니다.
 
 ## 제품 성장 순서
 
@@ -83,12 +83,14 @@ Enterprise
 - redirect별 DNS 재검증과 검증된 IP로 고정하는 HTTP/1.1 transport
 - response byte·timeout·content-encoding 상한과 cookie header 제거
 - official domain registry와 track별 병렬 Search query
+- 한국 공공부문 AI 조달 질문에 한정된 검토 source seed mode
 - 선택형 Brave Search adapter와 provider 오류·응답 byte·동시성 제한
 - `robots.txt` 선검사와 disallow·접근제한·정책 실패의 typed result
 - HTML heading, JSON Pointer, text line, PDF page locator
 - PDF subprocess 격리와 page·text·wall-time·memory 제한
 - 로그인·CAPTCHA·오류·빈 문서의 Evidence 제외
 - URL·document hash 중복 제거와 track-balanced citation 선택
+- 동일 원문을 여러 track에 연결하되 네트워크 수집은 한 번만 수행
 - authority·primary·directness·freshness·snapshot·specificity·independence 점수 설명
 - Search→Collect→Parse→Evidence→Markdown/JSON quick vertical slice
 - 일부 Search·수집·파싱 실패를 보존하는 `PARTIAL` 결과
@@ -97,19 +99,20 @@ Enterprise
 [P1 기반 검증 보고서](./docs/validation/2026-07-16-public-p1-foundation.md)에
 Planner·SafeCollector 기반 검증을 기록했습니다.
 [PG1 로컬 수직 슬라이스 보고서](./docs/validation/2026-07-16-pg1-useful-research.md)에
-전체 회귀, 실제 공식 URL 5종의 7개 track Evidence 선택, 그리고 남은 Search provider·사람
-유용성 검증을 기록했습니다.
+전체 회귀, 실제 공식 URL 5종의 7개 track Evidence 선택, no-key curated end-to-end smoke와
+남은 사람 유용성 검증을 기록했습니다.
 
 ## 다음 구현 범위
 
 다음 작업은 이미 연결된 수직 슬라이스를 실제 공개 서비스 수준으로 검증하는 것입니다.
 
-1. 운영자가 선택한 Search provider credential로 검색부터 시작하는 golden scenario 실행
-2. 국가법령정보센터 source adapter와 Search provider 장애 시 fallback 정책
+1. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
+2. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
 3. 실제 법령·가이드의 citation-constrained claim 작성 품질과 conflict/gap 검증
-4. edge client IP normalization과 end-to-end content leakage scan
-5. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
-6. `start/status/result/cancel` async flow
+4. 선택형 live Search provider의 recall·비용·보존경계 비교검증
+5. edge client IP normalization과 end-to-end content leakage scan
+6. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
+7. `start/status/result/cancel` async flow
 
 상세 순서는 [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md)을 따릅니다.
 
@@ -126,9 +129,22 @@ psr.feedback.submit
 ```
 
 위 catalog는 목표 계약입니다. 현재 public server에는 `psr.service.policy`와
-`psr.research.quick`만 구현돼 있습니다. quick은 개발 fixture 또는 명시적으로 구성한 Brave
-Search adapter에서만 동작합니다. Search provider 기본값은 `disabled`이며 provider가 없으면
-`research_available=false`로 fail closed합니다.
+`psr.research.quick`만 구현돼 있습니다. quick은 개발 fixture, 명시적으로 구성한 `curated`
+source mode 또는 Brave Search adapter에서 동작합니다. 기본값은 `disabled`이며 discovery
+mode가 없으면 `research_available=false`로 fail closed합니다.
+
+API key 없이 현재 검토 범위의 실제 원문을 사용하는 개발·검증 실행:
+
+```bash
+export PSR_SERVICE_MODE=public_ephemeral
+export PSR_EPHEMERAL_ROOT=/tmp/psr-public-preview
+export PSR_SEARCH_PROVIDER=curated
+uv run --frozen psr-mcp
+```
+
+`curated`는 한국 공공부문 AI 조달 질문만 지원하며 실시간 검색이 아니다. 결과의
+`scope.source_discovery`와 gap에 이 제한을 표시하고, 지원 범위 밖 질문에는 관련 없는 source를
+억지로 반환하지 않는다.
 
 Brave adapter를 켜면 PSR 서버는 질문·검색어를 저장하지 않지만, 질문에서 만든 검색어가 외부
 Brave Search API로 전달됩니다. 표준 API의 provider-side 보존 가능성은 `psr.service.policy`와
@@ -158,8 +174,9 @@ Public Preview에서 User Content는 다음을 뜻합니다.
 - 두 MCP Host에서 anonymous flow 검증
 
 [VALIDATION CRITERIA](./docs/VALIDATION_CRITERIA.md)의 `PG0~PG3`가 모두 통과하기 전에는
-public-ready 또는 zero-retention verified로 표현하지 않습니다. 현재 PG1은 로컬 구현 수직
-슬라이스만 통과했으며, 실제 공식 웹 golden scenario는 운영 credential과 별도 검토가 필요합니다.
+public-ready 또는 zero-retention verified로 표현하지 않습니다. 현재 PG1은 로컬 구현과
+curated 실제 source 수집·Evidence·purge smoke까지 통과했으며, 공공업무 담당자의 결과
+유용성 검토와 운영 edge 검증이 남아 있습니다.
 
 ## Foundation 로컬 검증
 

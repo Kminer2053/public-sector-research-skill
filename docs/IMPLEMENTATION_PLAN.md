@@ -1,8 +1,8 @@
 # Public Sector Research MCP — Implementation Plan
 
 > 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재:
-> **PG1 로컬 수직 슬라이스와 고정 공식 URL Evidence 검증 완료,
-> Search provider·사람 유용성 QA 대기**
+> **PG1 로컬 수직 슬라이스·고정 URL Evidence·no-key curated smoke 완료,
+> 사람 유용성 QA 대기**
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
@@ -29,19 +29,22 @@
 - 완료: legacy crawlkit characterization과 reuse/refactor/replace 판단
 - 완료: HTTPS-only URL policy, redirect 재검증, 검증 IP 고정 transport, bounded SafeCollector
 - 완료: official-first query builder, official domain registry, 선택형 Brave Search adapter
+- 완료: 한국 공공부문 AI 조달 범위의 no-key curated source provider
 - 완료: robots 선검사와 source access typed policy
 - 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
 - 완료: document quality, URL/hash dedup, component Evidence Score와 citation composer
 - 완료: track별 한·영 passage 선택어, 관련구간 excerpt, cross-track provenance 보존
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 401 tests
-- coverage gate: raw 94.85%, normalized statement 96.03%, branch 90.13%,
+- 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 410 tests
+- coverage gate: raw 94.92%, normalized statement 96.09%, branch 90.31%,
   critical module 95% 이상
 - supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
 - 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
-- 남음: 실제 Search credential 기반 golden scenario, 법령 source adapter, domain claim/writer QA,
-  edge IP normalization, async flow
+- 검증: curated 실제 quick에서 7개 track·12 citation·failure 0·purge 완료
+- 남음: 공공업무 담당자 QA, 법령 source adapter, domain claim/writer QA, 선택형 live Search
+  비교검증, edge IP normalization, async flow
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
 [PG1 로컬 수직 슬라이스 보고서](./validation/2026-07-16-pg1-useful-research.md)는
@@ -387,9 +390,10 @@ class EphemeralWorkspaceStore(Protocol):
 - user cookie, Authorization, client certificate 입력 자체를 받지 않음
 
 **상태:** 구현 완료. `GovernmentQueryBuilder`, `GovernmentSourceRegistry`,
-`BraveSearchProvider`, `UrlPolicy`, `PinnedHttpcoreTransport`가 연결됐다. Search 결과는
-Evidence가 아닌 candidate로만 취급한다. Brave는 기본 disabled이며 API key가 없으면
-production quick은 fail closed한다.
+`CuratedOfficialSourceProvider`, `BraveSearchProvider`, `UrlPolicy`,
+`PinnedHttpcoreTransport`가 연결됐다. 모든 discovery 결과는 Evidence가 아닌 candidate로만
+취급한다. 기본값은 disabled이고, curated는 no-key 제한 범위, Brave는 server-side API key가
+필요한 선택형 live Search다.
 
 ### CH-P1.4 Bounded Collector
 
@@ -541,10 +545,14 @@ validate
 **2026-07-16 중간 결과**
 
 - fixed official URL 5종으로 7개 track의 실제 citation/locator 선택은 PASS
+- `CuratedOfficialSourceProvider`와 `PSR_SEARCH_PROVIDER=curated` 구현
+- 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation gap 1
+- 동일 PIPC·WEF URL은 각 1회만 수집하고 여러 track provenance를 보존
+- 결과 전달 뒤 `server_saved=false`, `PURGED`, ephemeral directory empty 확인
 - 개인정보위 PDF `pdf:page:40`, NIST AI RMF `pdf:page:20`,
   WEF 조달자료 `pdf:page:19`와 `pdf:page:26:chunk-1` 선택 확인
 - 국가법령정보센터 동적 shell은 Evidence 제외, 정적 조문정보는 사용 가능
-- Search provider recall·비용·보존경계와 공공업무 담당자 human QA는 PENDING
+- live Search provider recall·비용·보존경계와 공공업무 담당자 human QA는 PENDING
 
 **DoD**
 
@@ -654,9 +662,9 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 | 요구사항 | 구현 increment | 검증 |
 |---|---|---|
 | FR-PUB-001~004 | S0.1~S0.2 | VAL-PUB-MODE, MCP |
-| FR-PUB-010~014 | P1.2 | VAL-PUB-PLAN |
+| FR-PUB-010~016 | P1.2, P1.8 | VAL-PUB-PLAN, SOURCE DISCOVERY |
 | FR-PUB-020~025 | P1.3~P1.5 | VAL-PUB-NET, PARSE |
-| FR-PUB-030~035 | P1.6~P1.7 | VAL-PUB-EVIDENCE, QUALITY |
+| FR-PUB-030~037 | P1.6~P1.8 | VAL-PUB-EVIDENCE, QUALITY |
 | FR-PUB-040~046 | S0.4~S0.5, P2 | VAL-PUB-RETENTION |
 | FR-PUB-050~054 | S0.3, P3.1 | VAL-PUB-ABUSE |
 | FR-PUB-060~062 | P3.2 | VAL-PUB-FEEDBACK |
@@ -687,14 +695,16 @@ Public Preview deployment와 Account deployment는 mode와 data sink가 분리�
 ## 14. 현재 다음 세 change
 
 ```text
-CH-P1.8 실제 공식 source golden validation
+CH-P1.9 공공업무 담당자 QA와 citation-constrained Writer 판단
+CH-P1.10 국가법령정보센터 source adapter
 CH-P3.1 trusted edge IP·cost kill switch의 최소 공개 경계
 CH-P2.1/2 opaque handle과 ephemeral async lifecycle
 ```
 
-실제 source 검증에서 결과가 업무에 충분하지 않으면 async보다 먼저 citation-constrained Writer를
-보강한다. 반대로 quick이 이미 유용하지만 30초 안에 끝나지 않는 비율이 높으면 P2 async를
-우선한다. Account/Paid 기능은 R4 product trigger 전 시작하지 않는다.
+curated 실제 source 수집·Evidence·purge smoke는 완료됐다. 사람이 읽은 결과가 업무에 충분하지
+않으면 async보다 먼저 citation-constrained Writer를 보강한다. 반대로 quick이 유용하지만 30초
+안에 끝나지 않는 비율이 높으면 P2 async를 우선한다. Brave 등 live Search는 curated 범위를
+넓히는 비교 실험으로 별도 승인하며, Account/Paid 기능은 R4 product trigger 전 시작하지 않는다.
 
 ## 15. 진행 보고 형식
 

@@ -7,6 +7,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+SourceDiscoveryMode = Literal[
+    "disabled",
+    "development_fixture",
+    "test_static",
+    "curated_seed",
+    "brave_live_search",
+]
+
 
 class ExternalServiceDisclosure(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -24,6 +32,7 @@ class ServicePolicyOutput(BaseModel):
     schema_version: str = "1.0"
     operation_id: str
     service_mode: str
+    source_discovery: SourceDiscoveryMode
     authentication_required: bool
     research_available: bool
     kill_switch_active: bool
@@ -39,6 +48,7 @@ class AppliedScope(BaseModel):
     as_of_date: date
     jurisdiction: str
     profile: str
+    source_discovery: SourceDiscoveryMode
     source_tracks: list[str]
     completion_criteria: list[str]
     stop_conditions: dict[str, int | float | bool]

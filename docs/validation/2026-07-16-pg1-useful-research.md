@@ -1,8 +1,8 @@
-# PG1 Useful Research — 로컬 수직 슬라이스 검증 보고서
+# PG1 Useful Research — 로컬 수직 슬라이스·curated live smoke 검증 보고서
 
 > 날짜: 2026-07-16 · 대상 branch: `codex/foundation-vertical-slice` ·
 > 판정: **LOCAL IMPLEMENTATION PASS / LIVE FIXED-SOURCE EVIDENCE PASS /
-> SEARCH PROVIDER·HUMAN QA PENDING**
+> CURATED END-TO-END SMOKE PASS / HUMAN QA PENDING**
 
 [Validation Criteria](../VALIDATION_CRITERIA.md) ·
 [Implementation Plan](../IMPLEMENTATION_PLAN.md) ·
@@ -19,6 +19,9 @@ Evidence Score/Citation→Markdown/JSON→ephemeral purge의 로컬 결정론적
 선택을 검증했다. 이 검증은 Search provider의 검색 품질이나 최종 정책 초안의 사람 검토를
 대체하지 않는다.
 
+또한 `PSR_SEARCH_PROVIDER=curated`의 실제 public composition으로 같은 질문을 실행해
+reviewed seed→robots→수집→파싱→Evidence→Markdown/JSON→purge 전체 경로를 확인했다.
+
 이 판정은 다음을 의미하지 않는다.
 
 - 실제 공공 웹 검색부터 충분히 유용한 정책 답변 생성까지 전 과정을 승인했다.
@@ -34,6 +37,7 @@ Evidence Score/Citation→Markdown/JSON→ephemeral purge의 로컬 결정론적
 - Government Profile track별 병렬 query
 - official domain suffix를 보존하는 query builder
 - 법령·조달·개인정보·정부·국제표준 official domain registry
+- 한국 공공부문 AI 조달 질문에 한정된 no-key curated source provider
 - 선택형 Brave adapter
 - query 길이·결과 수·timeout·response byte·동시성 제한
 - auth/rate/network/malformed response typed failure
@@ -48,6 +52,7 @@ Evidence Score/Citation→Markdown/JSON→ephemeral purge의 로컬 결정론적
 - `robots.txt`를 동일 SafeCollector로 먼저 수집
 - 404/410 robots는 allow, 401/403은 disallow, 기타 실패는 unavailable
 - 일부 source 실패를 Run 전체 실패로 승격하지 않는 partial semantics
+- 동일 URL이 여러 track에 쓰이면 network fetch·parse 1회 후 track provenance 재연결
 
 ### Parser
 
@@ -120,12 +125,40 @@ NIST AI RMF     7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1
 WEF procurement a117707bb4dd6e5f3e7b798bef218dc58576b7a38e20356c257aacad39946e13
 ```
 
-## 4. 자동 검증 결과
+## 4. Curated 실제 quick smoke
+
+실행 명령:
+
+```bash
+uv run --frozen python scripts/live_curated_smoke.py
+```
+
+관찰 결과:
+
+```text
+status: PARTIAL
+source_discovery: curated_seed
+tracks: 7
+citations: 12
+citation track recall: 7/7
+source hosts: law.go.kr, pipc.go.kr, nist.gov, tsapps.nist.gov
+failure codes: 0
+gaps: 1 (실시간 검색이 아닌 curated 범위 제한)
+server_saved: false
+purge_state: PURGED
+ephemeral directory empty: true
+```
+
+`PARTIAL`은 수집 실패가 아니라 curated mode가 실시간·범용 검색이 아니라는 의도적 limitation
+때문이다. 개인정보위 PDF와 WEF PDF는 각각 두 track에 쓰였지만 실제 network fetch는 URL당
+한 번만 수행했다.
+
+## 5. 자동 검증 결과
 
 ### 전체 회귀
 
 ```text
-401 passed (376 non-PostgreSQL + 25 PostgreSQL)
+410 passed (385 non-PostgreSQL + 25 PostgreSQL)
 ```
 
 여기에는 PostgreSQL 17 로컬 클러스터를 사용하는 25개 test가 포함된다. Public code 추가 뒤에도
@@ -134,9 +167,9 @@ OAuth, tenant RLS, durable Job과 Foundation contract가 유지됐다.
 ### Coverage
 
 ```text
-pytest raw total coverage: 94.85%
-coverage gate normalized statement: 96.03%
-coverage gate branch: 90.13%
+pytest raw total coverage: 94.92%
+coverage gate normalized statement: 96.09%
+coverage gate branch: 90.31%
 critical module statement minimum: 95.0%
 status: pass
 ```
@@ -149,7 +182,7 @@ parent/worker 성공·timeout·exit·malformed payload와 PDF core failure는 �
 ```text
 ruff check: PASS
 ruff format --check: PASS
-mypy strict: PASS (87 source files)
+mypy strict: PASS (138 checked Python files)
 uv lock --check: PASS
 dependency license manifest: PASS
 uv audit: 53 packages, known vulnerability 0
@@ -163,16 +196,16 @@ CycloneDX 1.5 SBOM: PASS (41 runtime components)
 
 ```text
 public_sector_research_mcp-0.1.0.dev0-py3-none-any.whl
-SHA-256 d60ceecd625ecf1c6537ed1269af2f9925754a45c6292e1d18b837f8da13e867
-
 public_sector_research_mcp-0.1.0.dev0.tar.gz
-SHA-256 4062bf899de757de59f95ce6f0d3f1bdd16cbcf3e2b6c6708f0379f2f0b01d99
+sbom.cdx.json
 ```
 
-SBOM은 timestamp와 UUID를 포함하므로 repository에 고정하지 않고 release build에서 다시
-생성한다.
+세 산출물 모두 non-empty와 SHA-256 계산을 확인했다. 정확한 release hash는 최종 commit 뒤
+외부 release manifest에서 생성한다. sdist 안에 포함되는 이 보고서에 sdist 자체 hash를
+고정하면 self-reference로 즉시 낡기 때문이다. SBOM도 timestamp와 UUID를 포함하므로
+repository에 고정하지 않고 release build에서 다시 생성한다.
 
-## 5. Acceptance 증거
+## 6. Acceptance 증거
 
 | 영역 | 관찰 결과 | 판정 |
 |---|---|---|
@@ -186,11 +219,12 @@ SBOM은 timestamp와 UUID를 포함하므로 repository에 고정하지 않고 r
 | robots | disallow, no-file, restricted, unavailable 정책 | PASS/local |
 | purge | quick workspace 접근 차단·삭제 뒤 결과 반환 | PASS/local |
 | 실제 공식 웹 | 고정 공식 URL 5종의 snapshot 수집·파싱·선택 | PASS/fixed-source |
-| 실제 검색 | production provider credential로 실행하지 않음 | PENDING |
+| curated discovery | no-key 실제 quick, 7 track·12 citation·purge | PASS/live |
+| 실제 검색 | production live Search credential로 실행하지 않음 | PENDING |
 | 업무 답변 유용성 | 보수적 evidence bundle까지만 검증, domain synthesis human QA 없음 | PENDING |
 | site terms | robots 외 사이트별 약관 자동판정 없음 | PENDING/operational |
 
-## 6. External Provider 경계
+## 7. External Provider 경계
 
 Brave adapter는 기본 `disabled`이며 이 검증에서 실제 외부 호출을 하지 않았다. 활성화하면
 질문에서 생성한 검색어를 Brave Search API로 보낸다. PSR은 그 검색어와 Search result를 저장하지
@@ -205,7 +239,7 @@ provider 결과 자체를 persistent index나 재배포 bundle에 저장하지 �
 [terms of service](https://api-dashboard.search.brave.com/terms-of-service)를 당시 버전으로
 다시 검토한다.
 
-## 7. 남은 위험
+## 8. 남은 위험
 
 1. 실제 Search provider가 위 고정 URL과 동등한 source를 안정적으로 찾는지는 검증 전이다.
 2. 국가법령정보센터 법령 본문/조문 URL을 일반화해 발견하는 adapter는 아직 없다.
@@ -216,15 +250,15 @@ provider 결과 자체를 persistent index나 재배포 bundle에 저장하지 �
 6. trusted edge IP, 일일 비용상한, multi-replica quota가 없다.
 7. async result lifecycle과 feedback이 없다.
 
-## 8. 다음 Gate
+## 9. 다음 Gate
 
-다음 순서는 `CH-P1.8 Live Official-Source Validation`이다.
+`CH-P1.8`의 curated source 구현과 actual-source smoke는 완료됐다. 다음 순서는
+`CH-P1.9 Human Usefulness QA`다.
 
-1. 운영자가 승인한 Search provider credential 또는 production official-source seed adapter 준비
-2. 검색부터 시작하는 GR-001~004를 반복 실행하고 source recall·비용·실패율 측정
+1. 공공업무 담당자가 citation·원문·gap과 결과 유용성을 검토
+2. evidence bundle이 부족하면 citation-constrained Writer를 구현
 3. 국가법령정보센터 source adapter 또는 공식 Open API 연결 결정
-4. 공공업무 담당자가 citation·원문·gap과 결과 유용성을 검토
-5. evidence bundle이 부족하면 citation-constrained Writer를 구현
-6. 이후 edge/비용 경계를 닫고 PG0·PG1의 정식 판정을 갱신
+4. 승인된 live Search provider로 recall·비용·실패율을 curated와 비교
+5. 이후 edge/비용 경계를 닫고 PG0·PG1의 정식 판정을 갱신
 
 credential은 repository, validation report, log와 MCP output에 기록하지 않는다.

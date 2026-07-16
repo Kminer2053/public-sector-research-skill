@@ -22,6 +22,7 @@ def _query(
     return SearchQuery(
         id="qry-test",
         track_id="law-regulation",
+        research_question="공공기관 AI 구매 원칙을 조사해줘",
         text=text,
         preferred_domains=("law.go.kr", "moleg.go.kr"),
         max_results=max_results,

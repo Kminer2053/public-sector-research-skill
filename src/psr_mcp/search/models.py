@@ -22,6 +22,7 @@ class SourceTier(StrEnum):
 class SearchQuery:
     id: str
     track_id: str
+    research_question: str
     text: str
     preferred_domains: tuple[str, ...]
     max_results: int

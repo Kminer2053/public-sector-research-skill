@@ -18,6 +18,7 @@ from psr_mcp.public.schemas import (
     PublicToolErrorPayload,
     QuickResearchOutput,
     ServicePolicyOutput,
+    SourceDiscoveryMode,
 )
 from psr_mcp.public.service import PublicResearchError
 
@@ -55,6 +56,10 @@ def create_public_server(container: PublicContainer) -> FastMCP:
         return ServicePolicyOutput(
             operation_id=container.ids.new(),
             service_mode=settings.service_mode,
+            source_discovery=_source_discovery(
+                settings.search_provider,
+                fixture_enabled=settings.public_fixture_research_enabled,
+            ),
             authentication_required=False,
             research_available=container.quick_service.available,
             kill_switch_active=settings.public_kill_switch,
@@ -118,7 +123,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
 def _external_services(
     provider: SearchProviderMode,
 ) -> list[ExternalServiceDisclosure]:
-    if provider is SearchProviderMode.DISABLED:
+    if provider is not SearchProviderMode.BRAVE:
         return []
     return [
         ExternalServiceDisclosure(
@@ -133,6 +138,20 @@ def _external_services(
     ]
 
 
+def _source_discovery(
+    provider: SearchProviderMode,
+    *,
+    fixture_enabled: bool,
+) -> SourceDiscoveryMode:
+    if fixture_enabled:
+        return "development_fixture"
+    if provider is SearchProviderMode.CURATED:
+        return "curated_seed"
+    if provider is SearchProviderMode.BRAVE:
+        return "brave_live_search"
+    return "disabled"
+
+
 def _server_instructions(provider: SearchProviderMode) -> str:
     base = (
         "가입 없이 공공분야 공식자료를 조사하기 위한 Public Preview 서버입니다. "
@@ -141,6 +160,11 @@ def _server_instructions(provider: SearchProviderMode) -> str:
     )
     if provider is SearchProviderMode.DISABLED:
         return base
+    if provider is SearchProviderMode.CURATED:
+        return (
+            f"{base} 현재 source discovery는 한국 공공부문 AI 조달 질문에 한정된 "
+            "검토된 공식자료 seed catalog이며 실시간 웹 검색이 아닙니다."
+        )
     return (
         f"{base} Brave Search API가 구성된 경우 질문에서 만든 검색어가 외부 provider로 "
         "전송되며, provider-side 보존정책은 PSR 서버의 무보관 정책과 별개입니다. "

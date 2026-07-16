@@ -48,6 +48,7 @@ from psr_mcp.parsers import DocumentParser, ParserLimits
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.public.development_fixture import build_development_fixture_backend
 from psr_mcp.public.pipeline import PublicResearchPipeline
+from psr_mcp.public.schemas import SourceDiscoveryMode
 from psr_mcp.public.service import (
     PublicQuickResearchService,
     ResearchBackend,
@@ -55,8 +56,10 @@ from psr_mcp.public.service import (
 )
 from psr_mcp.search import (
     BraveSearchProvider,
+    CuratedOfficialSourceProvider,
     GovernmentQueryBuilder,
     GovernmentSourceRegistry,
+    SearchProvider,
 )
 from psr_mcp.storage.memory import InMemoryStore
 from psr_mcp.storage.postgres import PostgresMembershipResolver, PostgresStore
@@ -165,21 +168,39 @@ def _build_public_container(
     search_client: httpx.AsyncClient | None = None
     if settings.public_fixture_research_enabled:
         backend = build_development_fixture_backend(clock)
-    elif settings.search_provider is SearchProviderMode.BRAVE:
-        if settings.search_api_key_ref is None:
-            raise RuntimeError("Brave search composition requires an API key reference")
-        search_api_key = secret_resolver.resolve(settings.search_api_key_ref)
-        if len(search_api_key) < 16:
-            raise ValueError("Brave Search API key is too short")
-        search_client = httpx.AsyncClient(
-            timeout=httpx.Timeout(settings.search_timeout_seconds),
-            follow_redirects=False,
-            trust_env=False,
-            limits=httpx.Limits(
-                max_connections=settings.search_max_concurrency,
-                max_keepalive_connections=settings.search_max_concurrency,
-            ),
-        )
+    elif settings.search_provider in {
+        SearchProviderMode.BRAVE,
+        SearchProviderMode.CURATED,
+    }:
+        search_provider: SearchProvider
+        source_discovery: SourceDiscoveryMode
+        if settings.search_provider is SearchProviderMode.BRAVE:
+            if settings.search_api_key_ref is None:
+                raise RuntimeError("Brave search composition requires an API key reference")
+            search_api_key = secret_resolver.resolve(settings.search_api_key_ref)
+            if len(search_api_key) < 16:
+                raise ValueError("Brave Search API key is too short")
+            search_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(settings.search_timeout_seconds),
+                follow_redirects=False,
+                trust_env=False,
+                limits=httpx.Limits(
+                    max_connections=settings.search_max_concurrency,
+                    max_keepalive_connections=settings.search_max_concurrency,
+                ),
+            )
+            search_provider = BraveSearchProvider(
+                api_key=search_api_key,
+                client=search_client,
+                registry=GovernmentSourceRegistry(),
+                timeout_seconds=settings.search_timeout_seconds,
+                max_response_bytes=settings.search_max_response_bytes,
+                max_concurrency=settings.search_max_concurrency,
+            )
+            source_discovery = "brave_live_search"
+        else:
+            search_provider = CuratedOfficialSourceProvider()
+            source_discovery = "curated_seed"
         collector = SafeCollector(
             policy=UrlPolicy(SystemHostResolver()),
             transport=PinnedHttpcoreTransport(),
@@ -199,14 +220,7 @@ def _build_public_container(
             query_builder=GovernmentQueryBuilder(
                 max_results_per_track=min(5, settings.max_run_sources),
             ),
-            search_provider=BraveSearchProvider(
-                api_key=search_api_key,
-                client=search_client,
-                registry=GovernmentSourceRegistry(),
-                timeout_seconds=settings.search_timeout_seconds,
-                max_response_bytes=settings.search_max_response_bytes,
-                max_concurrency=settings.search_max_concurrency,
-            ),
+            search_provider=search_provider,
             collector=collector,
             parser=DocumentParser(
                 ParserLimits(
@@ -226,6 +240,7 @@ def _build_public_container(
             ),
             source_policy=RobotsSourceAccessPolicy(collector),
             max_collection_concurrency=settings.collection_max_concurrency,
+            source_discovery=source_discovery,
         )
     else:
         backend = UnavailableResearchBackend()

@@ -348,6 +348,15 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
             {
                 "PSR_SERVICE_MODE": "public_ephemeral",
                 "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_PROVIDER": "curated",
+                "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+            },
+            "requires PSR_SEARCH_PROVIDER",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
                 "PSR_SEARCH_PROVIDER": "brave",
                 "PSR_SEARCH_API_KEY_REF": "secret://key",
             },
@@ -362,10 +371,25 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
         ),
         (
             {
+                "PSR_SEARCH_PROVIDER": "curated",
+            },
+            "only in public ephemeral",
+        ),
+        (
+            {
                 "PSR_SERVICE_MODE": "public_ephemeral",
                 "PSR_EPHEMERAL_ROOT": "/tmp/psr",
                 "PSR_SEARCH_PROVIDER": "brave",
                 "PSR_SEARCH_API_KEY_REF": "env://BRAVE_API_KEY",
+                "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            },
+            "cannot be enabled together",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_SEARCH_PROVIDER": "curated",
                 "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
             },
             "cannot be enabled together",
@@ -410,9 +434,20 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
         {
             **base,
             "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+            "PSR_SEARCH_PROVIDER": "curated",
         }
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
+    assert settings.search_provider is SearchProviderMode.CURATED
+    container = build_container(
+        settings,
+        secret_resolver=EnvironmentSecretResolver(
+            {"PSR_ABUSE_KEY": "production-public-abuse-key-0001"}
+        ),
+    )
+    assert isinstance(container, PublicContainer)
+    assert container.search_client is None
+    assert container.quick_service.available is True
 
     with pytest.raises(ValueError, match="must not enable fixture"):
         Settings.from_env(
@@ -450,6 +485,26 @@ async def test_brave_public_composition_is_explicit_and_closes_client(
     await container.open()
     await container.close()
     assert container.search_client.is_closed
+
+
+def test_curated_public_composition_requires_no_search_secret_or_client(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_SEARCH_PROVIDER": "curated",
+        }
+    )
+
+    container = build_container(settings)
+
+    assert isinstance(container, PublicContainer)
+    assert settings.search_provider is SearchProviderMode.CURATED
+    assert settings.diagnostics()["search_api_key_ref"] is False
+    assert container.search_client is None
+    assert container.quick_service.available is True
 
 
 @pytest.mark.parametrize(

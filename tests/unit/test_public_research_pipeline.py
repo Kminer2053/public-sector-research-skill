@@ -214,6 +214,48 @@ async def test_pipeline_golden_question_covers_every_track_with_cited_facts() ->
 
 
 @pytest.mark.anyio
+async def test_pipeline_collects_shared_source_once_and_preserves_track_links() -> None:
+    base = _plan()
+    plan = replace(
+        base,
+        stop_conditions=replace(base.stop_conditions, max_sources=1),
+    )
+    privacy = _candidate("privacy", host="shared.go.kr")
+    data_rights = replace(
+        privacy,
+        id="candidate-data-rights",
+        track_id="data-rights",
+    )
+    pipeline, transport, _ = _pipeline(
+        plan=plan,
+        results={
+            "privacy": SearchResult(candidates=(privacy,)),
+            "data-rights": SearchResult(candidates=(data_rights,)),
+        },
+        responses={
+            privacy.url: RawHttpResponse(
+                status=200,
+                headers={"content-type": "text/html; charset=utf-8"},
+                body=(
+                    "<html><body><p>이용자 데이터의 학습 재사용, 보유기간과 "
+                    "파기 기준을 계약에 명시합니다.</p></body></html>"
+                ).encode(),
+            )
+        },
+        records={"shared.go.kr": ("93.184.216.34",)},
+    )
+
+    draft = await pipeline.research(plan)
+
+    assert transport.calls == [privacy.url]
+    assert {citation.track_id for citation in draft.citations} == {
+        "privacy",
+        "data-rights",
+    }
+    assert "SOURCE_LIMIT_REACHED" not in {failure.code for failure in draft.failures}
+
+
+@pytest.mark.anyio
 async def test_pipeline_preserves_successes_and_reports_search_collection_parse_failures() -> None:
     plan = _plan("공공기관 AI 정책과 개인정보 조달 기준 조사")
     law = _candidate("law-regulation", host="law.go.kr")

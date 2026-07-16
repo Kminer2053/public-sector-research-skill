@@ -181,8 +181,9 @@ MIME/empty/403 failure와 이식 판단을 기록했다.
 **완료 기준:** SSRF·redirect·DNS rebinding corpus 100% 차단
 
 **상태:** 로컬 구현 완료. HTTPS/userinfo/port/hostname/IP/redirect 정책과 검증 IP 고정
-transport, `SearchProvider` port, official domain registry, 선택형 Brave adapter가 구현됐다.
-실제 provider credential, 운영 edge/network egress와 비용상한 검증은 남아 있다.
+transport, `SearchProvider` port, official domain registry, no-key curated source provider와
+선택형 Brave adapter가 구현됐다. curated actual-source smoke는 통과했고, live Search
+credential, 운영 edge/network egress와 비용상한 검증은 남아 있다.
 
 #### WP-R2.3 Bounded Collector and Parser
 
@@ -228,10 +229,11 @@ MIME sniff, HTML·JSON·text locator와 subprocess PDF parser를 구현했다. �
 **난이도:** 높음
 **완료 기준:** citation 없는 FACT 0개, locator completeness 95% 이상
 
-**상태:** 로컬 수직 슬라이스와 고정 공식 URL Evidence 선택 완료. component score,
-track-aware URL/passage/document hash dedup, citation `track_id`, 한·영 passage 선택,
-Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 실제 Search provider recall과
-업무 초안 유용성, conflict/recommendation 품질은 아직 승인되지 않았다.
+**상태:** 로컬 수직 슬라이스와 고정 URL Evidence 선택, no-key curated 실제 quick smoke 완료.
+component score, track-aware URL/passage/document hash dedup, citation `track_id`, 한·영 passage
+선택, shared URL single fetch, Markdown/JSON, partial failure와 purge-after-quick을 구현했다.
+공공업무 담당자의 초안 유용성, live Search recall과 conflict/recommendation 품질은 아직
+승인되지 않았다.
 
 ### R2 종료 게이트
 
@@ -240,9 +242,9 @@ Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 실제 Sear
 - 일부 source 실패에도 usable partial 결과를 반환한다.
 - 질문·원문·결과 canary는 응답 후 남지 않는다.
 
-**현재 판정:** deterministic/local implementation과 고정 공식 URL의 수집·파싱·Evidence
-선택은 통과했지만 R2 종료 게이트는 열려 있다. 검색부터 시작하는 GR-001~004, 사람의 유용성
-검토, 법령 source adapter, provider 비용·보존 고지가 남았다.
+**현재 판정:** deterministic/local implementation, 고정 URL Evidence와 curated 실제
+수집→결과→purge smoke는 통과했지만 R2 종료 게이트는 열려 있다. 사람의 유용성 검토,
+GR-002~004 확대, 법령 source adapter, 선택형 live provider 비용·보존 고지가 남았다.
 
 ## 6. R3 — Ephemeral Async
 
@@ -474,14 +476,14 @@ Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 실제 Sear
 
 ## 15. 가장 먼저 구현할 작업
 
-초기 public safety와 quick 수직 슬라이스는 완료됐다. 현재 가장 먼저 수행할 작업은 다음이다.
+초기 public safety와 curated quick smoke는 완료됐다. 현재 가장 먼저 수행할 작업은 다음이다.
 
 ```text
-CH-P1.8 Live Official-Source Validation
-+ 승인된 Search provider credential 또는 official-source seed
-+ 실제 법령·조달·개인정보·데이터권리 golden scenario
-+ 사람이 읽는 claim/citation/gap 유용성 평가
-+ provider 비용·query retention 고지 검증
+CH-P1.9 Human Usefulness QA
++ curated 결과의 claim/citation/gap 과잉해석·누락 평가
++ 국가법령정보센터 source adapter 결정
++ citation-constrained Writer 필요성 판단
++ 선택형 live Search의 recall·비용·query retention 비교
 ```
 
 그 결과가 유용하지만 시간이 길면 R3 async를 우선하고, evidence bundle이 빈약하면

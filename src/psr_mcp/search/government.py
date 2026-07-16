@@ -51,6 +51,7 @@ class GovernmentQueryBuilder:
         return SearchQuery(
             id=f"qry-{digest}",
             track_id=track.id,
+            research_question=plan.question,
             text=text,
             preferred_domains=domains,
             max_results=self._max_results_per_track,

@@ -53,6 +53,7 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.isError is False
     assert result.structuredContent is not None
     assert result.structuredContent["service_mode"] == "public_ephemeral"
+    assert result.structuredContent["source_discovery"] == "development_fixture"
     assert result.structuredContent["authentication_required"] is False
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["retention"]["server_saved"] is False
@@ -134,6 +135,39 @@ async def test_service_policy_discloses_external_search_retention(
 
 
 @pytest.mark.anyio
+async def test_curated_policy_is_available_without_account_or_search_processor(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_SEARCH_PROVIDER": "curated",
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        assert server.instructions is not None
+        assert "실시간 웹 검색이 아닙니다" in server.instructions
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            result = await session.call_tool("psr.service.policy", {})
+    finally:
+        await container.close()
+
+    assert result.structuredContent is not None
+    assert result.structuredContent["authentication_required"] is False
+    assert result.structuredContent["research_available"] is True
+    assert result.structuredContent["source_discovery"] == "curated_seed"
+    assert result.structuredContent["external_services"] == []
+
+
+@pytest.mark.anyio
 async def test_quick_fixture_returns_result_and_purges_all_content(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -168,6 +202,7 @@ async def test_quick_fixture_returns_result_and_purges_all_content(
     assert result.structuredContent is not None
     output = result.structuredContent
     assert output["status"] == "PARTIAL"
+    assert output["scope"]["source_discovery"] == "development_fixture"
     assert output["retention"]["server_saved"] is False
     assert output["retention"]["purge_state"] == "PURGED"
     assert "data-rights" in output["scope"]["source_tracks"]

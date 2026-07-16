@@ -21,15 +21,16 @@
 |---|---|---|---|
 | G0~G5 | 기존 Foundation build/domain/MCP/DB/OAuth/Host | Foundation regression | PASS |
 | PG0 | Public Boundary Safe | mode, catalog, quota, tmp, purge, no-content telemetry | IN PROGRESS |
-| PG1 | Useful Research | planner, collector, parser, evidence, quick | LOCAL SLICE PASS / LIVE QA PENDING |
+| PG1 | Useful Research | planner, collector, parser, evidence, quick | CURATED LIVE SMOKE PASS / HUMAN QA PENDING |
 | PG2 | Zero-Retention Async | handle, worker, consume, TTL, crash recovery | NOT IMPLEMENTED |
 | PG3 | Public Preview Ready | edge, Host, load/cost, docs, incident rehearsal | NOT IMPLEMENTED |
 | AG0 | Account Trust | opt-in save, user isolation, export/delete, OAuth hardening | FUTURE |
 
 Foundation 통과는 Public Preview 통과를 의미하지 않는다. public composition, HMAC IP-first
 limiter, ephemeral workspace/purge, Planner, Search port, SafeCollector, parser, Evidence
-Composer와 quick 수직 슬라이스는 구현됐다. edge IP normalization, async lifecycle, 실제 공식
-웹 유용성·비용·provider 보존 검증이 남아 있으므로 공개 endpoint는 아직 열 수 없다.
+Composer와 quick 수직 슬라이스는 구현됐고 no-key curated mode의 실제 원문 수집·Evidence·
+purge smoke도 통과했다. edge IP normalization, async lifecycle, 사람 유용성·비용·live
+provider 보존 검증이 남아 있으므로 공개 endpoint는 아직 열 수 없다.
 
 S0 실행 증적은 [2026-07-16 Public S0 보고서](./validation/2026-07-16-public-s0.md)에 기록한다.
 PG1 로컬 수직 슬라이스는
@@ -220,6 +221,8 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-EVD-012 | excerpt | 길이 상한과 locator 존재 |
 | VAL-PUB-EVD-013 | Markdown/JSON | claim/citation ID 동일 |
 | VAL-PUB-EVD-014 | result retention | `server_saved=false` 표시 |
+| VAL-PUB-EVD-015 | 결과·정책 | 실제 `source_discovery` mode 표시 |
+| VAL-PUB-EVD-016 | 한 URL·복수 track | network fetch 1회, track citation 모두 보존 |
 
 ### 6.5 Golden Research Scenarios
 
@@ -267,15 +270,16 @@ PG1은 두 층으로 판정한다.
 2. **Live Official-Source QA:** 실제 공식 source로 GR-001~004를 실행하고 공공업무 담당자가
    claim·citation·gap의 유용성을 검토한다.
 
-2026-07-16 현재 1은 PASS다. 2는 고정 공식 URL의 수집·파싱·Evidence 선택까지 PASS했지만,
-실제 Search provider와 공공업무 담당자 human QA는 PENDING이다. 따라서
-“실제 공식 원문에서 Evidence 선택을 검증했다”는 표현은 허용하지만
+2026-07-16 현재 1은 PASS다. 2는 고정 URL 재파싱뿐 아니라 no-key curated mode에서 실제
+원문 수집→Evidence→결과→purge까지 PASS했다. 다만 공공업무 담당자 human QA와 범용 live
+Search recall은 PENDING이다. 따라서 “제한된 curated 범위의 실제 원문 end-to-end smoke를
+검증했다”는 표현은 허용하지만
 “공공분야 리서치 품질 검증 완료” 또는 “PG1 최종 PASS”는 허용하지 않는다.
 
 Live QA는 다음을 추가로 충족해야 한다.
 
-- 운영자가 승인한 Search provider 또는 official URL seed 사용
-- 외부 provider에 전달되는 query와 provider-side retention 고지
+- 운영자가 승인한 Search provider 또는 reviewed source seed 사용
+- live Search를 사용할 때 외부 provider에 전달되는 query와 provider-side retention 고지
 - site별 robots 결과와 Terms/저작권 운영검토
 - 실제 공식 1차 source 비율과 locator completeness 측정
 - 동적 법령 shell처럼 본문이 빠진 문서의 Evidence 제외

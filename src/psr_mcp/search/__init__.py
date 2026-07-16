@@ -1,6 +1,7 @@
 """Provider-neutral official-first search contracts."""
 
 from psr_mcp.search.brave import BraveSearchProvider
+from psr_mcp.search.curated import CuratedOfficialSourceProvider, CuratedSourceSeed
 from psr_mcp.search.government import GovernmentQueryBuilder
 from psr_mcp.search.models import (
     SearchFailure,
@@ -19,6 +20,8 @@ from psr_mcp.search.static import StaticSearchProvider
 
 __all__ = [
     "BraveSearchProvider",
+    "CuratedOfficialSourceProvider",
+    "CuratedSourceSeed",
     "GovernmentQueryBuilder",
     "GovernmentSourceRegistry",
     "SearchFailure",

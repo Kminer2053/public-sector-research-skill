@@ -95,6 +95,7 @@ def build_development_fixture_backend(clock: Clock) -> DevelopmentFixtureResearc
             parser=DocumentParser(),
             evidence=EvidenceComposer(max_citations=12, max_per_document=1),
             source_policy=AllowAllSourceAccessPolicy(),
+            source_discovery="development_fixture",
         )
     )
 

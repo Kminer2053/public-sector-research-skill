@@ -24,6 +24,7 @@ from psr_mcp.public.schemas import (
     ResearchFailure,
     RetentionStatus,
     ScoreComponentOutput,
+    SourceDiscoveryMode,
 )
 
 
@@ -53,6 +54,7 @@ class PublicResearchError(Exception):
 @dataclass(frozen=True, slots=True)
 class ResearchDraft:
     status: Literal["PARTIAL", "SUCCEEDED"]
+    source_discovery: SourceDiscoveryMode
     summary: str
     findings: tuple[Finding, ...]
     citations: tuple[Citation, ...]
@@ -155,6 +157,7 @@ class FixtureResearchBackend:
         )
         return ResearchDraft(
             status="PARTIAL",
+            source_discovery="development_fixture",
             summary=(
                 "무보관 quick lifecycle 검증 결과입니다. 실제 웹 조사는 아직 수행하지 않았습니다."
             ),
@@ -292,7 +295,7 @@ class PublicQuickResearchService:
                 operation_id=self._ids.new(),
                 status=draft.status,
                 summary=draft.summary,
-                scope=_scope(plan),
+                scope=_scope(plan, draft.source_discovery),
                 findings=list(draft.findings),
                 citations=list(draft.citations),
                 gaps=list(draft.gaps),
@@ -328,12 +331,16 @@ async def _best_effort_purge(
         return
 
 
-def _scope(plan: ResearchPlan) -> AppliedScope:
+def _scope(
+    plan: ResearchPlan,
+    source_discovery: SourceDiscoveryMode,
+) -> AppliedScope:
     stop = plan.stop_conditions
     return AppliedScope(
         as_of_date=plan.as_of_date,
         jurisdiction=plan.jurisdiction,
         profile=plan.profile,
+        source_discovery=source_discovery,
         source_tracks=[track.id for track in plan.tracks],
         completion_criteria=list(plan.completion_criteria),
         stop_conditions={
@@ -352,6 +359,7 @@ def _render_markdown(draft: ResearchDraft, plan: ResearchPlan) -> str:
         f"- 기준일: {plan.as_of_date.isoformat()}",
         f"- 관할: {plan.jurisdiction}",
         f"- Profile: {plan.profile}",
+        f"- Source discovery: {draft.source_discovery}",
         "",
         _markdown_text(draft.summary),
         "",

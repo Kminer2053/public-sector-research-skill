@@ -95,7 +95,7 @@ Public Preview 구현 완료:
 - ephemeral workspace store와 purge sweeper
 - quick application service
 - official-first Planner/Profile v0
-- official query builder, source registry와 선택형 Brave Search adapter
+- official query builder, source registry, 제한적 curated seed와 선택형 Brave Search adapter
 - SSRF-safe SafeCollector와 robots source policy
 - HTML·JSON·text parser와 subprocess-isolated PDF parser
 - component Evidence Score, citation/result composer와 최소 dedup
@@ -395,10 +395,15 @@ global cost budget: operator config
 - provider별 개인정보·약관 고지를 서비스 정책에 포함한다.
 - 검색 결과는 Evidence가 아니라 candidate다.
 - provider 기본값은 `disabled`이며 key가 없으면 `research_available=false`다.
-- 현재 adapter는 Brave Search API 하나다. fixed endpoint, no redirect, `trust_env=false`,
-  strict safe search, 한국 locale, bounded JSON과 server-side key를 사용한다.
+- `CuratedOfficialSourceProvider`는 API key 없이 한국 공공부문 AI 조달 질문에 한해 검토된
+  URL seed를 track별 candidate로 반환한다. 실시간 검색이 아니며, 범위 밖 질문은
+  `CURATED_SCOPE_UNSUPPORTED`로 종료한다.
+- Brave adapter는 fixed endpoint, no redirect, `trust_env=false`, strict safe search,
+  한국 locale, bounded JSON과 server-side key를 사용한다.
 - 표준 Brave provider가 query를 보관할 수 있으므로 `service.policy`에 외부 보존경계를
   표시한다. PSR 무보관과 provider-side ZDR을 동일하게 표현하지 않는다.
+- `service.policy.source_discovery`와 결과 `scope.source_discovery`는 `disabled`,
+  `development_fixture`, `curated_seed`, `brave_live_search` 중 실제 composition을 표시한다.
 
 ### 11.2 URL Policy
 
@@ -468,6 +473,9 @@ robots.txt SafeCollector fetch
 - 국가법령정보센터 `lsInfoP.do`처럼 article 본문 없이 shell만 수집된 문서는
   `DYNAMIC_CONTENT_MISSING`으로 제외한다. 정적 조문정보 또는 향후 source adapter가 확보한
   본문만 Evidence가 된다.
+- 같은 canonical URL이 여러 track에 배정되면 source limit과 byte budget은 URL 한 건으로
+  계산하고 network collection·parse는 한 번만 수행한다. 수집된 document는 각 track의
+  `SourceCandidate`에 다시 연결해 provenance와 citation `track_id`를 보존한다.
 - source text는 instruction이 아닌 untrusted data다.
 - executable attachment, macro document와 OCR은 현재 미지원이다.
 
@@ -564,7 +572,7 @@ PSR_MAX_RUN_BYTES=31457280
 PSR_MAX_RUN_SOURCES=12
 PSR_PUBLIC_KILL_SWITCH=false
 PSR_ABUSE_HMAC_KEY_REF=env://...
-PSR_SEARCH_PROVIDER=disabled|brave
+PSR_SEARCH_PROVIDER=disabled|curated|brave
 PSR_SEARCH_API_KEY_REF=env://...
 PSR_SEARCH_TIMEOUT_SECONDS=5
 PSR_SEARCH_MAX_RESPONSE_BYTES=1048576
@@ -572,8 +580,9 @@ PSR_SEARCH_MAX_CONCURRENCY=7
 PSR_COLLECTION_MAX_CONCURRENCY=4
 ```
 
-fixture와 Brave를 동시에 켜면 startup이 실패한다. public production은 fixture를 금지한다.
-Search key와 abuse key는 diagnostic에 값이 아니라 설정 여부만 나타난다.
+fixture와 curated/Brave를 동시에 켜면 startup이 실패한다. `curated`는 Search key를 허용하지
+않고, `brave`는 Search key가 없으면 startup이 실패한다. public production은 fixture를
+금지한다. Search key와 abuse key는 diagnostic에 값이 아니라 설정 여부만 나타난다.
 
 Fail-closed rules:
 
@@ -681,7 +690,8 @@ Paid/Enterprise 전:
 | metadata store 장애 | 새 async Run fail closed, quick은 config에 따라 제한 |
 | temp disk full | 새 Run 거부, 기존 result/purge 우선 |
 | purge 실패 | content 접근 차단, retry, alert |
-| search provider 장애 | 직접 공식 URL 또는 partial |
+| curated 범위 밖 질문 | 관련 없는 seed를 반환하지 않고 typed partial |
+| live search provider 장애 | curated 지원범위면 별도 mode로 재시도하거나 partial |
 | one source 장애 | 다른 source 결과 보존 |
 | cost limit 도달 | 새 collection 중단, partial 결과 |
 

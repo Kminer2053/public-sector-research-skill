@@ -152,6 +152,10 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 {
   "schema_version": "1.0",
   "summary": "한국어 요약",
+  "scope": {
+    "source_discovery": "curated_seed",
+    "source_tracks": ["law-regulation", "privacy"]
+  },
   "findings": [
     {
       "claim": "검토 가능한 주장",
@@ -163,13 +167,16 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
   "citations": [
     {
       "id": "cit-1",
+      "track_id": "privacy",
       "title": "원문 제목",
       "publisher": "발행기관",
       "url": "https://...",
       "retrieved_at": "RFC3339",
       "locator": "제3조 또는 p.12",
       "excerpt": "저작권 한도 안의 짧은 근거 구간",
-      "source_tier": "OFFICIAL_PRIMARY"
+      "source_tier": "OFFICIAL_PRIMARY",
+      "document_sha256": "64자리 SHA-256",
+      "score": {"overall": 0.85}
     }
   ],
   "gaps": [],
@@ -177,7 +184,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
   "failures": [],
   "retention": {
     "server_saved": false,
-    "purge_state": "PURGE_PENDING"
+    "purge_state": "PURGED"
   }
 }
 ```
@@ -211,6 +218,8 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-012 | Government Profile은 법령·정부정책·공공기관·국제표준 track을 제공한다. | Must | 공식 track이 비공식 track보다 우선 |
 | FR-PUB-013 | source·시간·byte·document budget과 stop condition을 적용한다. | Must | budget 초과가 partial로 종료 |
 | FR-PUB-014 | source content를 instruction으로 실행하지 않는다. | Must | prompt-injection fixture가 정책을 변경하지 못함 |
+| FR-PUB-015 | 실제 source 발견방식이 disabled·fixture·curated·live search 중 무엇인지 결과와 정책에 표시한다. | Must | `source_discovery`가 실제 composition과 일치 |
+| FR-PUB-016 | curated mode는 검토된 주제 범위 밖 질문에 관련 없는 seed를 반환하지 않는다. | Must | 범위 밖 질문이 `CURATED_SCOPE_UNSUPPORTED`와 gap을 반환 |
 
 ### 8.3 Collection Safety
 
@@ -236,6 +245,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-034 | conflicts, gaps, failures, as-of date를 항상 출력한다. | Must | 빈 경우도 명시적 배열 |
 | FR-PUB-035 | Markdown과 JSON을 지원한다. | Must | 두 형식의 핵심 claim/citation ID 일치 |
 | FR-PUB-036 | 하나의 원문이 여러 조사 track을 지지하면 중복 원문 판정과 별개로 track 연결을 보존한다. | Must | citation에 `track_id`, 동일 PDF의 cross-track recall 유지 |
+| FR-PUB-037 | 같은 URL이 여러 track을 지지하더라도 원문 network fetch는 Run당 한 번만 수행한다. | Must | 두 track·한 URL fixture의 fetch count가 1 |
 
 ### 8.5 Ephemeral Lifecycle
 
@@ -413,6 +423,9 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 - `AC-PUB-041`: 공식 원문과 재인용 기사를 구분한다.
 - `AC-PUB-042`: 공식 원문을 확보하지 못한 항목은 gap으로 표시한다.
 - `AC-PUB-043`: 일부 source 실패에도 usable partial 결과를 반환한다.
+- `AC-PUB-044`: API key 없는 curated mode가 지원 질문에서 7개 track citation을 반환하고
+  `source_discovery=curated_seed`를 표시한다.
+- `AC-PUB-045`: 같은 PIPC·WEF 문서를 여러 track에 재사용해도 각 원문은 한 번만 수집한다.
 
 ## 15. Stage B 진입 기준
 
@@ -431,7 +444,7 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 
 | ID | 질문 | 추천안 | 결정 시점 |
 |---|---|---|---|
-| OQ-PUB-001 | 실제 Search provider 운영승인 | Brave adapter를 기본 disabled로 유지하고 live QA 전에 credential·약관·비용 승인 | PG1 Live QA |
+| OQ-PUB-001 | 실제 Search provider 운영승인 | 초기 효용검증은 no-key curated mode로 진행하고, Brave는 recall 확대 실험 전에 credential·약관·비용 승인 | PG1/R4 |
 | OQ-PUB-002 | quick 최대시간 | 20초 목표, 30초 hard limit | load test |
 | OQ-PUB-003 | 임시 content backend | 단일 node encrypted tmpdir부터 시작 | Public Preview |
 | OQ-PUB-004 | 결과 최대크기 | Markdown 256KB, JSON 512KB 초기값 | Host test |
@@ -450,7 +463,8 @@ Aggregate metric은 개별 조사 content와 join할 수 없어야 한다.
 6. History·Project Memory·Living Report는 실제 저장 수요가 확인되기 전 구현하지 않는다.
 7. 공개 전 최소조건은 로그인 기능이 아니라 SSRF·quota·비용·purge 안전성이다.
 8. 유료화는 저장공간과 반복사용 가치가 증명된 뒤 시작한다.
-9. 현재 Search adapter는 Brave를 지원하지만 기본 disabled이며 Search 결과를 Evidence로
-   간주하지 않는다.
+9. no-key curated mode는 한국 공공부문 AI 조달의 검토 seed만 제공하고 실시간 검색으로
+   표현하지 않는다.
 10. PSR 서버가 content를 저장하지 않는 것과 외부 Search provider의 query 보존정책을
     분리해 고지한다.
+11. Brave live search는 선택형이며 Search 결과 자체를 Evidence로 간주하지 않는다.
