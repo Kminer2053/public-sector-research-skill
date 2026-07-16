@@ -31,7 +31,7 @@
 - 완료: legacy crawlkit characterization과 reuse/refactor/replace 판단
 - 완료: HTTPS-only URL policy, redirect 재검증, 검증 IP 고정 transport, bounded SafeCollector
 - 완료: official-first query builder, official domain registry, 선택형 Brave Search adapter
-- 완료: Search·robots·원문·redirect가 공유하는 process global/source-host outbound limiter
+- 완료: Search·robots·원문·redirect가 공유하는 process global/source-host concurrency·rate limiter
 - 완료: 한국 공공부문 AI 조달 범위의 no-key curated source provider
 - 완료: robots 선검사와 source access typed policy
 - 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
@@ -42,8 +42,8 @@
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS·gateway TLS spoof 포함 519 tests
-- coverage gate: raw 95.21%, normalized statement 96.30%, branch 90.94%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS·gateway TLS spoof 포함 526 tests
+- coverage gate: raw 95.27%, normalized statement 96.35%, branch 91.10%,
   critical module 95% 이상
 - supply chain: project 53 package와 OCI build tool 6 package 알려진 취약점 0,
   `pypdf 6.14.2` BSD-3-Clause manifest 반영
@@ -259,12 +259,14 @@ workspace·network 전에
 `PUBLIC_DAILY_BUDGET_EXHAUSTED`로 거부한다. `PSR_PUBLIC_PAUSE_FILE`의 존재 여부만 읽는
 runtime pause도 구현했다. 새 quick은 즉시
 거부하되 진행 중인 결과의 access block과 purge는 유지하며 sentinel 제거 시 restart 없이
-resume한다. `PSR_OUTBOUND_MAX_CONCURRENCY`와 `PSR_SOURCE_HOST_MAX_CONCURRENCY`는 Brave
-Search, robots 확인, 원문 fetch와 redirect 재요청에 하나의 process-local 제한기로 적용된다.
-같은 host의 waiter는 global slot을 선점하지 않고 취소 시 capacity를 반환한다. direct NGINX의
+resume한다. `PSR_OUTBOUND_MAX_CONCURRENCY`, `PSR_SOURCE_HOST_MAX_CONCURRENCY`,
+`PSR_SOURCE_HOST_RATE_REQUESTS`, `PSR_SOURCE_HOST_RATE_WINDOW_SECONDS`는 Brave Search,
+robots 확인, 원문 fetch와 redirect 재요청에 하나의 process-local 제한기로 적용된다. 같은
+host의 concurrency/rate waiter는 global slot을 선점하지 않고 취소 시 capacity를 반환한다.
+rate bucket은 refill window 뒤 정리하며 hard bound 초과는 fail closed한다. direct NGINX의
 header overwrite, raw-IP request/connection quota 기준과 Python TLS spoof 시험은 구현했다.
-실제 NGINX OCI, public IP, 시간 기반 source rate/circuit breaker, multi-replica 공유 quota와
-provider billing hard cap은 CH-P3.1에서 검증한다.
+실제 NGINX OCI, public IP, failure circuit breaker, multi-replica 공유 quota와 provider
+billing hard cap은 CH-P3.1에서 검증한다.
 
 **DoD**
 
@@ -275,6 +277,8 @@ provider billing hard cap은 CH-P3.1에서 검증한다.
 - runtime pause는 service policy에 반영되고 새 quick만 거부하며 진행 중 purge를 막지 않는다.
 - Search와 수집을 합친 global outbound 상한과 source-host 상한을 넘지 않고 취소 뒤 slot과
   host tracking이 남지 않는다.
+- source-host token bucket이 설정된 window rate를 지키고 다른 host에 pacing 지연을
+  전파하지 않으며 rate tracking은 bounded다.
 - `Retry-After`와 `PUBLIC_LIMIT_REACHED`가 일관되다.
 - HMAC key rotation과 counter TTL test가 있다.
 

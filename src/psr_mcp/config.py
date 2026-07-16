@@ -91,6 +91,8 @@ class Settings:
     collection_max_concurrency: int = 4
     outbound_max_concurrency: int = 8
     source_host_max_concurrency: int = 2
+    source_host_rate_requests: int = 2
+    source_host_rate_window_seconds: float = 1.0
     abuse_hmac_key_ref: str | None = None
     trusted_proxy_cidrs: tuple[str, ...] = ()
 
@@ -167,6 +169,10 @@ class Settings:
                 collection_max_concurrency=int(values.get("PSR_COLLECTION_MAX_CONCURRENCY", "4")),
                 outbound_max_concurrency=int(values.get("PSR_OUTBOUND_MAX_CONCURRENCY", "8")),
                 source_host_max_concurrency=int(values.get("PSR_SOURCE_HOST_MAX_CONCURRENCY", "2")),
+                source_host_rate_requests=int(values.get("PSR_SOURCE_HOST_RATE_REQUESTS", "2")),
+                source_host_rate_window_seconds=float(
+                    values.get("PSR_SOURCE_HOST_RATE_WINDOW_SECONDS", "1")
+                ),
                 abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
                 trusted_proxy_cidrs=tuple(
                     value.strip()
@@ -236,6 +242,10 @@ class Settings:
             raise ValueError(
                 "PSR_SOURCE_HOST_MAX_CONCURRENCY must not exceed PSR_OUTBOUND_MAX_CONCURRENCY"
             )
+        if self.source_host_rate_requests < 1 or self.source_host_rate_requests > 60:
+            raise ValueError("PSR_SOURCE_HOST_RATE_REQUESTS must be 1..60")
+        if self.source_host_rate_window_seconds < 0.1 or self.source_host_rate_window_seconds > 60:
+            raise ValueError("PSR_SOURCE_HOST_RATE_WINDOW_SECONDS must be 0.1..60")
         canonical_proxy_cidrs: list[str] = []
         for value in self.trusted_proxy_cidrs:
             try:

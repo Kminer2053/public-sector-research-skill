@@ -29,7 +29,7 @@ from psr_mcp.collectors import (
     SystemHostResolver,
     UrlPolicy,
 )
-from psr_mcp.common.outbound import OutboundConcurrencyLimiter
+from psr_mcp.common.outbound import ProcessOutboundLimiter
 from psr_mcp.common.runtime import SystemClock, Uuid4Generator
 from psr_mcp.common.secrets import EnvironmentSecretResolver, SecretResolver
 from psr_mcp.config import (
@@ -198,9 +198,11 @@ def _build_public_container(
         SearchProviderMode.BRAVE,
         SearchProviderMode.CURATED,
     }:
-        outbound_limiter = OutboundConcurrencyLimiter(
+        outbound_limiter = ProcessOutboundLimiter(
             max_global=settings.outbound_max_concurrency,
             max_per_host=settings.source_host_max_concurrency,
+            per_host_rate_requests=settings.source_host_rate_requests,
+            per_host_rate_window_seconds=settings.source_host_rate_window_seconds,
         )
         search_provider: SearchProvider
         source_discovery: SourceDiscoveryMode

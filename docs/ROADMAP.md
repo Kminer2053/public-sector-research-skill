@@ -93,7 +93,7 @@
 > trusted edge IP normalization, process-local active quick 상한, filesystem workspace,
 > process-local UTC daily quick budget, content canary, immediate purge, quick kill switch와
 > operator runtime pause-file signal, Search·robots·원문 수집 공유 global/source-host
-> outbound concurrency와 sweeper는 완료됐다. 실제 gateway quota, provider billing
+> outbound concurrency·token-bucket rate와 sweeper는 완료됐다. 실제 gateway quota, provider billing
 > hard cap, multi-replica 공유 quota와 삭제 retry/backoff alert가 남아 있어 R1/PG0 전체는
 > 아직 종료되지 않았다. direct NGINX 기준 구성과 Python TLS spoof 시험은 구현됐으나 실제
 > NGINX OCI·staging public IP rehearsal은 R4 gate다.
@@ -124,9 +124,9 @@
 **난이도:** 높음
 **현재:** application IP-first limiter, trusted proxy normalization, process-local active quick
 상한, UTC daily quick budget, operator runtime pause와 Search·robots·원문 수집이 공유하는
-global/source-host outbound concurrency는 local PASS. direct NGINX의 header overwrite·raw
+global/source-host outbound concurrency·rate는 local PASS. direct NGINX의 header overwrite·raw
 request/connection quota 기준과 TLS spoof 시험도 local PASS다. 실제 NGINX OCI, 시간 기반
-source rate/circuit breaker, provider billing hard cap과 multi-replica 공유 quota는 R4에서
+failure circuit breaker, provider billing hard cap과 multi-replica 공유 quota는 R4에서
 검증한다.
 
 **완료 기준:** `VAL-PUB-ABUSE-*` 전부 통과

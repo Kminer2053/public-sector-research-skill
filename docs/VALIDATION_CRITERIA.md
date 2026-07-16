@@ -115,10 +115,11 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-ABUSE-016 | process UTC daily quick budget | invalid·active 초과 미차감, 시작된 성공·실패 차감, 소진 시 workspace·network 전 거부, 다음 UTC 일자 reset |
 | VAL-PUB-ABUSE-017 | operator runtime pause | restart 없이 새 quick 거부·policy 반영, 진행 중 purge 유지, resume 가능 |
 
-`VAL-PUB-ABUSE-008~009`의 process-local concurrency 범위는
-`OutboundConcurrencyLimiter` 단위시험, Brave/SafeCollector adapter 계약, redirect host
-재획득과 `service.policy` config 계약으로 local PASS다. 시간 기반 source rate,
-multi-replica 공유 상한과 provider hard cap은 PG3 staging 항목으로 남긴다.
+`VAL-PUB-ABUSE-008~009`의 process-local 범위는 `ProcessOutboundLimiter`의 global/host
+concurrency, token-bucket rate, pacing 취소, bounded host tracking 단위시험과
+Brave/SafeCollector adapter, redirect host 재획득, `service.policy` config 계약으로 local
+PASS다. multi-replica 공유 상한, provider hard cap과 failure circuit breaker는 PG3 staging
+항목으로 남긴다.
 
 ### 5.3 Ephemeral Store
 

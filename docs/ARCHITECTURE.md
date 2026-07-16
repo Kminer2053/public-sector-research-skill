@@ -443,14 +443,16 @@ broken symlink는 모두 pause로 처리하며 예상하지 못한 stat 오류�
 새 quick admission만 막고 이미 실행 중인 coroutine, access block과 purge를 취소하지 않는다.
 Public MCP에는 pause를 생성·삭제하는 관리 Tool을 노출하지 않는다.
 
-`OutboundConcurrencyLimiter`는 Brave Search, robots 확인과 원문 `SafeCollector`가 같은
+`ProcessOutboundLimiter`는 Brave Search, robots 확인과 원문 `SafeCollector`가 같은
 process-local instance를 공유하게 한다. 기본값은 전체 동시 외부요청 8개,
-정규화된 source host별 2개다. 같은 host의 요청은 host slot을 먼저 획득하고 global slot을
-나중에 획득하므로, 한 기관의 대기열이 다른 기관이 쓸 global slot을 선점하지 못한다.
+정규화된 source host별 동시 2개와 1초 창당 2회 token bucket이다. 같은 host의 요청은
+host slot과 rate permit을 먼저 획득하고 global slot을 나중에 획득하므로, 한 기관의 대기열과
+pacing wait가 다른 기관이 쓸 global slot을 선점하지 못한다.
 redirect는 검증된 새 host로 slot을 다시 획득한다. 성공·오류·timeout·task cancellation의
 `finally` 경로에서 slot을 반환하고 active/waiting 요청이 0인 host gate는 즉시 제거한다.
-이 제한은 단일 process의 동시성 안전망이며, 시간당 요청률·multi-replica 전체 상한과 provider
-billing hard cap을 대신하지 않는다.
+rate bucket은 full refill window 뒤 lazy prune하며 최대 10,000개로 fail closed한다.
+이 제한은 단일 process 안전망이며, multi-replica 전체 상한, provider billing hard cap과
+실패분류 기반 circuit breaker를 대신하지 않는다.
 
 reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
 `X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
@@ -467,6 +469,7 @@ active run: IP당 1개
 active quick: process당 8개(초기 기본값)
 outbound HTTP: process당 동시 8개(초기 기본값)
 source host: host당 동시 2개(초기 기본값)
+source rate: host당 1초 창에 2회, token bucket
 daily quick: process·UTC 일자별 operator config
 source documents: run당 12개
 download: run당 30MB
@@ -706,6 +709,8 @@ PSR_SEARCH_MAX_CONCURRENCY=7
 PSR_COLLECTION_MAX_CONCURRENCY=4
 PSR_OUTBOUND_MAX_CONCURRENCY=8
 PSR_SOURCE_HOST_MAX_CONCURRENCY=2
+PSR_SOURCE_HOST_RATE_REQUESTS=2
+PSR_SOURCE_HOST_RATE_WINDOW_SECONDS=1
 ```
 
 fixture와 curated/Brave를 동시에 켜면 startup이 실패한다. `curated`는 Search key를 허용하지
