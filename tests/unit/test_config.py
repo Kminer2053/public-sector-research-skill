@@ -192,3 +192,50 @@ def test_oauth_resource_server_configuration_rejects_unsafe_values(
 def test_remote_http_policy_configuration_is_bounded(name: str, value: str, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         Settings.from_env({name: value})
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"PSR_RESOURCE_SERVER_URL": "not-a-url"}, "RESOURCE_SERVER_URL"),
+        ({"PSR_REQUIRED_MCP_SCOPES": ""}, "MCP_SCOPES"),
+        ({"PSR_OAUTH_ORGANIZATION_CLAIM": "bad claim"}, "ORGANIZATION_CLAIM"),
+        (
+            {"PSR_AUTH_MODE": "oauth", "PSR_ISSUER_URL": "http://idp.example.gov"},
+            "only on loopback",
+        ),
+        ({"PSR_OAUTH_JWKS_ORIGINS": "https://keys.example.gov/path"}, "origins only"),
+        ({"PSR_AUTH_MODE": "oauth"}, "OAuth requires"),
+        ({"PSR_STORAGE_MODE": "postgres"}, "PostgreSQL storage requires"),
+        (
+            {
+                "PSR_ENV": "production",
+                "PSR_PUBLIC_URL": "https://research.example.gov",
+                "PSR_AUTH_MODE": "oauth",
+                "PSR_STORAGE_MODE": "postgres",
+                "PSR_ISSUER_URL": "http://127.0.0.1",
+                "PSR_DATABASE_URL_REF": "env://PSR_DATABASE_URL",
+                "PSR_CURSOR_SIGNING_KEY": "production-test-cursor-signing-key-0001",
+            },
+            "ISSUER_URL must use HTTPS",
+        ),
+        (
+            {
+                "PSR_ENV": "production",
+                "PSR_PUBLIC_URL": "https://research.example.gov",
+                "PSR_AUTH_MODE": "oauth",
+                "PSR_STORAGE_MODE": "postgres",
+                "PSR_ISSUER_URL": "https://idp.example.gov",
+                "PSR_OAUTH_JWKS_ORIGINS": "http://127.0.0.1",
+                "PSR_DATABASE_URL_REF": "env://PSR_DATABASE_URL",
+                "PSR_CURSOR_SIGNING_KEY": "production-test-cursor-signing-key-0001",
+            },
+            "JWKS_ORIGINS must use HTTPS",
+        ),
+    ],
+)
+def test_configuration_guards_cover_each_security_boundary(
+    overrides: dict[str, str], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        Settings.from_env(overrides)

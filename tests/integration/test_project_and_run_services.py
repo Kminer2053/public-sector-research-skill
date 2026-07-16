@@ -363,3 +363,23 @@ async def test_worker_rejects_nonterminal_completion(
             outcome=JobState.RUNNING,
         )
     assert caught.value.code is ErrorCode.INPUT_INVALID
+
+
+@pytest.mark.anyio
+async def test_worker_missing_run_is_reported_opaquely(worker_service: WorkerService) -> None:
+    with pytest.raises(DomainError) as heartbeat:
+        await worker_service.heartbeat(
+            "org-a",
+            run_id="missing-run",
+            worker_id="worker-1",
+        )
+    assert heartbeat.value.code is ErrorCode.NOT_FOUND_OR_FORBIDDEN
+
+    with pytest.raises(DomainError) as completion:
+        await worker_service.complete(
+            "org-a",
+            run_id="missing-run",
+            worker_id="worker-1",
+            outcome=JobState.SUCCEEDED,
+        )
+    assert completion.value.code is ErrorCode.NOT_FOUND_OR_FORBIDDEN

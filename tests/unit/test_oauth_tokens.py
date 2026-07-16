@@ -4,13 +4,22 @@ import json
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from psr_mcp.auth.tokens import OidcJwtTokenVerifier, OidcVerifierSettings
+from psr_mcp.auth.tokens import (
+    OidcJwtTokenVerifier,
+    OidcVerifierSettings,
+    _extract_scopes,
+    _origin,
+    _required_int,
+    _required_string,
+    _select_jwk,
+)
 
 ISSUER = "https://idp.example.gov"
 AUDIENCE = "https://research.example.gov/mcp"
@@ -121,6 +130,22 @@ async def test_valid_token_is_verified_with_minimal_claim_disclosure() -> None:
         "jti_sha256": "2f49c5221ffc07f7167228e2ed96b1bb1fab87344e914a79be61f0b1530eec05",
     }
     assert "token-id-that-must-not-leak" not in str(result.claims)
+
+
+@pytest.mark.anyio
+async def test_optional_identity_claims_can_be_blank() -> None:
+    private_key, jwk = _new_key("key-1")
+    fixture = OidcFixture(keys=[jwk])
+    verifier, client = await _verifier(fixture)
+    try:
+        result = await verifier.verify_token(
+            _token(private_key, overrides={"organization_id": "", "jti": ""})
+        )
+    finally:
+        await client.aclose()
+
+    assert result is not None
+    assert result.claims == {"iss": ISSUER}
 
 
 @pytest.mark.anyio
@@ -261,20 +286,25 @@ async def test_allowlisted_cross_origin_jwks_is_supported_but_default_is_denied(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("mode", ["issuer", "content-type", "oversized", "unusable-key"])
+@pytest.mark.parametrize(
+    "mode",
+    ["issuer", "content-type", "oversized", "unusable-key", "keys-shape", "root-shape"],
+)
 async def test_malformed_or_untrusted_oidc_documents_fail_closed(mode: str) -> None:
     private_key, jwk = _new_key("key-1")
     if mode == "unusable-key":
         jwk["use"] = "enc"
 
     def handler(request: httpx.Request) -> httpx.Response:
+        if mode == "root-shape":
+            return _json_response(request, [])
         if request.url.path.endswith("openid-configuration"):
             payload: object = {
                 "issuer": "https://wrong.example.gov" if mode == "issuer" else ISSUER,
                 "jwks_uri": f"{ISSUER}/jwks",
             }
         else:
-            payload = {"keys": [jwk]}
+            payload = {"keys": {} if mode == "keys-shape" else [jwk]}
         if mode == "oversized":
             return httpx.Response(
                 200,
@@ -322,3 +352,46 @@ async def test_oversized_token_and_invalid_scope_shape_fail_without_disclosure()
         )
     finally:
         await client.aclose()
+
+
+@pytest.mark.anyio
+async def test_owned_http_client_is_closed() -> None:
+    verifier = OidcJwtTokenVerifier(OidcVerifierSettings(issuer=ISSUER, audience=AUDIENCE))
+    verifier._client = httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, request=request))
+    )
+
+    await verifier.aclose()
+
+    assert verifier._client is None
+
+
+def test_jwk_scope_and_required_claim_helpers_fail_closed() -> None:
+    assert _select_jwk({"keys": "not-an-array"}, "key-1", "RS256") is None
+    assert (
+        _select_jwk(
+            {"keys": [{"kid": "key-1", "alg": "RS256", "key_ops": ["sign"]}]},
+            "key-1",
+            "RS256",
+        )
+        is None
+    )
+    assert (
+        _select_jwk(
+            {"keys": [{"kid": "key-1", "alg": "ES256"}]},
+            "key-1",
+            "RS256",
+        )
+        is None
+    )
+    assert _extract_scopes({"scope": None, "scp": "project:read research:run"}) == {
+        "project:read",
+        "research:run",
+    }
+    assert _extract_scopes({"scp": 123}) == frozenset()
+    with pytest.raises(ValueError, match="non-empty"):
+        _required_string({}, "sub")
+    with pytest.raises(ValueError, match="integer"):
+        _required_int({"exp": True}, "exp")
+    with pytest.raises(ValueError, match="requires a host"):
+        _origin(urlparse("https:///missing-host"))

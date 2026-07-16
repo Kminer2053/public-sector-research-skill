@@ -73,7 +73,12 @@ jobs:
         run: uv run --frozen mypy src tests scripts
 
       - name: Test with branch coverage
-        run: uv run --frozen pytest --cov=psr_mcp --cov-branch --cov-report=term-missing
+        run: >-
+          uv run --frozen pytest --cov=psr_mcp --cov-branch
+          --cov-report=term-missing --cov-report=json:coverage.json
+
+      - name: Enforce separate coverage thresholds
+        run: uv run --frozen python scripts/coverage_gate.py --coverage-json coverage.json
 
       - name: Build distribution
         run: uv build

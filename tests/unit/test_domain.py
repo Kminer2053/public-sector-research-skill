@@ -40,6 +40,21 @@ def make_run(now: datetime, *, status: RunStatus = RunStatus.QUEUED) -> Research
     )
 
 
+def make_job(now: datetime, **overrides: object) -> Job:
+    values: dict[str, object] = {
+        "id": "job-1",
+        "organization_id": "org-a",
+        "project_id": "project-a1",
+        "run_id": "run-1",
+        "state": JobState.QUEUED,
+        "available_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+    values.update(overrides)
+    return Job(**values)  # type: ignore[arg-type]
+
+
 def test_domain_rejects_naive_datetime() -> None:
     with pytest.raises(DomainError) as caught:
         make_run(datetime(2026, 7, 16))
@@ -219,3 +234,60 @@ def test_cancellation_reason_and_job_datetime_constraints(now: datetime) -> None
             created_at=now,
             updated_at=now,
         )
+
+
+def test_run_rejects_invalid_fingerprint_and_incomplete_terminal_state(now: datetime) -> None:
+    with pytest.raises(DomainError, match="request_fingerprint"):
+        ResearchRun(
+            id="run-bad-fingerprint",
+            organization_id="org-a",
+            project_id="project-a1",
+            plan_id="plan-a1",
+            plan_version=1,
+            initiated_by="user-a",
+            status=RunStatus.QUEUED,
+            version=1,
+            idempotency_key="request-0001",
+            request_fingerprint="not-a-sha256",
+            created_at=now,
+            updated_at=now,
+        )
+    with pytest.raises(DomainError, match="finished_at"):
+        ResearchRun(
+            id="run-incomplete-terminal",
+            organization_id="org-a",
+            project_id="project-a1",
+            plan_id="plan-a1",
+            plan_version=1,
+            initiated_by="user-a",
+            status=RunStatus.SUCCEEDED,
+            version=1,
+            idempotency_key="request-0002",
+            request_fingerprint="a" * 64,
+            created_at=now,
+            updated_at=now,
+        )
+
+
+def test_job_rejects_invalid_attempt_and_lease_invariants(now: datetime) -> None:
+    with pytest.raises(DomainError, match="attempts"):
+        make_job(now, attempts=-1)
+    with pytest.raises(DomainError, match="active lease"):
+        make_job(now, state=JobState.RUNNING)
+
+
+def test_job_claim_heartbeat_and_finish_reject_invalid_edges(now: datetime) -> None:
+    queued = make_job(now)
+    with pytest.raises(DomainError, match="lease_seconds"):
+        queued.claim("worker-1", now, 4)
+    with pytest.raises(DomainError) as unavailable:
+        make_job(now, available_at=now + timedelta(seconds=1)).claim("worker-1", now, 30)
+    assert unavailable.value.code is ErrorCode.LEASE_CONFLICT
+    with pytest.raises(DomainError, match="exhausted"):
+        make_job(now, attempts=3, max_attempts=3).claim("worker-1", now, 30)
+
+    claimed = queued.claim("worker-1", now, 30)
+    with pytest.raises(DomainError, match="extend_seconds"):
+        claimed.heartbeat("worker-1", now + timedelta(seconds=1), 4)
+    with pytest.raises(DomainError, match="finish state"):
+        claimed.finish("worker-1", now + timedelta(seconds=1), JobState.RUNNING)
