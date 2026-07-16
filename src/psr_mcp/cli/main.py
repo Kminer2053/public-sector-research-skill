@@ -16,7 +16,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from psr_mcp import __version__
 from psr_mcp.bootstrap import build_container
 from psr_mcp.config import SearchProviderMode, ServiceMode, Settings
-from psr_mcp.conformance import ConformanceError, ConformanceOptions, run_conformance
+from psr_mcp.conformance import (
+    ConformanceError,
+    ConformanceOptions,
+    PublicConformanceOptions,
+    run_conformance,
+    run_public_conformance,
+)
 from psr_mcp.mcp.server import create_http_app
 from psr_mcp.public.readiness import evaluate_public_readiness
 from psr_mcp.storage.migrations.runner import current as migration_current
@@ -50,6 +56,21 @@ def build_parser() -> argparse.ArgumentParser:
         "--ca-bundle",
         help="PEM CA bundle for an institution-managed HTTPS endpoint",
     )
+    public_conformance = commands.add_parser(
+        "conformance-public",
+        help="probe an anonymous public MCP endpoint with the official SDK client",
+    )
+    public_conformance.add_argument("--endpoint", required=True)
+    public_conformance.add_argument("--timeout", type=float, default=30.0)
+    public_conformance.add_argument(
+        "--ca-bundle",
+        help="PEM CA bundle for an institution-managed HTTPS endpoint",
+    )
+    public_conformance.add_argument(
+        "--verify-feedback",
+        action="store_true",
+        help="submit one false/false synthetic feedback response; staging only",
+    )
     return parser
 
 
@@ -71,6 +92,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 idempotency_key=args.idempotency_key,
                 timeout_seconds=args.timeout,
                 ca_bundle=args.ca_bundle,
+            )
+        if args.command == "conformance-public":
+            return _public_conformance_command(
+                endpoint=args.endpoint,
+                timeout_seconds=args.timeout,
+                ca_bundle=args.ca_bundle,
+                verify_feedback=args.verify_feedback,
             )
         settings = Settings.from_env()
         if args.command == "doctor":
@@ -204,6 +232,27 @@ def _conformance_command(
                 idempotency_key=idempotency_key,
                 timeout_seconds=timeout_seconds,
                 ca_bundle=ca_bundle,
+            )
+        )
+    )
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _public_conformance_command(
+    *,
+    endpoint: str,
+    timeout_seconds: float,
+    ca_bundle: str | None,
+    verify_feedback: bool,
+) -> int:
+    result = asyncio.run(
+        run_public_conformance(
+            PublicConformanceOptions(
+                endpoint=endpoint,
+                timeout_seconds=timeout_seconds,
+                ca_bundle=ca_bundle,
+                verify_feedback_submission=verify_feedback,
             )
         )
     )

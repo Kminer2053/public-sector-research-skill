@@ -330,6 +330,10 @@ GR-002~004 확대, 법령 source adapter, 선택형 live provider 비용·보존
 방지와 aggregate metric까지 구현됐으며 실제 공개 endpoint의 표본 수집, shared dedup과
 metric backend는 R4 운영 검증에서 수행한다.
 
+공식 SDK 기반 `conformance-public`은 local TCP와 실제 curated loopback endpoint에서 PASS했다.
+운영 출력에는 질문·인용·capability token이 없고 feedback 제출은 기본 비활성이다. 실제
+HTTPS gateway와 목표 Host 2종 검증은 여전히 R4 외부 gate다.
+
 ### 운영 학습
 
 - 실패율이 높은 질문 유형과 source track 파악

@@ -100,3 +100,23 @@ Resource와 Prompt를 model-controlled Codex session에서 재검증하려는 �
 - target Host version 변경
 
 재검증 결과는 기존 행을 덮어쓰지 않고 날짜가 포함된 validation report와 함께 갱신한다.
+
+## 8. Public Preview Reference Conformance
+
+Public Preview는 Foundation catalog와 별도 계약을 사용한다.
+`psrctl conformance-public`의 local TCP 및 curated loopback 검증 범위는 다음과 같다.
+
+| 항목 | 결과 |
+|---|---|
+| 인증 | bearer 없이 initialize·Tool 호출 PASS |
+| Tool catalog | policy, quick, feedback 3개 exact match |
+| Resource/Prompt | 둘 다 0개 |
+| policy | public_ephemeral, auth false, server_saved false |
+| quick | reviewed schema, citation·locator·official ratio·track gate PASS |
+| retention | `PURGED`, `server_saved=false` |
+| feedback | token 존재; 성공 제출은 staging opt-in |
+| reconnect | 새 SDK session에서 동일 source policy 확인 |
+| output privacy | 질문·citation content·feedback token·operation ID 0건 |
+
+이는 reference client의 application contract 검증이다. Codex, Claude, ChatGPT Desktop 등
+실제 목표 Host 2종과 HTTPS gateway 검증을 대신하지 않는다.

@@ -363,6 +363,8 @@ Live QA는 다음을 추가로 충족해야 한다.
 | VAL-PUB-EDGE-007 | disconnect/reconnect | async result 조회 |
 | VAL-PUB-EDGE-008 | service policy | 배포 config와 자동 일치 |
 | VAL-PUB-EDGE-009 | operator doctor | local smoke/public config 분리, secret 미노출, 미달 시 exit 5 |
+| VAL-PUB-EDGE-010 | public conformance | anonymous policy→quick→purge→재연결, content-free summary |
+| VAL-PUB-EDGE-011 | synthetic feedback | 기본 미제출, staging 명시 옵션에서만 1회 검증 |
 
 ### 8.2 Load와 Cost
 

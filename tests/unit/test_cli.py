@@ -7,7 +7,11 @@ import pytest
 
 from psr_mcp.cli import main as cli
 from psr_mcp.config import Settings
-from psr_mcp.conformance import ConformanceError, ConformanceOptions
+from psr_mcp.conformance import (
+    ConformanceError,
+    ConformanceOptions,
+    PublicConformanceOptions,
+)
 
 
 def test_doctor_json_is_redacted(
@@ -254,3 +258,62 @@ def test_conformance_token_environment_name_rejects_unicode_identifier(
         == 2
     )
     assert "configuration error" in capsys.readouterr().out
+
+
+def test_public_conformance_is_anonymous_and_redacts_research_content(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[PublicConformanceOptions] = []
+
+    async def fake_public_conformance(
+        options: PublicConformanceOptions,
+    ) -> dict[str, object]:
+        observed.append(options)
+        return {
+            "status": "PASS",
+            "citation_count": 12,
+            "feedback_submission_verified": options.verify_feedback_submission,
+        }
+
+    monkeypatch.setattr(cli, "run_public_conformance", fake_public_conformance)
+    assert (
+        cli.main(
+            [
+                "conformance-public",
+                "--endpoint",
+                "https://research.example.gov/mcp",
+                "--verify-feedback",
+            ]
+        )
+        == 0
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "PASS"
+    assert observed[0].release_gate is True
+    assert observed[0].verify_feedback_submission is True
+
+
+def test_public_conformance_failure_is_redacted(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def failed_public_conformance(
+        _options: PublicConformanceOptions,
+    ) -> dict[str, object]:
+        raise ConformanceError("sensitive public result")
+
+    monkeypatch.setattr(cli, "run_public_conformance", failed_public_conformance)
+    assert (
+        cli.main(
+            [
+                "conformance-public",
+                "--endpoint",
+                "https://research.example.gov/mcp",
+            ]
+        )
+        == 4
+    )
+    output = capsys.readouterr().out
+    assert "conformance failed" in output
+    assert "sensitive public result" not in output

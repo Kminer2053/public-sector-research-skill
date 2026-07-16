@@ -78,6 +78,7 @@ Enterprise
 - production에서 명시해야 하며 UTC 일자별로 새 조사 진입을 막는 process daily quick budget
 - 서버 재시작 없이 새 조사만 멈추고 기존 purge는 유지하는 operator pause-file signal
 - local smoke와 production 공개 설정 준비를 분리하고 CI gate를 제공하는 `psrctl doctor`
+- 익명 policy→quick→purge→재연결을 공식 SDK로 확인하는 `psrctl conformance-public`
 - 결과 purge 뒤 content-free token으로 boolean만 받는 익명 feedback Tool
 - 사용 완료 feedback token digest를 TTL 뒤 주기적으로 제거하는 memory sweeper
 - public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
@@ -118,6 +119,8 @@ canonical client IP, header spoof 방지와 production fail-closed 증적을 기
 purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증을 기록했습니다.
 [Human Review Packet 검증 보고서](./docs/validation/2026-07-16-human-review-packet.md)에
 구조 품질지표, 실제 curated 결과 검토와 과잉범위 권고 수정 증적을 기록했습니다.
+[Public Conformance 검증 보고서](./docs/validation/2026-07-16-public-conformance.md)에
+익명 Tool catalog, 실제 curated quick, purge와 재연결 증적을 기록했습니다.
 
 ## 다음 구현 범위
 

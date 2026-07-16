@@ -220,6 +220,38 @@ reverse proxy, WAF와 MCP Host telemetry에서도 request/response body와 Tool 
 꺼야 한다. access log는 허용된 status·duration·byte bucket만 남기며 raw feedback token이나
 boolean 응답을 기록하지 않는다. 공개 전 gateway canary scan으로 이 설정을 다시 확인한다.
 
+## 6.4 Public MCP conformance
+
+실제 공개 endpoint의 익명 catalog, policy, quick 결과 구조·품질, purge 표시와 재연결을 공식
+MCP SDK client로 확인한다.
+
+```bash
+psrctl conformance-public \
+  --endpoint 'https://research.example.org/mcp'
+```
+
+PASS JSON은 질문·검색어·인용 URL·excerpt·feedback token·operation ID를 포함하지 않고 count,
+ratio, source mode, purge와 reconnect 상태만 출력한다. release gate는 `disabled`,
+`development_fixture`, `test_static` source mode와 구조 품질 기준 미달을 거부한다.
+
+이 명령은 고정된 공공기관 AI 구매 질문으로 실제 quick을 한 번 실행하므로 daily budget과
+provider 비용을 소비한다. Brave mode에서는 이 고정 질문에서 생성한 검색어가 provider에
+전송된다. readiness/health probe로 자주 호출하지 말고 pre-deploy, release rehearsal과 장애
+확인 시에만 사용한다.
+
+기관 private CA는 `--ca-bundle`로 지정한다.
+
+```bash
+psrctl conformance-public \
+  --endpoint 'https://research.institution/mcp' \
+  --ca-bundle '/etc/ssl/institution-ca.pem'
+```
+
+`--verify-feedback`은 false/false synthetic 응답 한 건을 실제 aggregate에 추가한다. 실제
+사용자 helpful 지표를 오염시키므로 초기화 가능한 staging에서만 사용하고 production
+정기 probe에는 사용하지 않는다. 기본 conformance는 quick 결과의 feedback capability
+존재와 만료시각만 검사한다.
+
 ## 7. 품질 검증
 
 ```bash

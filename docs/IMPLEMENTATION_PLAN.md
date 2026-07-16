@@ -668,6 +668,11 @@ content-free metric sink는 실제 공개 확장 전 후속이다.
 `--require-public-ready`는 미달 시 exit 5이며 secret 값은 출력하지 않는다. 실제 Host 2종과
 gateway staging rehearsal은 여전히 외부 검증 대상이다.
 
+`psrctl conformance-public`은 공식 SDK로 anonymous initialize, 정확한 public Tool catalog,
+빈 Resource/Prompt catalog, service policy, quick schema·구조 품질, purge 표시와 새 연결의
+policy 일치를 검사한다. 출력은 count·ratio·상태만 포함하고 질문·인용·feedback token을
+제외한다. `--verify-feedback`은 aggregate를 오염시키므로 staging에서만 사용한다.
+
 ### CH-P3.4 Public Release Rehearsal
 
 - load/cost test
