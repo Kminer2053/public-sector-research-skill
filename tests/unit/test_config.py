@@ -256,6 +256,7 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
     assert settings.public_kill_switch is True
+    assert settings.public_pause_file is None
     assert settings.public_fixture_research_enabled is True
     assert settings.public_max_active_quick == 8
     assert settings.public_daily_quick_budget == 0
@@ -295,6 +296,14 @@ def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> 
                 "PSR_EPHEMERAL_ROOT": "relative",
             },
             "absolute",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_PAUSE_FILE": "relative.pause",
+            },
+            "PUBLIC_PAUSE_FILE",
         ),
         (
             {

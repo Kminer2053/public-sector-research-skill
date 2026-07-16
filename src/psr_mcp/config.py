@@ -75,6 +75,7 @@ class Settings:
     orphan_max_age_seconds: int = 7_200
     purge_sweep_seconds: int = 60
     public_kill_switch: bool = False
+    public_pause_file: str | None = None
     public_fixture_research_enabled: bool = False
     quick_timeout_seconds: float = 20.0
     public_max_active_quick: int = 8
@@ -140,6 +141,7 @@ class Settings:
                     values.get("PSR_PUBLIC_KILL_SWITCH", "false"),
                     name="PSR_PUBLIC_KILL_SWITCH",
                 ),
+                public_pause_file=values.get("PSR_PUBLIC_PAUSE_FILE"),
                 public_fixture_research_enabled=_parse_bool(
                     values.get("PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED", "false"),
                     name="PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED",
@@ -225,6 +227,8 @@ class Settings:
         object.__setattr__(self, "trusted_proxy_cidrs", tuple(canonical_proxy_cidrs))
         if self.ephemeral_root is not None and not Path(self.ephemeral_root).is_absolute():
             raise ValueError("PSR_EPHEMERAL_ROOT must be an absolute path")
+        if self.public_pause_file is not None and not Path(self.public_pause_file).is_absolute():
+            raise ValueError("PSR_PUBLIC_PAUSE_FILE must be an absolute path")
         if self.abuse_hmac_key_ref and not re.fullmatch(
             r"env://[A-Za-z_][A-Za-z0-9_]*", self.abuse_hmac_key_ref
         ):

@@ -20,6 +20,7 @@ from psr_mcp.ephemeral.ports import (
 )
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
+from psr_mcp.public.admission import NeverPauseSignal, PauseSignal
 from psr_mcp.public.schemas import QuickResearchOutput
 from psr_mcp.public.service import (
     FixtureResearchBackend,
@@ -42,6 +43,15 @@ class MutableClock:
         self.value = datetime(2026, 7, 16, tzinfo=UTC)
 
     def now(self) -> datetime:
+        return self.value
+
+
+class MutablePauseSignal:
+    def __init__(self) -> None:
+        self.value = False
+
+    @property
+    def paused(self) -> bool:
         return self.value
 
 
@@ -164,6 +174,7 @@ def _service(
     max_active_quick: int = 8,
     daily_quick_budget: int = 0,
     clock: Clock | None = None,
+    pause_signal: PauseSignal | None = None,
     kill_switch: bool = False,
 ) -> PublicQuickResearchService:
     return PublicQuickResearchService(
@@ -179,6 +190,7 @@ def _service(
         timeout_seconds=timeout_seconds,
         max_active_quick=max_active_quick,
         daily_quick_budget=daily_quick_budget,
+        pause_signal=pause_signal or NeverPauseSignal(),
         kill_switch=kill_switch,
     )
 
@@ -233,6 +245,38 @@ async def test_invalid_scope_and_kill_switch_do_not_create_workspace(tmp_path: P
         )
     assert paused.value.code is PublicErrorCode.PUBLIC_SERVICE_PAUSED
     assert store.created == []
+
+
+@pytest.mark.anyio
+async def test_runtime_pause_rejects_new_quick_while_existing_run_can_purge(
+    tmp_path: Path,
+) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    backend = BlockingBackend()
+    pause = MutablePauseSignal()
+    service = _service(store, backend, pause_signal=cast(PauseSignal, pause))
+
+    running = asyncio.create_task(_quick_request(service))
+    await backend.entered.wait()
+    pause.value = True
+
+    with pytest.raises(PublicResearchError) as paused:
+        await _quick_request(service)
+
+    assert paused.value.code is PublicErrorCode.PUBLIC_SERVICE_PAUSED
+    assert bool(service.paused)
+    assert len(store.created) == 1
+
+    backend.release.set()
+    completed = await running
+    pause.value = False
+    resumed = await _quick_request(service)
+
+    assert completed.retention.purge_state == "PURGED"
+    assert resumed.retention.purge_state == "PURGED"
+    assert not bool(service.paused)
+    assert len(store.created) == 2
+    assert list(store.inner.root.iterdir()) == []
 
 
 @pytest.mark.anyio

@@ -145,7 +145,7 @@ flowchart LR
 | ID | 위협 | 필수 통제 | 검증 | 상태 |
 |---|---|---|---|---|
 | TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, edge 대기 |
-| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~016` | process active·daily quick·run budget PASS; edge·provider cap·async·shared quota 대기 |
+| TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~017` | process active·daily quick·runtime pause·run budget PASS; edge·provider cap·async·shared quota 대기 |
 | TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | quick canary PASS/local; staging scan 대기 |
 | TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS; async 대기 |
 | TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | PASS/S0 |

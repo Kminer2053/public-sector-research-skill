@@ -112,6 +112,7 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-ABUSE-014 | kill switch ON | status/result/cancel/purge 유지 |
 | VAL-PUB-ABUSE-015 | limiter backend 장애 | 새 고비용 요청 fail closed |
 | VAL-PUB-ABUSE-016 | process UTC daily quick budget | invalid·active 초과 미차감, 시작된 성공·실패 차감, 소진 시 workspace·network 전 거부, 다음 UTC 일자 reset |
+| VAL-PUB-ABUSE-017 | operator runtime pause | restart 없이 새 quick 거부·policy 반영, 진행 중 purge 유지, resume 가능 |
 
 ### 5.3 Ephemeral Store
 

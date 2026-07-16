@@ -62,7 +62,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
             ),
             authentication_required=False,
             research_available=container.quick_service.available,
-            kill_switch_active=settings.public_kill_switch,
+            kill_switch_active=container.quick_service.paused,
             supported_profiles=["government-v0"],
             limits={
                 "request_bytes": settings.max_request_bytes,

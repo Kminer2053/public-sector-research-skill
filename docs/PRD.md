@@ -272,6 +272,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-054 | abuse counter는 회전 HMAC key와 TTL을 사용한다. | Must | raw IP·question이 app DB에 없음 |
 | FR-PUB-055 | 동시에 실행할 수 있는 quick 조사를 프로세스별 설정값으로 제한한다. | Must | 상한 초과 요청은 workspace·외부 network 생성 전에 `PUBLIC_LIMIT_REACHED`, 완료·실패·취소 뒤 slot 반환 |
 | FR-PUB-056 | production 공개 mode는 UTC 일자별 quick 진입 budget을 명시하고 소진 시 새 조사를 중단한다. | Must | 잘못된 입력·active 초과는 미차감, 시작된 성공·실패는 차감, workspace·network 전 `PUBLIC_DAILY_BUDGET_EXHAUSTED` |
+| FR-PUB-057 | 운영자는 서버 재시작이나 관리 MCP Tool 없이 새 quick을 즉시 pause/resume할 수 있어야 한다. | Must | operator file 생성 시 새 quick 거부·policy 반영, 기존 실행 purge 유지, 제거 시 resume |
 
 ### 8.7 Feedback
 

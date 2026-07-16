@@ -92,8 +92,9 @@
 > 구현 상태: 2026-07-16 기준 public mode, 익명 policy/quick Tool, IP-first limiter,
 > trusted edge IP normalization, process-local active quick 상한, filesystem workspace,
 > process-local UTC daily quick budget, content canary, immediate purge, quick kill switch와
-> sweeper는 완료됐다. 실제 gateway quota, provider billing hard cap, multi-replica 공유 quota와
-> 삭제 retry/backoff alert가 남아 있어 R1/PG0 전체는 아직 종료되지 않았다.
+> operator runtime pause-file signal, sweeper는 완료됐다. 실제 gateway quota, provider billing
+> hard cap, multi-replica 공유 quota와 삭제 retry/backoff alert가 남아 있어 R1/PG0 전체는
+> 아직 종료되지 않았다.
 
 ### 작업 패키지
 
@@ -120,8 +121,8 @@
 
 **난이도:** 높음
 **현재:** application IP-first limiter, trusted proxy normalization, process-local active quick
-상한과 UTC daily quick budget은 local PASS. 실제 edge header overwrite, provider billing
-hard cap과 multi-replica 공유 quota는 R4에서 검증한다.
+상한, UTC daily quick budget과 operator runtime pause는 local PASS. 실제 edge header
+overwrite, provider billing hard cap과 multi-replica 공유 quota는 R4에서 검증한다.
 
 **완료 기준:** `VAL-PUB-ABUSE-*` 전부 통과
 

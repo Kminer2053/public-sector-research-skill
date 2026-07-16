@@ -125,6 +125,7 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_QUICK_TIMEOUT_SECONDS` | 20 | 1..30, request timeout 이하 |
 | `PSR_PUBLIC_MAX_ACTIVE_QUICK` | 8 | process당 동시 quick 상한, 1..100 |
 | `PSR_PUBLIC_DAILY_QUICK_BUDGET` | 0 | process·UTC 일자별 quick 진입 상한, 0은 development 비활성; production은 1 이상 필수 |
+| `PSR_PUBLIC_PAUSE_FILE` | 빈 값 | operator가 관리하는 절대경로 sentinel; 존재하면 새 quick 중지 |
 | `PSR_MAX_RUN_SOURCES` | 12 | 1..100 |
 | `PSR_MAX_RUN_BYTES` | 30 MiB | 1..100 MiB |
 | `PSR_PUBLIC_KILL_SWITCH` | `false` | 새 quick/start 중지 |
@@ -135,6 +136,34 @@ API key와 HMAC key는 diagnostics에서 값 대신 존재 여부만 표시된�
 보수적 진입 안전망이다. production 초기값은 load·provider quota를 검토해 명시해야 하며,
 예시 500은 제품 보장값이 아니다. replica가 여러 개면 gateway/shared limiter와 provider
 dashboard hard cap을 함께 설정한다.
+
+## 6.1 Runtime pause
+
+예시 설정:
+
+```bash
+export PSR_PUBLIC_PAUSE_FILE=/run/psr/public.pause
+```
+
+새 조사 중지:
+
+```bash
+touch /run/psr/public.pause
+```
+
+`psr.service.policy`에서 `kill_switch_active=true`,
+`research_available=false`를 확인한다. 이미 실행 중인 조사의 access block과 purge는
+계속된다.
+
+새 조사 재개:
+
+```bash
+rm /run/psr/public.pause
+```
+
+pause 파일은 application이 만들거나 삭제하지 않는다. control plane 또는 권한이 제한된
+운영자가 관리하고, 외부 사용자가 해당 경로를 쓸 수 없어야 한다. file 내용은 읽지 않으므로
+운영 메모나 사용자 content를 넣지 않는다.
 
 ## 7. 품질 검증
 

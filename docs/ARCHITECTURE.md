@@ -380,6 +380,12 @@ backend 오류·취소는 차감한다. 개발환경의 0은 비활성화를 뜻
 1 이상의 명시값 없이는 startup에 실패한다. 이 counter도 process-local이므로 provider billing
 hard cap이나 replica 전체 비용보장을 대신하지 않는다.
 
+`PSR_PUBLIC_PAUSE_FILE`은 control plane이 관리하는 절대경로 sentinel이다. application은
+내용을 읽거나 쓰지 않고 `lstat`으로 존재 여부만 확인한다. regular file, directory, symlink와
+broken symlink는 모두 pause로 처리하며 예상하지 못한 stat 오류도 fail closed한다. pause는
+새 quick admission만 막고 이미 실행 중인 coroutine, access block과 purge를 취소하지 않는다.
+Public MCP에는 pause를 생성·삭제하는 관리 Tool을 노출하지 않는다.
+
 reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
 `X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
 값은 fail closed한다. trusted network 밖에서 보낸 같은 header는 quota 계산에 사용하지 않고
@@ -592,6 +598,7 @@ PSR_EPHEMERAL_ROOT=/restricted/path
 PSR_QUICK_TIMEOUT_SECONDS=20
 PSR_PUBLIC_MAX_ACTIVE_QUICK=8
 PSR_PUBLIC_DAILY_QUICK_BUDGET=500
+PSR_PUBLIC_PAUSE_FILE=/run/psr/public.pause
 PSR_RUN_TTL_SECONDS=3600
 PSR_DELIVERED_PURGE_SECONDS=60
 PSR_ORPHAN_MAX_AGE_SECONDS=7200

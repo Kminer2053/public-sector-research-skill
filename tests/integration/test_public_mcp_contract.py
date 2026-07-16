@@ -313,6 +313,55 @@ async def test_daily_quick_budget_updates_policy_and_rejects_before_workspace(
 
 
 @pytest.mark.anyio
+async def test_operator_pause_file_updates_policy_without_server_restart(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "ephemeral"
+    pause_file = tmp_path / "public.pause"
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(root),
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            "PSR_PUBLIC_PAUSE_FILE": str(pause_file),
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            open_policy = await session.call_tool("psr.service.policy", {})
+            pause_file.touch()
+            paused_policy = await session.call_tool("psr.service.policy", {})
+            paused_quick = await session.call_tool(
+                "psr.research.quick",
+                {"question": "공공기관 AI 구매 원칙을 공식자료 중심으로 조사해줘"},
+            )
+            pause_file.unlink()
+            resumed_quick = await session.call_tool(
+                "psr.research.quick",
+                {"question": "공공기관 AI 구매 원칙을 공식자료 중심으로 다시 조사해줘"},
+            )
+    finally:
+        await container.close()
+
+    assert open_policy.structuredContent is not None
+    assert open_policy.structuredContent["kill_switch_active"] is False
+    assert paused_policy.structuredContent is not None
+    assert paused_policy.structuredContent["kill_switch_active"] is True
+    assert paused_policy.structuredContent["research_available"] is False
+    assert paused_quick.isError is True
+    assert "PUBLIC_SERVICE_PAUSED" in paused_quick.content[0].text  # type: ignore[union-attr]
+    assert resumed_quick.isError is False
+    assert list(root.iterdir()) == []
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     "overrides, expected_code",
     [

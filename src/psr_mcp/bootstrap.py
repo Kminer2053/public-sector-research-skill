@@ -46,6 +46,7 @@ from psr_mcp.ephemeral import FilesystemEphemeralWorkspaceStore, PurgeSweeper
 from psr_mcp.evidence import EvidenceComposer
 from psr_mcp.parsers import DocumentParser, ParserLimits
 from psr_mcp.planner import GovernmentPlanner
+from psr_mcp.public.admission import FilePauseSignal, NeverPauseSignal
 from psr_mcp.public.development_fixture import build_development_fixture_backend
 from psr_mcp.public.pipeline import PublicResearchPipeline
 from psr_mcp.public.schemas import SourceDiscoveryMode
@@ -267,6 +268,11 @@ def _build_public_container(
             timeout_seconds=settings.quick_timeout_seconds,
             max_active_quick=settings.public_max_active_quick,
             daily_quick_budget=settings.public_daily_quick_budget,
+            pause_signal=(
+                FilePauseSignal(Path(settings.public_pause_file))
+                if settings.public_pause_file
+                else NeverPauseSignal()
+            ),
             kill_switch=settings.public_kill_switch,
         ),
     )

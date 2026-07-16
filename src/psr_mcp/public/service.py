@@ -16,6 +16,7 @@ from psr_mcp.application.ports import Clock, IdGenerator
 from psr_mcp.ephemeral.ports import ArtifactKind, EphemeralWorkspaceStore, WorkspaceRef
 from psr_mcp.planner.government import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
+from psr_mcp.public.admission import PauseSignal
 from psr_mcp.public.schemas import (
     AppliedScope,
     Citation,
@@ -196,6 +197,7 @@ class PublicQuickResearchService:
         timeout_seconds: float,
         max_active_quick: int,
         daily_quick_budget: int,
+        pause_signal: PauseSignal,
         kill_switch: bool,
     ) -> None:
         self._store = store
@@ -215,13 +217,16 @@ class PublicQuickResearchService:
         self._daily_budget_day: date | None = None
         self._daily_quick_used = 0
         self._daily_budget_lock = Lock()
+        self._pause_signal = pause_signal
         self._kill_switch = kill_switch
 
     @property
     def available(self) -> bool:
-        return (
-            self._backend.available and not self._kill_switch and not self._daily_budget_exhausted()
-        )
+        return self._backend.available and not self.paused and not self._daily_budget_exhausted()
+
+    @property
+    def paused(self) -> bool:
+        return self._kill_switch or self._pause_signal.paused
 
     async def quick(
         self,
@@ -231,7 +236,7 @@ class PublicQuickResearchService:
         jurisdiction: str,
         profile: str,
     ) -> QuickResearchOutput:
-        if self._kill_switch:
+        if self.paused:
             raise PublicResearchError(
                 PublicErrorCode.PUBLIC_SERVICE_PAUSED,
                 "new public research is temporarily paused",
