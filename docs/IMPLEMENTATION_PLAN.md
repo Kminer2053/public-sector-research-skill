@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F3 OAuth Resource Server
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재 increment: F4 Remote Conformance
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ROADMAP](./ROADMAP.md) · [ADR](./adr/)
 
@@ -36,8 +36,8 @@
 | F0 | Foundation Core | package, domain, policy, memory UoW | 완료 (`G0~G1`) |
 | F1 | MCP Contract | Tools·Resources·Prompt와 in-memory protocol test | 완료 (`G2`, loopback) |
 | F2 | PostgreSQL Durability | migration, RLS, transaction, lease | 완료: PostgreSQL 17.10 local G3 |
-| F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 예정 |
-| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 예정 |
+| F3 | OAuth Resource Server | TokenVerifier, AuthContext, Membership | 완료: local G4 |
+| F4 | Remote Conformance | Streamable HTTP, Host 2종, recovery | 진행 중 |
 | P0 | Planner Skeleton | Plan create/review workflow | Foundation 후 |
 | C0 | Collector Characterization | legacy behavior fixture와 adapter 판단 | Foundation 후 |
 
@@ -384,6 +384,8 @@ development static AuthContext를 실제 OAuth/OIDC 검증과 Membership resolut
 
 **F3 exit:** `G4` 통과
 
+**2026-07-16 결과:** 실제 RSA JWT, OIDC Discovery/JWKS, RFC 9728 metadata, PostgreSQL 17 RLS/Membership을 결합한 local G4를 통과했다. 전체 135개 test와 combined line+branch coverage 91.11%를 확인했다. 상세 증적은 [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md)에 기록한다. 실제 기관 IdP와 원격 Host 검증은 F4에 남긴다.
+
 ## 9. F4 — Remote Conformance
 
 ### 목표
@@ -549,14 +551,14 @@ Next gate:
 
 ## 19. 현재 착수 범위
 
-`D0~F2`를 마쳤으며 현재 `F3 OAuth Resource Server`를 시작한다. PostgreSQL adapter는 구현됐지만 verified OAuth tenant identity와 lifecycle composition이 생기기 전 MCP production server에 연결하지 않는다.
+`D0~F3`를 마쳤으며 현재 `F4 Remote Conformance`를 시작한다. OAuth/PostgreSQL production composition은 구현됐지만 실제 기관 IdP, TLS proxy와 목표 Host 2종을 검증하기 전 production-ready로 선언하지 않는다.
 
 ### 2026-07-16 인계 상태
 
-- 완료: D0, F0, F1, F2 local G3, PostgreSQL CI workflow, backup/restore runbook
-- 검증됨: PostgreSQL 17.10 migration·RLS·pool·repository·worker·backend loss·restore
-- 미구현·미검증: OAuth TokenVerifier, Membership resolution, protected resource metadata, remote Host 2종
-- 다음 change set: `CH-010 OAuth adapter`의 verifier와 negative token test
+- 완료: D0, F0, F1, F2 local G3, F3 local G4, PostgreSQL CI workflow, DB/OAuth runbook
+- 검증됨: PostgreSQL 17.10 durability와 OIDC JWT·Membership·RFC 9728 인증 경계
+- 미구현·미검증: TLS proxy 정책, conformance CLI, 실제 remote Host 2종, 기관 IdP onboarding
+- 다음 change set: F4 remote transport harness와 conformance matrix
 
 ---
 

@@ -10,9 +10,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.18,<2",
+  "httpx>=0.28,<1",
   "mcp>=1.28,<2",
+  "PyJWT[crypto]>=2.10,<3",
   "pydantic>=2.11,<3",
   "psycopg[binary,pool]>=3.2,<4",
+  "uvicorn>=0.35,<1",
 ]
 
 [project.scripts]
@@ -21,7 +24,6 @@ psrctl = "psr_mcp.cli.main:main"
 
 [dependency-groups]
 dev = [
-  "httpx>=0.28,<1",
   "mypy>=1.17,<2",
   "pytest>=8.4,<9",
   "pytest-cov>=6,<8",

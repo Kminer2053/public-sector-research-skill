@@ -30,3 +30,25 @@ def test_foundation_migration_has_tenant_and_durability_guards() -> None:
         "src/psr_mcp/storage/migrations/alembic/versions/0001_foundation.py"
     ).read_text()
     assert 'revision = "0001_foundation"' in revision
+
+
+def test_external_identity_migration_is_tenant_scoped_and_reversible() -> None:
+    sql = Path("src/psr_mcp/storage/migrations/0002_external_identity_membership.sql").read_text()
+    assert "CREATE TABLE external_identities" in sql
+    assert "FOREIGN KEY (organization_id, user_id)" in sql
+    assert "ALTER TABLE external_identities ENABLE ROW LEVEL SECURITY" in sql
+    assert "ALTER TABLE external_identities FORCE ROW LEVEL SECURITY" in sql
+    assert "CHECK (project_scope IN ('ALL', 'RESTRICTED'))" in sql
+
+    down = Path(
+        "src/psr_mcp/storage/migrations/0002_external_identity_membership.down.sql"
+    ).read_text()
+    assert "DROP TABLE IF EXISTS external_identities" in down
+    assert "DROP COLUMN IF EXISTS project_scope" in down
+    assert "cannot downgrade" in down
+
+    revision = Path(
+        "src/psr_mcp/storage/migrations/alembic/versions/0002_external_identity_membership.py"
+    ).read_text()
+    assert 'revision = "0002_external_identity"' in revision
+    assert 'down_revision = "0001_foundation"' in revision

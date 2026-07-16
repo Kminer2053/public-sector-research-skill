@@ -65,7 +65,7 @@ uv run psrctl conformance --json
 | G5 | Interoperable | Streamable HTTP, 2 Hosts |
 | G6 | Foundation Exit | G0~G5 + docs/runbook/no P0/P1 |
 
-현재 구현 increment는 `G0~G2`와 PostgreSQL 17.10 local `G3`를 통과했다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md)와 [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md)에 있다. G4~G5와 G6 release gate는 open이다.
+현재 구현 increment는 `G0~G2`, PostgreSQL 17.10 local `G3`, OAuth/Membership local `G4`를 통과했다. 실행 증적은 [Foundation Core 보고서](./validation/2026-07-16-foundation-core.md), [PostgreSQL G3 보고서](./validation/2026-07-16-postgresql-g3.md), [OAuth G4 보고서](./validation/2026-07-16-oauth-g4.md)에 있다. G5와 G6 release gate는 open이다.
 
 ## 5. Build와 Dependency
 
@@ -367,7 +367,7 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 
 ### G4 Authenticated
 
-- OAUTH-001~010 통과
+- OAUTH-001~008·010 통과, OAUTH-009는 Collector gate로 명시 이관
 - IdP key rotation과 revoked Membership
 - security review P0/P1 0건
 
@@ -387,9 +387,9 @@ AUTH-007 revoked Membership는 production Membership resolver가 생기는 G4, A
 
 ## 22. 현재 완료 선언 규칙
 
-현재 환경에서 F0~F2를 완료하면 다음 표현만 사용한다.
+현재 환경에서 F0~F3를 완료하면 다음 표현만 사용한다.
 
-> Foundation Core, MCP contract, PostgreSQL 17.10 local durability와 RLS가 검증됐다. production OAuth와 remote Host conformance는 아직 검증되지 않았다.
+> Foundation Core, MCP contract, PostgreSQL 17.10 local durability/RLS와 OAuth/Membership local integration이 검증됐다. 실제 기관 IdP와 remote Host conformance는 아직 검증되지 않았다.
 
 다음 표현은 G6 전 금지한다.
 

@@ -19,7 +19,7 @@ def test_doctor_json_is_redacted(
     assert payload["status"] == "ok"
     assert payload["settings"]["cursor_signing_key"] == "***"
     assert "in-memory storage" in payload["limitations"]
-    assert "OAuth/remote conformance not validated" in payload["limitations"]
+    assert "remote Host conformance is not validated" in payload["limitations"]
 
 
 def test_doctor_human_output(capsys: pytest.CaptureFixture[str]) -> None:

@@ -31,6 +31,7 @@ PROJECT_A2 = "00000000-0000-0000-0000-0000000000a2"
 PROJECT_B1 = "00000000-0000-0000-0000-0000000000b1"
 PLAN_A1 = "00000000-0000-0000-0000-0000000001a1"
 PLAN_B1 = "00000000-0000-0000-0000-0000000001b1"
+TEST_ISSUER = "https://idp.example.gov/"
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,9 +76,24 @@ def postgres_urls() -> Generator[PostgresUrls]:
             sql.SQL("GRANT USAGE ON SCHEMA public TO {}").format(sql.Identifier(runtime_role))
         )
         connection.execute(
+            sql.SQL("REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM {}").format(
+                sql.Identifier(runtime_role)
+            )
+        )
+        connection.execute(
             sql.SQL(
-                "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {}"
+                "GRANT SELECT ON organizations, memberships, external_identities, "
+                "membership_projects, projects, research_plans, research_runs, jobs, "
+                "audit_events TO {}"
             ).format(sql.Identifier(runtime_role))
+        )
+        connection.execute(
+            sql.SQL("GRANT INSERT, UPDATE ON research_runs, jobs TO {}").format(
+                sql.Identifier(runtime_role)
+            )
+        )
+        connection.execute(
+            sql.SQL("GRANT INSERT ON audit_events TO {}").format(sql.Identifier(runtime_role))
         )
     yield PostgresUrls(
         admin=admin,
@@ -176,7 +192,8 @@ def _seed(owner_url: str) -> None:
         connection.execute(
             """
             TRUNCATE audit_events, jobs, research_runs, research_plans,
-                     membership_projects, projects, memberships, users, organizations
+                     membership_projects, projects, external_identities,
+                     memberships, users, organizations
             CASCADE
             """
         )
@@ -234,6 +251,14 @@ def _seed_tenant(
         ) VALUES (%s, %s, %s, 'ACTIVE', %s, %s)
         """,
         (organization_id, user_id, ["researcher"], now, now),
+    )
+    connection.execute(
+        """
+        INSERT INTO external_identities (
+            organization_id, user_id, issuer, external_subject, actor_type, created_at
+        ) VALUES (%s, %s, %s, %s, 'human', %s)
+        """,
+        (organization_id, user_id, TEST_ISSUER, f"subject-{organization_id[-1]}", now),
     )
     for project_id, name in projects:
         connection.execute(

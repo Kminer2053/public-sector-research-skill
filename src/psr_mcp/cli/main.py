@@ -8,12 +8,13 @@ import os
 from collections.abc import Sequence
 
 import psycopg
+import uvicorn
 from sqlalchemy.exc import SQLAlchemyError
 
 from psr_mcp import __version__
 from psr_mcp.bootstrap import build_container
 from psr_mcp.config import Settings
-from psr_mcp.mcp.server import create_server
+from psr_mcp.mcp.server import create_http_app
 from psr_mcp.storage.migrations.runner import current as migration_current
 from psr_mcp.storage.migrations.runner import downgrade as migration_downgrade
 from psr_mcp.storage.migrations.runner import upgrade as migration_upgrade
@@ -49,12 +50,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "status": "ok",
                 "version": __version__,
                 "settings": settings.diagnostics(),
-                "limitations": [
-                    "development static authentication",
-                    "in-memory storage",
-                    "PostgreSQL adapter is not composed into the MCP server",
-                    "OAuth/remote conformance not validated",
-                ],
+                "limitations": _limitations(settings),
             }
             if args.as_json:
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
@@ -88,8 +84,14 @@ def serve() -> int:
 
 def _serve(settings: Settings) -> None:
     container = build_container(settings)
-    server = create_server(container)
-    server.run(transport="streamable-http")
+    app = create_http_app(container)
+    uvicorn.run(
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level=settings.log_level.lower(),
+        proxy_headers=False,
+    )
 
 
 def _database_command(*, action: str, revision: str | None, confirm_downgrade: bool) -> int:
@@ -108,6 +110,16 @@ def _database_command(*, action: str, revision: str | None, confirm_downgrade: b
     migration_downgrade(database_url, revision or "-1")
     print(json.dumps({"action": "downgrade", "revision": revision or "-1", "status": "ok"}))
     return 0
+
+
+def _limitations(settings: Settings) -> list[str]:
+    limitations = ["collector and reporting modules are not implemented"]
+    if settings.auth_mode.value == "static":
+        limitations.append("development static authentication")
+    if settings.storage_mode.value == "memory":
+        limitations.append("in-memory storage")
+    limitations.append("remote Host conformance is not validated")
+    return limitations
 
 
 if __name__ == "__main__":  # pragma: no cover

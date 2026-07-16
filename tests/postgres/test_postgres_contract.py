@@ -76,20 +76,21 @@ def test_runtime_role_and_rls_flags(seeded_postgres: PostgresUrls) -> None:
             SELECT relname, relrowsecurity, relforcerowsecurity
             FROM pg_class
             WHERE relname IN (
-                'organizations', 'memberships', 'projects', 'membership_projects',
+                'organizations', 'memberships', 'external_identities',
+                'projects', 'membership_projects',
                 'research_plans', 'research_runs', 'jobs', 'audit_events'
             )
             ORDER BY relname
             """
         ).fetchall()
-    assert len(flags) == 8
+    assert len(flags) == 9
     assert all(row[1:] == (True, True) for row in flags)
 
 
 def test_cross_tenant_composite_foreign_key_is_rejected(
     seeded_postgres: PostgresUrls,
 ) -> None:
-    with psycopg.connect(seeded_postgres.runtime) as connection:
+    with psycopg.connect(seeded_postgres.owner) as connection:
         connection.execute("SELECT set_config('app.organization_id', %s, true)", (ORG_A,))
         with pytest.raises(errors.ForeignKeyViolation):
             connection.execute(
@@ -106,6 +107,7 @@ async def test_run_job_audit_idempotency_and_persistence(
     postgres_store: PostgresStore,
     pg_run_service: ResearchRunService,
     pg_auth_a: AuthorizationContext,
+    seeded_postgres: PostgresUrls,
 ) -> None:
     first = await pg_run_service.start(
         pg_auth_a,
@@ -132,10 +134,11 @@ async def test_run_job_audit_idempotency_and_persistence(
             "SELECT outcome FROM audit_events ORDER BY occurred_at, id"
         )
         outcomes = [row["outcome"] async for row in cursor]
-        with pytest.raises(errors.RaiseException, match="append-only"):
-            await connection.execute("UPDATE audit_events SET outcome = 'FAILED'")
-        await connection.rollback()
     assert outcomes == ["SUCCEEDED", "IDEMPOTENT_REPLAY"]
+    async with await psycopg.AsyncConnection.connect(seeded_postgres.owner) as owner:
+        await owner.execute("SELECT set_config('app.organization_id', %s, true)", (ORG_A,))
+        with pytest.raises(errors.RaiseException, match="append-only"):
+            await owner.execute("UPDATE audit_events SET outcome = 'FAILED'")
 
 
 @pytest.mark.anyio

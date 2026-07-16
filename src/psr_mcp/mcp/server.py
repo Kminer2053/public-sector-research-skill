@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from mcp.server.auth.provider import TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from pydantic import AnyHttpUrl
+from starlette.applications import Starlette
+from starlette.routing import Mount
 
 from psr_mcp.bootstrap import Container
+from psr_mcp.config import AuthMode, Environment
 from psr_mcp.mcp.handlers import McpHandlers
 from psr_mcp.mcp.schemas import (
     ProjectGetOutput,
@@ -16,8 +25,26 @@ from psr_mcp.mcp.schemas import (
 )
 
 
-def create_server(container: Container) -> FastMCP:
+def create_server(
+    container: Container,
+    *,
+    token_verifier: TokenVerifier | None = None,
+) -> FastMCP:
     settings = container.settings
+    effective_verifier = token_verifier or container.token_verifier
+    if token_verifier is not None and container.token_verifier is not None:
+        raise RuntimeError("token verifier is configured twice")
+    auth_settings: AuthSettings | None = None
+    if settings.auth_mode is AuthMode.OAUTH:
+        if effective_verifier is None or settings.issuer_url is None:
+            raise RuntimeError("OAuth mode requires a configured token verifier")
+        auth_settings = AuthSettings(
+            issuer_url=AnyHttpUrl(settings.issuer_url),
+            resource_server_url=AnyHttpUrl(settings.resource_server_url),
+            required_scopes=list(settings.required_mcp_scopes),
+        )
+    elif effective_verifier is not None:
+        raise RuntimeError("a token verifier cannot be used while authentication is static")
     handlers = McpHandlers(
         container.auth_provider,
         container.project_service,
@@ -25,16 +52,23 @@ def create_server(container: Container) -> FastMCP:
         container.ids,
     )
     server = FastMCP(
-        name="Public Sector Research MCP [DEVELOPMENT]",
-        instructions=(
-            "공공분야 공식자료 조사를 위한 Evidence-First MCP의 Foundation 개발 서버입니다. "
-            "현재는 수집·보고서 기능이 없으며 운영 사용을 금지합니다."
+        name=(
+            "Public Sector Research MCP [DEVELOPMENT]"
+            if settings.environment is Environment.DEVELOPMENT
+            else "Public Sector Research MCP"
         ),
+        instructions=(
+            "공공분야 공식자료 조사를 위한 Evidence-First MCP Foundation 서버입니다. "
+            "현재 계약은 Project와 승인된 ResearchRun의 최소 수명주기를 제공합니다."
+        ),
+        website_url=settings.public_url,
+        token_verifier=effective_verifier,
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level,
         json_response=True,
         stateless_http=True,
+        auth=auth_settings,
     )
 
     @server.tool(
@@ -144,3 +178,27 @@ def create_server(container: Container) -> FastMCP:
         )
 
     return server
+
+
+def create_http_app(
+    container: Container,
+    *,
+    token_verifier: TokenVerifier | None = None,
+) -> Starlette:
+    """Compose process-wide adapter lifecycle around the SDK Streamable HTTP app."""
+    inner = create_server(container, token_verifier=token_verifier).streamable_http_app()
+
+    @asynccontextmanager
+    async def lifespan(_: Starlette) -> AsyncIterator[None]:
+        await container.open()
+        try:
+            async with inner.router.lifespan_context(inner):
+                yield None
+        finally:
+            await container.close()
+
+    return Starlette(
+        debug=False,
+        routes=[Mount("/", app=inner)],
+        lifespan=lifespan,
+    )
