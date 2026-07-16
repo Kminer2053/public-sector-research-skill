@@ -2,7 +2,7 @@
 
 누구나 가입 없이 공신력 있는 공공자료를 조사하고, 원문 근거가 연결된 결과를 받은 뒤 서버에는 질문·원문·보고서가 남지 않도록 만드는 Evidence-First Public Research MCP입니다.
 
-> 현재 상태: OAuth·PostgreSQL·Tenant 기반의 Foundation `F0~F4/G0~G5`는 구현·검증됐습니다. 제품 목표는 [ADR-0009](./docs/adr/0009-public-zero-retention-first.md)에 따라 **Public Preview**로 전환됐으며, 익명 Public Tool, SafeCollector, ephemeral purge, 실제 조사 결과 생성은 아직 구현되지 않았습니다. 따라서 현재 code를 공개 무저장 리서치 서비스로 배포하면 안 됩니다.
+> 현재 상태: OAuth·PostgreSQL·Tenant 기반 Foundation `F0~F4/G0~G5`와 Public Safety Core `S0`의 첫 구현이 완료됐습니다. 익명 `psr.service.policy`, IP-first quota, public composition root, 제한된 ephemeral workspace와 purge sweeper가 동작합니다. SafeCollector와 실제 조사 결과 생성은 아직 없으므로 현재 code를 공개 리서치 완성품으로 배포하면 안 됩니다.
 
 ## 제품 성장 순서
 
@@ -60,20 +60,30 @@ Enterprise
 
 이 기능은 Account Beta와 Enterprise의 자산으로 유지합니다. Public Preview 요청에는 OAuth 로그인, Organization, persistent content storage를 사용하지 않습니다.
 
+## 현재 구현된 Public Safety Core
+
+- `ServiceMode.PUBLIC_EPHEMERAL`
+- OAuth·Membership·PostgreSQL content sink를 구성하지 않는 public container
+- token 없이 호출하는 `psr.service.policy`
+- token을 바꿔도 같은 IP 한도를 새로 얻지 못하는 HMAC IP-first limiter
+- public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
+- random workspace ID, directory `0700`, file `0600`
+- path traversal·symlink·만료 workspace 접근 차단
+- startup/periodic/final purge sweeper
+- fake-clock 만료·corrupt lease·삭제·재시작 기반 test
+
+[S0 검증 보고서](./docs/validation/2026-07-16-public-s0.md)에 210개 전체 회귀와 coverage 증적을 기록했습니다.
+
 ## 다음 구현 범위
 
 첫 구현은 crawler 연결이 아니라 공개 안전경계입니다.
 
-1. `ServiceMode.PUBLIC_EPHEMERAL`
-2. 익명 Public Tool catalog
-3. IP-first abuse limiter와 kill switch
-4. ephemeral workspace와 TTL/PurgeSweeper
-5. content canary leakage test
-6. fake collector 기반 quick lifecycle
-7. legacy `crawlkit.py` characterization
-8. SSRF-safe Search/Collector/Parser
-9. Government Profile·Evidence Composer·실제 quick result
-10. start/status/result/cancel async flow
+1. content canary leakage test와 kill-switch 실행경로
+2. fake collector 기반 quick lifecycle
+3. legacy `crawlkit.py` characterization
+4. SSRF-safe Search/Collector/Parser
+5. Government Profile·Evidence Composer·실제 quick result
+6. start/status/result/cancel async flow
 
 상세 순서는 [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md)을 따릅니다.
 

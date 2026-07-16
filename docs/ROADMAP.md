@@ -89,6 +89,8 @@
 
 실제 검색·수집을 붙이기 전에 익명 요청을 제한하고 content를 임시로 처리·삭제하는 실행경계를 만든다.
 
+> 구현 상태: 2026-07-16 기준 public mode, 익명 policy Tool, IP-first limiter, filesystem workspace와 sweeper는 완료됐다. content canary를 포함한 quick lifecycle과 edge IP normalization이 남아 있어 R1/PG0 전체는 아직 종료되지 않았다.
+
 ### 작업 패키지
 
 #### WP-R1.1 Service Mode와 Public Catalog

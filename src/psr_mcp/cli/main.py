@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from psr_mcp import __version__
 from psr_mcp.bootstrap import build_container
-from psr_mcp.config import Settings
+from psr_mcp.config import ServiceMode, Settings
 from psr_mcp.conformance import ConformanceError, ConformanceOptions, run_conformance
 from psr_mcp.mcp.server import create_http_app
 from psr_mcp.storage.migrations.runner import current as migration_current
@@ -81,7 +81,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.as_json:
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
             else:
-                print("PSR MCP Foundation development configuration: OK")
+                print(f"PSR MCP {settings.service_mode.value} configuration: OK")
                 print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
             return 0
         if args.command == "serve":
@@ -142,12 +142,16 @@ def _database_command(*, action: str, revision: str | None, confirm_downgrade: b
 
 
 def _limitations(settings: Settings) -> list[str]:
-    limitations = ["collector and reporting modules are not implemented"]
+    limitations: list[str] = []
+    if settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
+        limitations.append("public research collection and reporting are not implemented")
+        limitations.append("Public Preview PG0 through PG3 are not yet fully validated")
+    else:
+        limitations.append("collector and reporting modules are not implemented")
     if settings.auth_mode.value == "static":
         limitations.append("development static authentication")
     if settings.storage_mode.value == "memory":
         limitations.append("in-memory storage")
-    limitations.append("remote Host conformance is not validated")
     return limitations
 
 

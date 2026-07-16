@@ -20,12 +20,12 @@ def test_doctor_json_is_redacted(
     assert payload["status"] == "ok"
     assert payload["settings"]["cursor_signing_key"] == "***"
     assert "in-memory storage" in payload["limitations"]
-    assert "remote Host conformance is not validated" in payload["limitations"]
+    assert all("remote Host conformance" not in value for value in payload["limitations"])
 
 
 def test_doctor_human_output(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["doctor"]) == 0
-    assert "Foundation development configuration: OK" in capsys.readouterr().out
+    assert "foundation configuration: OK" in capsys.readouterr().out
 
 
 def test_configuration_error_uses_exit_code_2(

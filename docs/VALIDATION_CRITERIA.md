@@ -20,13 +20,15 @@
 | Gate | 의미 | 필수 영역 | 현재 상태 |
 |---|---|---|---|
 | G0~G5 | 기존 Foundation build/domain/MCP/DB/OAuth/Host | Foundation regression | PASS |
-| PG0 | Public Boundary Safe | mode, catalog, quota, tmp, purge, no-content telemetry | NOT IMPLEMENTED |
+| PG0 | Public Boundary Safe | mode, catalog, quota, tmp, purge, no-content telemetry | IN PROGRESS |
 | PG1 | Useful Research | planner, collector, parser, evidence, quick | NOT IMPLEMENTED |
 | PG2 | Zero-Retention Async | handle, worker, consume, TTL, crash recovery | NOT IMPLEMENTED |
 | PG3 | Public Preview Ready | edge, Host, load/cost, docs, incident rehearsal | NOT IMPLEMENTED |
 | AG0 | Account Trust | opt-in save, user isolation, export/delete, OAuth hardening | FUTURE |
 
-Foundation 통과는 Public Preview 통과를 의미하지 않는다. 특히 현재 process-local rate limiter, collector 부재, ephemeral purge 부재로 인해 공개 endpoint는 아직 열 수 없다.
+Foundation 통과는 Public Preview 통과를 의미하지 않는다. S0에서 public composition, HMAC IP-first limiter, ephemeral workspace와 purge sweeper는 구현됐다. 실제 content canary, quick/start kill-switch action, edge IP normalization, collector가 남아 있으므로 공개 endpoint는 아직 열 수 없다.
+
+S0 실행 증적은 [2026-07-16 Public S0 보고서](./validation/2026-07-16-public-s0.md)에 기록한다.
 
 ## 3. 검증 환경
 

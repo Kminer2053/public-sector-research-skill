@@ -4,21 +4,20 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
 
 from mcp.server.auth.provider import TokenVerifier
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.routing import Mount
 
-from psr_mcp.bootstrap import Container
-from psr_mcp.config import AuthMode, Environment, Settings
+from psr_mcp.bootstrap import ApplicationContainer, PublicContainer
+from psr_mcp.config import AuthMode, Environment
 from psr_mcp.mcp.handlers import McpHandlers
 from psr_mcp.mcp.http_policy import compose_http_policy
+from psr_mcp.mcp.public_server import create_public_server
 from psr_mcp.mcp.schemas import (
     ProjectGetOutput,
     ProjectPageOutput,
@@ -26,13 +25,18 @@ from psr_mcp.mcp.schemas import (
     RunCancelOutput,
     RunStatusOutput,
 )
+from psr_mcp.mcp.transport import transport_security
 
 
 def create_server(
-    container: Container,
+    container: ApplicationContainer,
     *,
     token_verifier: TokenVerifier | None = None,
 ) -> FastMCP:
+    if isinstance(container, PublicContainer):
+        if token_verifier is not None:
+            raise RuntimeError("public mode does not accept an OAuth token verifier")
+        return create_public_server(container)
     settings = container.settings
     effective_verifier = token_verifier or container.token_verifier
     if token_verifier is not None and container.token_verifier is not None:
@@ -72,7 +76,7 @@ def create_server(
         json_response=True,
         stateless_http=True,
         auth=auth_settings,
-        transport_security=_transport_security(settings),
+        transport_security=transport_security(settings),
     )
 
     @server.tool(
@@ -185,7 +189,7 @@ def create_server(
 
 
 def create_http_app(
-    container: Container,
+    container: ApplicationContainer,
     *,
     token_verifier: TokenVerifier | None = None,
 ) -> Starlette:
@@ -198,6 +202,11 @@ def create_http_app(
         request_timeout_seconds=container.settings.request_timeout_seconds,
         rate_limit_requests=container.settings.rate_limit_requests,
         rate_limit_window_seconds=container.settings.rate_limit_window_seconds,
+        rate_limit_hmac_key=(
+            container.abuse_hmac_key
+            if isinstance(container, PublicContainer)
+            else container.settings.cursor_signing_key.encode()
+        ),
     )
 
     @asynccontextmanager
@@ -213,18 +222,4 @@ def create_http_app(
         debug=False,
         routes=[Mount("/", app=protected)],
         lifespan=lifespan,
-    )
-
-
-def _transport_security(settings: Settings) -> TransportSecuritySettings:
-    parsed = urlparse(settings.public_url)
-    hostname = parsed.hostname
-    if hostname is None:
-        raise ValueError("public URL hostname is required")
-    origin = f"{parsed.scheme}://{parsed.netloc}"
-    allowed_hosts = [hostname, f"{hostname}:*", "127.0.0.1:*", "localhost:*"]
-    return TransportSecuritySettings(
-        enable_dns_rebinding_protection=True,
-        allowed_hosts=sorted(set(allowed_hosts)),
-        allowed_origins=[origin],
     )

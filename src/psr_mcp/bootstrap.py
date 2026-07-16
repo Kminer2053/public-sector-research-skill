@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from urllib.parse import urlparse
 
 from psr_mcp.application.cursors import HmacCursorCodec
@@ -20,10 +21,11 @@ from psr_mcp.auth.providers import (
 from psr_mcp.auth.tokens import OidcJwtTokenVerifier, OidcVerifierSettings
 from psr_mcp.common.runtime import SystemClock, Uuid4Generator
 from psr_mcp.common.secrets import EnvironmentSecretResolver, SecretResolver
-from psr_mcp.config import AuthMode, Environment, Settings, StorageMode
+from psr_mcp.config import AuthMode, Environment, ServiceMode, Settings, StorageMode
 from psr_mcp.domain.identity import ActorType, Role
 from psr_mcp.domain.projects import Project, ProjectStatus
 from psr_mcp.domain.research import PlanStatus, ResearchPlan
+from psr_mcp.ephemeral import FilesystemEphemeralWorkspaceStore, PurgeSweeper
 from psr_mcp.storage.memory import InMemoryStore
 from psr_mcp.storage.postgres import PostgresMembershipResolver, PostgresStore
 
@@ -54,12 +56,36 @@ class Container:
                 await self.store.close()
 
 
+@dataclass(frozen=True, slots=True)
+class PublicContainer:
+    settings: Settings
+    ids: Uuid4Generator
+    workspace_store: FilesystemEphemeralWorkspaceStore
+    purge_sweeper: PurgeSweeper
+    abuse_hmac_key: bytes
+
+    async def open(self) -> None:
+        await self.workspace_store.open()
+        await self.purge_sweeper.start()
+
+    async def close(self) -> None:
+        await self.purge_sweeper.stop()
+
+
+ApplicationContainer = Container | PublicContainer
+
+
 def build_container(
     settings: Settings,
     *,
     secret_resolver: SecretResolver | None = None,
-) -> Container:
+) -> ApplicationContainer:
     settings.validate()
+    if settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
+        return _build_public_container(
+            settings,
+            secret_resolver or EnvironmentSecretResolver(),
+        )
     if (
         settings.environment is Environment.DEVELOPMENT
         and settings.auth_mode is AuthMode.STATIC
@@ -72,6 +98,36 @@ def build_container(
             secret_resolver or EnvironmentSecretResolver(),
         )
     raise RuntimeError("unsupported authentication and storage composition; refusing startup")
+
+
+def _build_public_container(
+    settings: Settings,
+    secret_resolver: SecretResolver,
+) -> PublicContainer:
+    if settings.ephemeral_root is None:
+        raise RuntimeError("public ephemeral composition requires an ephemeral root")
+    if settings.abuse_hmac_key_ref:
+        abuse_hmac_key = secret_resolver.resolve(settings.abuse_hmac_key_ref).encode()
+    else:
+        abuse_hmac_key = settings.cursor_signing_key.encode()
+    if len(abuse_hmac_key) < 32:
+        raise ValueError("public abuse HMAC key must contain at least 32 bytes")
+    clock = SystemClock()
+    store = FilesystemEphemeralWorkspaceStore(
+        Path(settings.ephemeral_root),
+        now=clock.now,
+        create_root=settings.environment is Environment.DEVELOPMENT,
+    )
+    return PublicContainer(
+        settings=settings,
+        ids=Uuid4Generator(),
+        workspace_store=store,
+        purge_sweeper=PurgeSweeper(
+            store,
+            interval_seconds=settings.purge_sweep_seconds,
+        ),
+        abuse_hmac_key=abuse_hmac_key,
+    )
 
 
 def _build_development_container(settings: Settings) -> Container:

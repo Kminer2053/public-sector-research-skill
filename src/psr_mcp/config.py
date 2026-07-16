@@ -8,6 +8,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from pathlib import Path
 from typing import Literal, cast
 from urllib.parse import ParseResult, urlparse
 
@@ -27,6 +28,13 @@ class StorageMode(StrEnum):
     POSTGRES = "postgres"
 
 
+class ServiceMode(StrEnum):
+    FOUNDATION = "foundation"
+    PUBLIC_EPHEMERAL = "public_ephemeral"
+    ACCOUNT_OPT_IN = "account_opt_in"
+    ENTERPRISE = "enterprise"
+
+
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 DEFAULT_CURSOR_SIGNING_KEY = "development-only-cursor-signing-key"
 
@@ -34,6 +42,7 @@ DEFAULT_CURSOR_SIGNING_KEY = "development-only-cursor-signing-key"
 @dataclass(frozen=True, slots=True)
 class Settings:
     environment: Environment = Environment.DEVELOPMENT
+    service_mode: ServiceMode = ServiceMode.FOUNDATION
     host: str = "127.0.0.1"
     port: int = 8000
     public_url: str = "http://127.0.0.1:8000"
@@ -52,6 +61,14 @@ class Settings:
     database_url_ref: str | None = None
     log_level: LogLevel = "INFO"
     cursor_signing_key: str = DEFAULT_CURSOR_SIGNING_KEY
+    ephemeral_root: str | None = None
+    run_ttl_seconds: int = 3_600
+    delivered_purge_seconds: int = 60
+    failed_content_ttl_seconds: int = 600
+    orphan_max_age_seconds: int = 7_200
+    purge_sweep_seconds: int = 60
+    public_kill_switch: bool = False
+    abuse_hmac_key_ref: str | None = None
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
@@ -60,6 +77,7 @@ class Settings:
             public_url = values.get("PSR_PUBLIC_URL", "http://127.0.0.1:8000")
             settings = cls(
                 environment=Environment(values.get("PSR_ENV", "development")),
+                service_mode=ServiceMode(values.get("PSR_SERVICE_MODE", "foundation")),
                 host=values.get("PSR_HOST", "127.0.0.1"),
                 port=int(values.get("PSR_PORT", "8000")),
                 public_url=public_url,
@@ -92,6 +110,21 @@ class Settings:
                 database_url_ref=values.get("PSR_DATABASE_URL_REF"),
                 log_level=cast(LogLevel, values.get("PSR_LOG_LEVEL", "INFO").upper()),
                 cursor_signing_key=values.get("PSR_CURSOR_SIGNING_KEY", DEFAULT_CURSOR_SIGNING_KEY),
+                ephemeral_root=values.get("PSR_EPHEMERAL_ROOT"),
+                run_ttl_seconds=int(values.get("PSR_RUN_TTL_SECONDS", "3600")),
+                delivered_purge_seconds=int(
+                    values.get("PSR_DELIVERED_PURGE_SECONDS", "60")
+                ),
+                failed_content_ttl_seconds=int(
+                    values.get("PSR_FAILED_CONTENT_TTL_SECONDS", "600")
+                ),
+                orphan_max_age_seconds=int(values.get("PSR_ORPHAN_MAX_AGE_SECONDS", "7200")),
+                purge_sweep_seconds=int(values.get("PSR_PURGE_SWEEP_SECONDS", "60")),
+                public_kill_switch=_parse_bool(
+                    values.get("PSR_PUBLIC_KILL_SWITCH", "false"),
+                    name="PSR_PUBLIC_KILL_SWITCH",
+                ),
+                abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
             )
         except (TypeError, ValueError) as error:
             raise ValueError("invalid PSR configuration value") from error
@@ -113,6 +146,24 @@ class Settings:
             raise ValueError("PSR_RATE_LIMIT_REQUESTS must be 1..10000")
         if self.rate_limit_window_seconds < 1 or self.rate_limit_window_seconds > 3_600:
             raise ValueError("PSR_RATE_LIMIT_WINDOW_SECONDS must be 1..3600")
+        if self.run_ttl_seconds < 60 or self.run_ttl_seconds > 3_600:
+            raise ValueError("PSR_RUN_TTL_SECONDS must be 60..3600")
+        if self.delivered_purge_seconds < 1 or self.delivered_purge_seconds > 60:
+            raise ValueError("PSR_DELIVERED_PURGE_SECONDS must be 1..60")
+        if self.failed_content_ttl_seconds < 1 or self.failed_content_ttl_seconds > 600:
+            raise ValueError("PSR_FAILED_CONTENT_TTL_SECONDS must be 1..600")
+        if self.orphan_max_age_seconds < self.run_ttl_seconds:
+            raise ValueError("PSR_ORPHAN_MAX_AGE_SECONDS must be at least PSR_RUN_TTL_SECONDS")
+        if self.orphan_max_age_seconds > 7_200:
+            raise ValueError("PSR_ORPHAN_MAX_AGE_SECONDS must be at most 7200")
+        if self.purge_sweep_seconds < 1 or self.purge_sweep_seconds > 60:
+            raise ValueError("PSR_PURGE_SWEEP_SECONDS must be 1..60")
+        if self.ephemeral_root is not None and not Path(self.ephemeral_root).is_absolute():
+            raise ValueError("PSR_EPHEMERAL_ROOT must be an absolute path")
+        if self.abuse_hmac_key_ref and not re.fullmatch(
+            r"env://[A-Za-z_][A-Za-z0-9_]*", self.abuse_hmac_key_ref
+        ):
+            raise ValueError("PSR_ABUSE_HMAC_KEY_REF must use env://VARIABLE")
         parsed_public_url = urlparse(self.public_url)
         if (
             parsed_public_url.scheme not in {"http", "https"}
@@ -184,6 +235,13 @@ class Settings:
                 or parsed_origin.fragment
             ):
                 raise ValueError("PSR_OAUTH_JWKS_ORIGINS must contain origins only")
+        if self.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
+            if self.auth_mode is not AuthMode.STATIC:
+                raise ValueError("public ephemeral mode must not configure OAuth authentication")
+            if self.storage_mode is not StorageMode.MEMORY:
+                raise ValueError("public ephemeral mode must not configure persistent storage")
+            if not self.ephemeral_root:
+                raise ValueError("public ephemeral mode requires PSR_EPHEMERAL_ROOT")
         if self.environment is Environment.DEVELOPMENT:
             if self.auth_mode is AuthMode.OAUTH and not self.issuer_url:
                 raise ValueError("OAuth requires PSR_ISSUER_URL")
@@ -204,6 +262,10 @@ class Settings:
             raise ValueError("production PSR_PUBLIC_URL must use HTTPS")
         if parsed_resource_url.scheme != "https":
             raise ValueError("production PSR_RESOURCE_SERVER_URL must use HTTPS")
+        if self.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
+            if not self.abuse_hmac_key_ref:
+                raise ValueError("public production requires PSR_ABUSE_HMAC_KEY_REF")
+            return
         if self.auth_mode is not AuthMode.OAUTH:
             raise ValueError("production requires OAuth authentication")
         if self.storage_mode is not StorageMode.POSTGRES:
@@ -223,9 +285,19 @@ class Settings:
         values = asdict(self)
         values["cursor_signing_key"] = "***"
         values["database_url_ref"] = bool(self.database_url_ref)
+        values["abuse_hmac_key_ref"] = bool(self.abuse_hmac_key_ref)
         return values
 
 
 def _origin(parsed_url: ParseResult) -> tuple[str, str, int]:
     default_port = 443 if parsed_url.scheme == "https" else 80
     return parsed_url.scheme, parsed_url.hostname or "", parsed_url.port or default_port
+
+
+def _parse_bool(value: str, *, name: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")

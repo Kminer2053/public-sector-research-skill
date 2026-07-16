@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import math
@@ -30,6 +31,7 @@ def compose_http_policy(
     request_timeout_seconds: float,
     rate_limit_requests: int,
     rate_limit_window_seconds: float,
+    rate_limit_hmac_key: bytes,
 ) -> ASGIApp:
     policy: ASGIApp = RequestTimeoutMiddleware(
         app,
@@ -39,6 +41,7 @@ def compose_http_policy(
         policy,
         requests=rate_limit_requests,
         window_seconds=rate_limit_window_seconds,
+        hmac_key=rate_limit_hmac_key,
     )
     policy = RequestBodyLimitMiddleware(policy, max_bytes=max_request_bytes)
     return RequestTraceMiddleware(policy, request_id_factory=request_id_factory)
@@ -165,12 +168,20 @@ class FixedWindowRateLimitMiddleware:
         window_seconds: float,
         max_keys: int = 10_000,
         monotonic: Callable[[], float] = time.monotonic,
+        wall_time: Callable[[], float] = time.time,
+        hmac_key: bytes,
+        key_rotation_seconds: int = 86_400,
     ) -> None:
+        if len(hmac_key) < 32:
+            raise ValueError("rate-limit HMAC key must contain at least 32 bytes")
         self._app = app
         self._requests = requests
         self._window_seconds = window_seconds
         self._max_keys = max_keys
         self._monotonic = monotonic
+        self._wall_time = wall_time
+        self._hmac_key = hmac_key
+        self._key_rotation_seconds = key_rotation_seconds
         self._windows: OrderedDict[str, _Window] = OrderedDict()
         self._lock = asyncio.Lock()
 
@@ -178,15 +189,23 @@ class FixedWindowRateLimitMiddleware:
         if scope["type"] != "http" or scope.get("path") != "/mcp":
             await self._app(scope, receive, send)
             return
-        allowed, retry_after = await self._consume(_rate_key(scope))
-        if not allowed:
-            await _send_json(
-                send,
-                429,
-                {"error": "rate_limited", "retryable": True},
-                headers=[(b"retry-after", str(max(1, math.ceil(retry_after))).encode())],
-            )
-            return
+        retry_after = 0.0
+        for key in _rate_keys(
+            scope,
+            hmac_key=self._hmac_key,
+            wall_time=self._wall_time(),
+            rotation_seconds=self._key_rotation_seconds,
+        ):
+            allowed, key_retry_after = await self._consume(key)
+            retry_after = max(retry_after, key_retry_after)
+            if not allowed:
+                await _send_json(
+                    send,
+                    429,
+                    {"error": "rate_limited", "retryable": True},
+                    headers=[(b"retry-after", str(max(1, math.ceil(retry_after))).encode())],
+                )
+                return
         await self._app(scope, receive, send)
 
     async def _consume(self, key: str) -> tuple[bool, float]:
@@ -221,14 +240,27 @@ def _request_id(scope: Scope) -> str | None:
     return decoded if REQUEST_ID_PATTERN.fullmatch(decoded) else None
 
 
-def _rate_key(scope: Scope) -> str:
+def _rate_keys(
+    scope: Scope,
+    *,
+    hmac_key: bytes,
+    wall_time: float,
+    rotation_seconds: int,
+) -> tuple[str, ...]:
     authorization = _header(scope, b"authorization")
     client = scope.get("client")
     host = client[0] if client else "unknown"
+    rotation = int(wall_time // rotation_seconds)
+    ip_digest = hmac.new(
+        hmac_key,
+        f"{rotation}:{host}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    keys = [f"ip:{rotation}:{ip_digest}"]
     if authorization and authorization.lower().startswith(b"bearer "):
         digest = hashlib.sha256(authorization[7:]).hexdigest()
-        return f"token:{digest}:{host}"
-    return f"anonymous:{host}"
+        keys.append(f"credential:{rotation}:{ip_digest}:{digest}")
+    return tuple(keys)
 
 
 def _header(scope: Scope, name: bytes) -> bytes | None:

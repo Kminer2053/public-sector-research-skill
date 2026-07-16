@@ -14,8 +14,13 @@ MIN_CRITICAL_STATEMENT_PERCENT = 95.0
 CRITICAL_PATH_PREFIXES = (
     "src/psr_mcp/application/",
     "src/psr_mcp/domain/",
+    "src/psr_mcp/ephemeral/",
 )
-CRITICAL_EXACT_PATHS = {"src/psr_mcp/auth/policy.py"}
+CRITICAL_EXACT_PATHS = {
+    "src/psr_mcp/auth/policy.py",
+    "src/psr_mcp/config.py",
+    "src/psr_mcp/mcp/http_policy.py",
+}
 
 
 def evaluate(payload: Mapping[str, Any]) -> list[str]:

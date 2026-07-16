@@ -10,7 +10,7 @@ from starlette.applications import Starlette
 
 from psr_mcp.auth.membership import ResolvedMembership
 from psr_mcp.auth.providers import McpAccessTokenAuthContextProvider
-from psr_mcp.bootstrap import build_container
+from psr_mcp.bootstrap import Container, build_container
 from psr_mcp.config import Settings
 from psr_mcp.domain.identity import ActorType, Role
 from psr_mcp.mcp.server import create_server
@@ -68,6 +68,7 @@ class Memberships:
 def _server_app() -> tuple[FastMCP, Starlette]:
     oauth_settings = Settings.from_env({"PSR_AUTH_MODE": "oauth", "PSR_ISSUER_URL": ISSUER})
     base = build_container(Settings.from_env({}))
+    assert isinstance(base, Container)
     container = replace(
         base,
         settings=oauth_settings,

@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from httpx import ASGITransport, AsyncClient
 
 from psr_mcp.auth.tokens import OidcJwtTokenVerifier, OidcVerifierSettings
-from psr_mcp.bootstrap import build_container
+from psr_mcp.bootstrap import Container, build_container
 from psr_mcp.common.secrets import EnvironmentSecretResolver
 from psr_mcp.config import Settings
 from psr_mcp.mcp.server import create_http_app
@@ -133,6 +133,7 @@ async def test_real_jwt_mcp_and_postgres_membership_boundary(
         settings,
         secret_resolver=EnvironmentSecretResolver({"PSR_DATABASE_URL": seeded_postgres.runtime}),
     )
+    assert isinstance(container, Container)
     verifier = OidcJwtTokenVerifier(
         OidcVerifierSettings(
             issuer=TEST_ISSUER,

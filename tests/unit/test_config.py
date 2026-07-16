@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from psr_mcp.auth.providers import McpAccessTokenAuthContextProvider
-from psr_mcp.bootstrap import build_container
+from psr_mcp.bootstrap import Container, PublicContainer, build_container
 from psr_mcp.common.secrets import EnvironmentSecretResolver
-from psr_mcp.config import Settings
+from psr_mcp.config import ServiceMode, Settings
 from psr_mcp.storage.postgres import PostgresStore
 
 
@@ -57,6 +59,7 @@ def test_production_composition_uses_oauth_and_postgres_adapters() -> None:
             {"PSR_DATABASE_URL": "postgresql://runtime:secret@db.example.gov/psr"}
         ),
     )
+    assert isinstance(container, Container)
     assert isinstance(container.store, PostgresStore)
     assert isinstance(container.auth_provider, McpAccessTokenAuthContextProvider)
     assert container.token_verifier is not None
@@ -239,3 +242,93 @@ def test_configuration_guards_cover_each_security_boundary(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         Settings.from_env(overrides)
+
+
+def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path),
+            "PSR_PUBLIC_KILL_SWITCH": "true",
+        }
+    )
+    assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
+    assert settings.public_kill_switch is True
+    assert settings.diagnostics()["abuse_hmac_key_ref"] is False
+
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+
+
+@pytest.mark.parametrize(
+    "overrides, message",
+    [
+        ({"PSR_SERVICE_MODE": "public_ephemeral"}, "EPHEMERAL_ROOT"),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "relative",
+            },
+            "absolute",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_AUTH_MODE": "oauth",
+                "PSR_ISSUER_URL": "https://idp.example.gov",
+            },
+            "must not configure OAuth",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_STORAGE_MODE": "postgres",
+                "PSR_DATABASE_URL_REF": "env://PSR_DATABASE_URL",
+            },
+            "must not configure persistent",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_RUN_TTL_SECONDS": "3601",
+            },
+            "RUN_TTL_SECONDS",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_KILL_SWITCH": "sometimes",
+            },
+            "invalid PSR configuration",
+        ),
+    ],
+)
+def test_public_ephemeral_configuration_fails_closed(
+    overrides: dict[str, str], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        Settings.from_env(overrides)
+
+
+def test_public_production_requires_https_root_and_abuse_key() -> None:
+    base = {
+        "PSR_ENV": "production",
+        "PSR_SERVICE_MODE": "public_ephemeral",
+        "PSR_PUBLIC_URL": "https://research.example.gov",
+        "PSR_RESOURCE_SERVER_URL": "https://research.example.gov/mcp",
+        "PSR_EPHEMERAL_ROOT": "/var/lib/psr/ephemeral",
+    }
+    with pytest.raises(ValueError, match="ABUSE_HMAC_KEY_REF"):
+        Settings.from_env(base)
+
+    settings = Settings.from_env(
+        {
+            **base,
+            "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+        }
+    )
+    assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL

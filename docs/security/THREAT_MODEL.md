@@ -142,11 +142,11 @@ flowchart LR
 
 | ID | 위협 | 필수 통제 | 검증 | 상태 |
 |---|---|---|---|---|
-| TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | 미구현/PG0 |
+| TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, edge 대기 |
 | TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~013` | 미구현/PG0 |
 | TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | 미구현/PG0 |
-| TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | 미구현/PG0 |
-| TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | 미구현/PG0 |
+| TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS, content canary 대기 |
+| TM-PUB-005 | path traversal·symlink로 임의 file 접근 | random path, no user filename, no-follow, restrictive mode | `VAL-PUB-TMP-*` | PASS/S0 |
 | TM-PUB-006 | handle 추측·유출로 결과 탈취 | 192-bit CSPRNG, keyed digest, no log, uniform error | `VAL-PUB-HANDLE-*` | 미구현/PG2 |
 | TM-PUB-007 | localhost/private/metadata SSRF | HTTPS/port policy, DNS/IP check, redirect revalidation | `VAL-PUB-NET-001~009` | 미구현/PG1 |
 | TM-PUB-008 | client credential upstream 유출 | credential input 미지원, header allowlist | `VAL-PUB-NET-010` | 미구현/PG1 |
@@ -212,7 +212,7 @@ flowchart LR
 
 | 항목 | 분류 | 다음 조치 |
 |---|---|---|
-| Public Tool과 ephemeral lifecycle | 미구현 | S0/PG0 |
+| Public Tool과 ephemeral lifecycle | 부분 구현 | `service.policy`, workspace, sweeper 완료; quick canary 남음 |
 | SafeCollector와 parser | 미구현 | P1/PG1 |
 | async handle·consume·purge | 미구현 | P2/PG2 |
 | 실제 기관 IdP/JWKS/폐기 전파 | 환경 미검증 | Pilot IdP owner와 integration test |

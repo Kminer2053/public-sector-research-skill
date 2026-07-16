@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: Accepted · 기준일: 2026-07-16 · 다음 increment: **S0 Public Safety Core**
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재: **S0 Core 완료, PG0 잔여항목 진행**
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
@@ -16,6 +16,17 @@
 - rollback 또는 kill switch
 
 현재 Foundation `F0~F4/G0~G5`는 완료된 과거 increment다. 다음 작업은 `G6` 기관 배포 승인이 아니라 Public Preview 경로 구현이다.
+
+### 2026-07-16 구현 상태
+
+- 완료: `ServiceMode.PUBLIC_EPHEMERAL`, public composition root, 익명 `service.policy`
+- 완료: HMAC IP-first limiter와 invalid bearer rotation 우회 방지
+- 완료: filesystem ephemeral workspace, access block, TTL purge sweeper
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 210 tests
+- coverage: statement 95.54%, branch 86.92%, public critical module 95% 이상
+- 남음: content를 받는 quick lifecycle canary, 실제 kill-switch action, edge IP normalization
+
+[Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
 
 ## 2. 현재 기준선
 
