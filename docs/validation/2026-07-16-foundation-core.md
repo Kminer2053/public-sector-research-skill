@@ -2,6 +2,10 @@
 
 > 대상: `D0`, `F0`, `F1` · 환경: macOS, Python 3.12.13, uv 0.11.14, `mcp==1.28.1`
 
+> 이 환경 표기는 당시 실행 증적이다. 후속 공급망 감사에서 `uv 0.11.14`의
+> `GHSA-4gg8-gxpx-9rph`를 확인해 현재 builder와 CI는 patched `uv 0.11.15`로 교체했다.
+> [후속 검증](./2026-07-16-direct-gateway-and-build-reproducibility.md)을 따른다.
+
 > 후속 상태: 이 보고서는 G0~G2 시점의 증적이다. 이후 [PostgreSQL G3](./2026-07-16-postgresql-g3.md), [OAuth G4](./2026-07-16-oauth-g4.md), [Remote G5](./2026-07-16-remote-g5.md)가 각각 통과했다.
 
 [검증 기준](../VALIDATION_CRITERIA.md) · [구현 계획](../IMPLEMENTATION_PLAN.md) · [상세설계](../DETAILED_DESIGN.md)

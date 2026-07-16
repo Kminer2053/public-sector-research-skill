@@ -29,8 +29,9 @@
 Foundation 통과는 Public Preview 통과를 의미하지 않는다. public composition, HMAC IP-first
 limiter, ephemeral workspace/purge, Planner, Search port, SafeCollector, parser, Evidence
 Composer와 quick 수직 슬라이스는 구현됐고 no-key curated mode의 실제 원문 수집·Evidence·
-purge smoke도 통과했다. edge IP normalization, async lifecycle, 사람 유용성·비용·live
-provider 보존 검증이 남아 있으므로 공개 endpoint는 아직 열 수 없다.
+purge smoke도 통과했다. direct gateway 기준은 구현됐지만 NGINX OCI·staging public-IP
+rehearsal, async lifecycle, 사람 유용성·비용·live provider 보존 검증이 남아 있으므로 공개
+endpoint는 아직 열 수 없다.
 
 S0 실행 증적은 [2026-07-16 Public S0 보고서](./validation/2026-07-16-public-s0.md)에 기록한다.
 PG1 로컬 수직 슬라이스는
@@ -366,6 +367,10 @@ Live QA는 다음을 추가로 충족해야 한다.
 | VAL-PUB-EDGE-010 | public conformance | anonymous policy→quick→purge→재연결, content-free summary |
 | VAL-PUB-EDGE-011 | synthetic feedback | 기본 미제출, staging 명시 옵션에서만 1회 검증 |
 | VAL-PUB-EDGE-012 | OCI runtime | pinned base, non-root, read-only root, tmpfs workspace, no capabilities, fixture smoke 뒤 root empty |
+
+현재 `VAL-PUB-EDGE-002~004`는 application middleware, direct NGINX 기준 구성, static contract와
+Python TLS spoof 시험까지 구현됐다. pinned NGINX `nginx -t`, 실제 certificate·public IP·quota,
+platform log canary를 staging에서 확인하기 전에는 PASS로 승격하지 않는다.
 
 ### 8.2 Load와 Cost
 

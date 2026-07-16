@@ -3,7 +3,9 @@
 > 상태: OCI artifact 구현 · 실제 공개 gateway 배포 전
 
 [Architecture](../ARCHITECTURE.md) · [Validation Criteria](../VALIDATION_CRITERIA.md) ·
-[Public Preview Runbook](./public-preview.md) · [Threat Model](../security/THREAT_MODEL.md)
+[Public Preview Runbook](./public-preview.md) ·
+[Direct Gateway Runbook](./direct-nginx-gateway.md) ·
+[Threat Model](../security/THREAT_MODEL.md)
 
 ## 1. 목적과 보안 계약
 
@@ -30,8 +32,11 @@ python3 scripts/verify_container_contract.py
 
 base image는 Python 3.12.13 slim Bookworm multi-platform digest에 고정한다. dependency는
 `uv.lock`을 requirements로 export해 builder stage에서 wheel로 만든 뒤 runtime stage에 offline
-install한다. dependency wheel 생성은 lockfile hash를 검증한다. `uv`와 source tree는 최종
-runtime image에 복사하지 않는다.
+install한다. dependency wheel 생성은 lockfile hash를 검증한다. builder의 `uv==0.11.15`,
+`hatchling==1.31.0`과 transitive dependency도
+`requirements/container-build.txt`의 SHA-256 hash로 검증하고 wheel만 허용한다. project
+wheel은 이 고정된 build environment에서 isolation 없이 생성한다. `uv`, Hatchling과 source
+tree는 최종 runtime image에 복사하지 않는다.
 
 로컬 Docker engine이 없는 개발환경에서는 static contract와 Python regression만 실행하고, OCI
 build와 hardened runtime smoke는 GitHub Actions의 `Public Preview OCI gate`에서 수행한다.
@@ -95,6 +100,9 @@ docker run --detach --name psr-public \
 application의 `proxy_headers`는 꺼져 있다. 임의의 `X-Forwarded-For`를 신뢰하지 않으며
 `PSR_TRUSTED_PROXY_CIDRS`의 peer에서 온 canonical header만 quota 입력으로 사용한다.
 
+기준 NGINX 구성, direct-ingress 제한, header strip/overwrite, quota와 staging rehearsal은
+[Direct Gateway Runbook](./direct-nginx-gateway.md)을 따른다.
+
 ## 6. Liveness와 Readiness
 
 Dockerfile에는 `HEALTHCHECK`이 없다.
@@ -138,7 +146,7 @@ CI 완료 조건:
 
 - 실제 OCI build CI 통과
 - image/SBOM 취약점 scan 정책
-- 실제 TLS gateway header overwrite와 spoof rehearsal
+- pinned NGINX `nginx -t` CI와 실제 TLS gateway spoof rehearsal
 - egress/private-route 검증
 - production `psrctl doctor --require-public-ready`
 - curated 또는 승인된 live provider의 실제 source smoke

@@ -769,6 +769,7 @@ content-free metrics
 현재 OCI artifact는 다음 배포계약을 코드로 고정한다.
 
 - pinned Python 3.12 slim multi-platform base digest
+- SHA-256 검증된 `uv`·Hatchling build tool과 wheel-only dependency resolution
 - builder wheel과 final runtime 분리
 - `USER 10001:10001`
 - production/public/static/memory fail-closed 기본값
@@ -778,6 +779,20 @@ content-free metrics
 
 상세 실행절차는 [Container Runbook](./runbooks/container-public-preview.md)을 따른다. image build
 통과는 gateway, egress와 실제 사용자 검증을 대신하지 않는다.
+
+Direct-ingress gateway reference는 다음을 코드로 고정한다.
+
+- pinned official NGINX image digest와 non-root/read-only/tmpfs syntax gate
+- TLS 1.2/1.3, unknown SNI 거부, canonical public Host
+- IP/global request·connection quota
+- 외부 `Authorization`, cookie와 forwarding identity 전부 제거
+- gateway direct TCP peer로 `X-PSR-Client-IP` overwrite
+- request/response buffering·cache·POST retry 금지
+- IP·URI·Host·header·body 없는 content-free access log
+
+이 구성은 NGINX가 인터넷 ingress를 직접 받는 topology 전용이다. CDN/LB 앞단은 명시적
+trusted-CIDR real-IP 설계와 별도 spoof test 전 지원하지 않는다. 상세 계약은
+[Direct Gateway Runbook](./runbooks/direct-nginx-gateway.md)을 따른다.
 
 ### Account Beta
 

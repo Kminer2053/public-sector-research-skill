@@ -1,0 +1,74 @@
+upstream psr_backend {
+    server ${PSR_UPSTREAM_HOST}:${PSR_UPSTREAM_PORT} max_fails=2 fail_timeout=10s;
+    keepalive 16;
+}
+
+# Reject unknown SNI/Host before it reaches the application.
+server {
+    listen 8443 ssl default_server;
+    server_name "";
+    ssl_reject_handshake on;
+    return 421;
+}
+
+server {
+    listen 8443 ssl;
+    server_name ${PSR_PUBLIC_HOST};
+
+    ssl_certificate /etc/nginx/tls/tls.crt;
+    ssl_certificate_key /etc/nginx/tls/tls.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:PSR_TLS:10m;
+    ssl_session_timeout 10m;
+    ssl_session_tickets off;
+
+    location = /mcp {
+        limit_req zone=psr_per_ip burst=20 nodelay;
+        limit_req zone=psr_global burst=40 nodelay;
+        limit_conn psr_per_ip_conn 4;
+        limit_conn psr_global_conn 100;
+
+        client_max_body_size 1m;
+        client_body_buffer_size 1m;
+        client_body_timeout 10s;
+        send_timeout 35s;
+
+        proxy_http_version 1.1;
+        proxy_connect_timeout 5s;
+        proxy_send_timeout 35s;
+        proxy_read_timeout 35s;
+        proxy_request_buffering off;
+        proxy_buffering off;
+        proxy_max_temp_file_size 0;
+        proxy_cache off;
+        proxy_next_upstream off;
+
+        # The public endpoint is anonymous. Strip credentials and every
+        # client-supplied forwarding identity, then create one canonical value
+        # from the direct TCP peer seen by this gateway.
+        proxy_set_header Host ${PSR_PUBLIC_HOST};
+        proxy_set_header Connection "";
+        proxy_set_header Authorization "";
+        proxy_set_header Cookie "";
+        proxy_set_header Forwarded "";
+        proxy_set_header X-Forwarded-For "";
+        proxy_set_header X-Forwarded-Host "";
+        proxy_set_header X-Forwarded-Proto "";
+        proxy_set_header X-Real-IP "";
+        proxy_set_header X-PSR-Client-IP $remote_addr;
+        proxy_set_header X-Request-ID $request_id;
+
+        proxy_hide_header Set-Cookie;
+        proxy_hide_header X-Powered-By;
+        add_header Cache-Control "no-store" always;
+        add_header X-Content-Type-Options "nosniff" always;
+
+        proxy_pass http://psr_backend;
+    }
+
+    location / {
+        return 404;
+    }
+}

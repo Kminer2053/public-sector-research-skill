@@ -148,7 +148,7 @@ flowchart LR
 
 | ID | 위협 | 필수 통제 | 검증 | 상태 |
 |---|---|---|---|---|
-| TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, edge 대기 |
+| TM-PUB-001 | bearer·client ID 회전으로 익명 quota 우회 | edge raw IP + application HMAC IP bucket | `VAL-PUB-ABUSE-001~006` | application PASS, direct NGINX 기준 구현; OCI·staging 대기 |
 | TM-PUB-002 | 대량 Run·source로 비용 고갈 | active/global/source quota, per-run budget, kill switch | `VAL-PUB-ABUSE-007~017` | process active·daily quick·runtime pause·run budget PASS; edge·provider cap·async·shared quota 대기 |
 | TM-PUB-003 | 질문·원문·결과가 log/DB에 잔존 | telemetry allowlist, persistent sink 분리, canary scan | `VAL-PUB-RET-010~014` | quick canary PASS/local; staging scan 대기 |
 | TM-PUB-004 | crash·삭제 실패로 tmp 잔존 | startup/periodic sweep, hard TTL, access block, retry | `VAL-PUB-RET-001~009` | local lifecycle PASS; async 대기 |
@@ -160,10 +160,10 @@ flowchart LR
 | TM-PUB-010 | source prompt injection이 조사정책 변경 | source를 untrusted data로 tag, deterministic policy | `VAL-PUB-PLAN-008`, `PARSE-007` | PASS/local |
 | TM-PUB-011 | 악성·제한 source 우회수집 | robots/terms/access policy, no captcha/paywall bypass | `VAL-PUB-NET-012` | robots PASS; site Terms 운영검토 대기 |
 | TM-PUB-012 | 인용 없는 허위사실 출력 | FACT citation lint, gaps/inference 분리 | `VAL-PUB-EVD-*` | citation lint PASS; domain synthesis QA 대기 |
-| TM-PUB-013 | edge forwarded IP spoof | trusted proxy CIDR, canonical single-IP parse, untrusted header strip | `VAL-PUB-ABUSE-011~012`, `VAL-PUB-EDGE-002` | application PASS; gateway rehearsal 대기 |
+| TM-PUB-013 | edge forwarded IP spoof | direct peer overwrite, trusted proxy CIDR, canonical single-IP parse, untrusted header strip | `VAL-PUB-ABUSE-011~012`, `VAL-PUB-EDGE-002` | Python TLS spoof PASS; NGINX OCI·staging rehearsal 대기 |
 | TM-PUB-014 | feedback로 content 재식별 | content-free signed token, no content join/free text, digest TTL sweep | `VAL-PUB-FBK-*` | local single-process PASS; shared dedup·운영 metric 대기 |
 | TM-PUB-015 | Search query가 외부 provider에 보존 | 기본 disabled, service disclosure, provider 계약 분리 | `FR-PUB-026`, Live QA | 고지 구현; provider ZDR 미검증 |
-| TM-PUB-016 | container 탈출·root filesystem 잔존 | non-root, read-only root, drop all capabilities, no-new-privileges, tmpfs only | `VAL-PUB-EDGE-012` | static contract 구현; OCI CI·staging 대기 |
+| TM-PUB-016 | container 탈출·root filesystem 잔존 | non-root, read-only root, drop all capabilities, no-new-privileges, tmpfs only | `VAL-PUB-EDGE-012` | app·gateway static contract 구현; OCI CI·staging 대기 |
 
 ### 6.1 Future Account Beta 위협
 

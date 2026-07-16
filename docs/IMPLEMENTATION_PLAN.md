@@ -24,6 +24,7 @@
 - 완료: `ServiceMode.PUBLIC_EPHEMERAL`, public composition root, 익명 `service.policy`
 - 완료: HMAC IP-first limiter와 invalid bearer rotation 우회 방지
 - 완료: trusted proxy CIDR에서 온 단일 `X-PSR-Client-IP`만 정규화하고 위조 header 제거
+- 완료: direct NGINX TLS·canonical Host·TCP peer IP overwrite·edge quota 기준과 정적검증
 - 완료: filesystem ephemeral workspace, access block, TTL purge sweeper
 - 완료: fixture quick lifecycle, content canary, immediate purge, quick kill switch
 - 완료: deterministic Government Planner v0와 bounded stop condition
@@ -40,14 +41,15 @@
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 423 tests
-- coverage gate: raw 95.08%, normalized statement 96.17%, branch 90.79%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS·gateway TLS spoof 포함 501 tests
+- coverage gate: raw 95.13%, normalized statement 96.24%, branch 90.75%,
   critical module 95% 이상
-- supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
+- supply chain: project 53 package와 OCI build tool 6 package 알려진 취약점 0,
+  `pypdf 6.14.2` BSD-3-Clause manifest 반영
 - 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
 - 검증: curated 실제 quick에서 7개 track·12 citation·failure 0·purge 완료
 - 남음: 공공업무 담당자 QA, 법령 source adapter, Writer 표현·적용범위 QA, 선택형 live Search
-  비교검증, edge IP normalization, async flow
+  비교검증, NGINX OCI·staging edge rehearsal, async flow
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
 [PG1 로컬 수직 슬라이스 보고서](./validation/2026-07-16-pg1-useful-research.md)는
@@ -248,14 +250,15 @@ src/psr_mcp/
 **상태:** process-local HMAC limiter, trusted proxy CIDR/client IP 정규화와
 `PSR_PUBLIC_MAX_ACTIVE_QUICK` 기반 process-local quick 동시실행 상한은 구현 완료했다.
 초과 요청은 workspace와 source network를 만들기 전에 `PUBLIC_LIMIT_REACHED`로 거부하며,
-성공·오류·취소 경로 모두 slot을 반환한다. 실제 gateway의 header overwrite, raw-IP quota와
-`PSR_PUBLIC_DAILY_QUICK_BUDGET` 기반 UTC 일일 진입 budget도 구현했다. production 공개
-mode는 명시값 없이는 시작하지 않으며, 소진 시 workspace·network 전에
-`PUBLIC_DAILY_BUDGET_EXHAUSTED`로 거부한다. 실제 gateway의 header overwrite, raw-IP quota,
-`PSR_PUBLIC_PAUSE_FILE`의 존재 여부만 읽는 runtime pause도 구현했다. 새 quick은 즉시
+성공·오류·취소 경로 모두 slot을 반환한다. `PSR_PUBLIC_DAILY_QUICK_BUDGET` 기반 UTC 일일
+진입 budget도 구현했다. production 공개 mode는 명시값 없이는 시작하지 않으며, 소진 시
+workspace·network 전에
+`PUBLIC_DAILY_BUDGET_EXHAUSTED`로 거부한다. `PSR_PUBLIC_PAUSE_FILE`의 존재 여부만 읽는
+runtime pause도 구현했다. 새 quick은 즉시
 거부하되 진행 중인 결과의 access block과 purge는 유지하며 sentinel 제거 시 restart 없이
-resume한다. 실제 gateway의 header overwrite, raw-IP quota, multi-replica 공유 quota와
-provider billing hard cap은 CH-P3.1에서 검증한다.
+resume한다. direct NGINX의 header overwrite, raw-IP request/connection quota 기준과 Python
+TLS spoof 시험은 구현했다. 실제 NGINX OCI, public IP, multi-replica 공유 quota와 provider
+billing hard cap은 CH-P3.1에서 검증한다.
 
 **DoD**
 

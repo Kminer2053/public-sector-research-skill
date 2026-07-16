@@ -4,7 +4,8 @@
 
 [ADR-0010](../adr/0010-progressive-identity-and-opt-in-persistence.md) ·
 [Architecture](../ARCHITECTURE.md) · [Implementation Plan](../IMPLEMENTATION_PLAN.md) ·
-[Container Runbook](../runbooks/container-public-preview.md)
+[Container Runbook](../runbooks/container-public-preview.md) ·
+[후속 Gateway/Build 검증](./2026-07-16-direct-gateway-and-build-reproducibility.md)
 
 ## 1. 변경 목적
 
@@ -109,10 +110,11 @@ PostgreSQL 17.10 임시 cluster로 25개 PostgreSQL test를 포함해 실행했�
 이 항목은 GitHub Actions의 `Public Preview OCI gate`가 실제로 통과한 뒤
 `VAL-PUB-EDGE-012 PASS`로 승격한다.
 
-또한 다음 외부 gate는 계속 PENDING이다.
+후속 change에서 direct NGINX 기준 구성과 Python TLS spoof 시험은 구현됐다. 다음 외부 gate는
+계속 PENDING이다.
 
-- TLS reverse proxy/WAF
-- canonical client IP overwrite와 spoof rehearsal
+- pinned NGINX OCI `nginx -t`와 staging TLS reverse proxy
+- 실제 public IP의 canonical overwrite·quota·log spoof rehearsal
 - egress/private-route 검증
 - provider hard cap
 - staging purge canary와 kill-switch game day

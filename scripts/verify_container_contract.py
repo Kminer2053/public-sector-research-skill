@@ -16,10 +16,14 @@ PINNED_PYTHON_IMAGE = (
 def validate_contract(root: Path) -> tuple[str, ...]:
     dockerfile = (root / "Dockerfile").read_text()
     dockerignore = (root / ".dockerignore").read_text()
+    pyproject = (root / "pyproject.toml").read_text()
+    build_requirements = (root / "requirements/container-build.txt").read_text()
     workflow = (root / ".github/workflows/ci.yml").read_text()
     return validate_contents(
         dockerfile=dockerfile,
         dockerignore=dockerignore,
+        pyproject=pyproject,
+        build_requirements=build_requirements,
         workflow=workflow,
     )
 
@@ -28,6 +32,8 @@ def validate_contents(
     *,
     dockerfile: str,
     dockerignore: str,
+    pyproject: str,
+    build_requirements: str,
     workflow: str,
 ) -> tuple[str, ...]:
     errors: list[str] = []
@@ -40,7 +46,11 @@ def validate_contents(
         "PSR_STORAGE_MODE=memory": "no persistent content repository",
         "PSR_EPHEMERAL_ROOT=/var/lib/psr/ephemeral": "fixed ephemeral root",
         "PSR_PUBLIC_PAUSE_FILE=/run/psr/public.pause": "runtime pause boundary",
-        "--require-hashes": "locked dependency hash verification",
+        "requirements/container-build.txt": "hashed OCI build tool requirements",
+        "--require-hashes": "locked dependency and build-tool hash verification",
+        "--only-binary=:all:": "wheel-only dependency resolution",
+        "--no-build-isolation": "preinstalled pinned PEP 517 build tools",
+        "--python /usr/local/bin/python": "explicit OCI builder interpreter",
         "USER 10001:10001": "non-root runtime user",
         'ENTRYPOINT ["psr-mcp"]': "exec-form server entrypoint",
         "FROM runtime-base AS test": "isolated container smoke target",
@@ -58,10 +68,31 @@ def validate_contents(
         r"PSR_DATABASE_URL": "public image must not embed a database URL",
         r"PSR_AUTH_MODE=oauth": "public image must not enable OAuth",
         r"PSR_STORAGE_MODE=postgres": "public image must not enable persistent storage",
+        r"(?mi)^\s*RUN\s+.*pip\s+install\s+.*uv==": (
+            "build tools must come from the hashed requirements file"
+        ),
     }
     for pattern, message in forbidden_patterns.items():
         if re.search(pattern, dockerfile):
             errors.append(message)
+
+    if 'requires = ["hatchling==1.31.0"]' not in pyproject:
+        errors.append("pyproject must pin the OCI PEP 517 backend exactly")
+    requirement_blocks = _requirement_blocks(build_requirements)
+    for package, version in {
+        "hatchling": "1.31.0",
+        "uv": "0.11.15",
+    }.items():
+        block = requirement_blocks.get(package)
+        if block is None or block[0].rstrip(" \\") != f"{package}=={version}":
+            errors.append(f"container build requirements must pin {package}=={version}")
+        elif not any("--hash=sha256:" in line for line in block[1:]):
+            errors.append(f"container build requirements must hash {package}")
+    for package, block in requirement_blocks.items():
+        if "==" not in block[0]:
+            errors.append(f"container build requirement {package} is not exact")
+        if not any("--hash=sha256:" in line for line in block[1:]):
+            errors.append(f"container build requirement {package} has no SHA-256 hash")
 
     required_ignores = {
         ".git",
@@ -97,6 +128,23 @@ def validate_contents(
         if fragment not in workflow:
             errors.append(f"CI missing {purpose}")
     return tuple(errors)
+
+
+def _requirement_blocks(requirements: str) -> dict[str, list[str]]:
+    blocks: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for raw_line in requirements.splitlines():
+        line = raw_line.rstrip()
+        if not line or line.lstrip().startswith("#"):
+            continue
+        if line[0].isspace():
+            if current is not None:
+                current.append(line.strip())
+            continue
+        package = re.split(r"[=<>!~\s]", line, maxsplit=1)[0].lower()
+        current = [line]
+        blocks[package] = current
+    return blocks
 
 
 def main(argv: Sequence[str] | None = None) -> int:

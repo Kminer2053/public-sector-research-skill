@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import json
 import socket
+import ssl
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -19,6 +21,7 @@ from starlette.types import Receive, Scope, Send
 from psr_mcp.bootstrap import build_container
 from psr_mcp.config import Settings
 from psr_mcp.conformance import ConformanceOptions, run_conformance
+from psr_mcp.mcp.http_policy import compose_http_policy
 from psr_mcp.mcp.server import create_http_app
 
 HOP_BY_HOP_HEADERS = {
@@ -32,6 +35,16 @@ HOP_BY_HOP_HEADERS = {
     b"trailer",
     b"transfer-encoding",
     b"upgrade",
+}
+EDGE_STRIPPED_REQUEST_HEADERS = HOP_BY_HOP_HEADERS | {
+    b"authorization",
+    b"cookie",
+    b"forwarded",
+    b"x-forwarded-for",
+    b"x-forwarded-host",
+    b"x-forwarded-proto",
+    b"x-psr-client-ip",
+    b"x-real-ip",
 }
 
 
@@ -105,6 +118,86 @@ async def test_official_conformance_through_tls_terminating_reverse_proxy(
     assert result["bearer_token_used"] is False
 
 
+@pytest.mark.remote
+@pytest.mark.anyio
+async def test_tls_gateway_overwrites_spoofed_identity_and_strips_credentials(
+    tmp_path: Path,
+) -> None:
+    ca_file, cert_file, key_file = _write_test_pki(tmp_path)
+    backend_listener = _listener()
+    public_listener = _listener()
+    backend_port = backend_listener.getsockname()[1]
+    public_port = public_listener.getsockname()[1]
+    public_origin = f"https://localhost:{public_port}"
+    backend_app = compose_http_policy(
+        _gateway_scope_app,
+        request_id_factory=lambda: "generated-request-id",
+        max_request_bytes=1_048_576,
+        request_timeout_seconds=30,
+        rate_limit_requests=120,
+        rate_limit_window_seconds=60,
+        rate_limit_hmac_key=b"testing-rate-limit-hmac-key-32-bytes",
+        trusted_proxy_cidrs=("127.0.0.1/32",),
+    )
+    backend = uvicorn.Server(
+        uvicorn.Config(
+            backend_app,
+            host="127.0.0.1",
+            port=backend_port,
+            log_level="error",
+            proxy_headers=False,
+            lifespan="off",
+        )
+    )
+    proxy = uvicorn.Server(
+        uvicorn.Config(
+            _reverse_proxy(
+                backend_origin=f"http://127.0.0.1:{backend_port}",
+                public_host=f"localhost:{public_port}",
+                canonical_client_ip="203.0.113.10",
+            ),
+            host="127.0.0.1",
+            port=public_port,
+            log_level="error",
+            proxy_headers=False,
+            lifespan="off",
+            ssl_certfile=str(cert_file),
+            ssl_keyfile=str(key_file),
+        )
+    )
+    backend_task = asyncio.create_task(backend.serve(sockets=[backend_listener]))
+    proxy_task = asyncio.create_task(proxy.serve(sockets=[public_listener]))
+    try:
+        await _wait_started(backend, proxy)
+        async with httpx.AsyncClient(
+            verify=ssl.create_default_context(cafile=str(ca_file))
+        ) as client:
+            response = await client.post(
+                f"{public_origin}/mcp",
+                content=b"gateway-boundary",
+                headers={
+                    "authorization": "Bearer must-be-removed",
+                    "cookie": "session=must-be-removed",
+                    "forwarded": "for=198.51.100.1",
+                    "x-forwarded-for": "198.51.100.2",
+                    "x-real-ip": "198.51.100.3",
+                    "x-psr-client-ip": "198.51.100.4",
+                },
+            )
+    finally:
+        proxy.should_exit = True
+        backend.should_exit = True
+        await asyncio.wait_for(asyncio.gather(proxy_task, backend_task), timeout=10)
+        public_listener.close()
+        backend_listener.close()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "client": "203.0.113.10",
+        "sensitive_headers_present": [],
+    }
+
+
 def _listener() -> socket.socket:
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -125,6 +218,7 @@ def _reverse_proxy(
     *,
     backend_origin: str,
     public_host: str,
+    canonical_client_ip: str | None = None,
 ) -> Callable[[Scope, Receive, Send], Awaitable[None]]:
     async def app(scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -145,9 +239,11 @@ def _reverse_proxy(
         forwarded_headers = [
             (name.decode("latin-1"), value.decode("latin-1"))
             for name, value in scope.get("headers", [])
-            if name.lower() not in HOP_BY_HOP_HEADERS
+            if name.lower() not in EDGE_STRIPPED_REQUEST_HEADERS
         ]
         forwarded_headers.append(("host", public_host))
+        if canonical_client_ip is not None:
+            forwarded_headers.append(("x-psr-client-ip", canonical_client_ip))
         async with httpx.AsyncClient(follow_redirects=False) as client:
             response = await client.request(
                 scope["method"],
@@ -171,6 +267,42 @@ def _reverse_proxy(
         await send({"type": "http.response.body", "body": response.content})
 
     return app
+
+
+async def _gateway_scope_app(scope: Scope, receive: Receive, send: Send) -> None:
+    while True:
+        message = await receive()
+        if message["type"] == "http.request" and not message.get("more_body", False):
+            break
+    sensitive_names = {
+        b"authorization",
+        b"cookie",
+        b"forwarded",
+        b"x-forwarded-for",
+        b"x-forwarded-host",
+        b"x-forwarded-proto",
+        b"x-psr-client-ip",
+        b"x-real-ip",
+    }
+    present = sorted(
+        name.decode("ascii")
+        for name, _ in scope.get("headers", [])
+        if name.lower() in sensitive_names
+    )
+    payload = json.dumps(
+        {
+            "client": scope.get("client", ("unknown", 0))[0],
+            "sensitive_headers_present": present,
+        }
+    ).encode()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": payload})
 
 
 def _write_test_pki(tmp_path: Path) -> tuple[Path, Path, Path]:

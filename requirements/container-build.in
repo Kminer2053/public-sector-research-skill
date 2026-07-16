@@ -1,0 +1,3 @@
+# Bootstrap and PEP 517 tools used only by the OCI builder stage.
+uv==0.11.15
+hatchling==1.31.0

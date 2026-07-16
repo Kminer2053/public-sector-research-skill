@@ -7,9 +7,10 @@
 > adapter, robots 정책, SafeCollector, HTML·JSON·PDF parser, Evidence Composer와 실제 quick
 > pipeline, citation-constrained Writer까지 연결됐습니다. curated mode의 실제 검토 원문
 > 5종·7개 track smoke, 근거 anchor 기반 조달 원칙 후보 5건과 즉시 purge는 통과했지만 사람
-> 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았습니다. pinned
-> non-root OCI artifact와 CI smoke 계약은 추가했지만 실제 image build 증적 전이므로 공개
-> 완성품으로 표현하거나 배포하면 안 됩니다.
+> 유용성 QA, async lifecycle과 운영 배포는 아직 검증되지 않았습니다. pinned non-root OCI
+> artifact, direct-ingress NGINX의 TLS·canonical client-IP overwrite·edge quota 기준과 CI
+> gate는 추가했지만 실제 image build, `nginx -t`, staging 증적 전이므로 공개 완성품으로
+> 표현하거나 배포하면 안 됩니다.
 
 ## 제품 성장 순서
 
@@ -52,6 +53,7 @@ Enterprise
 - [VALIDATION CRITERIA](./docs/VALIDATION_CRITERIA.md): PG0~PG3 공개 검증 게이트
 - [PUBLIC PREVIEW RUNBOOK](./docs/runbooks/public-preview.md): fixture와 선택형 Search adapter 실행
 - [CONTAINER RUNBOOK](./docs/runbooks/container-public-preview.md): non-root·read-only·tmpfs 공개 배포 경계
+- [DIRECT GATEWAY RUNBOOK](./docs/runbooks/direct-nginx-gateway.md): TLS·canonical client IP·edge quota 기준
 - [FOUNDATION DETAILED DESIGN](./docs/DETAILED_DESIGN.md): 이미 구현된 로그인·Tenant 기반 상세설계
 - [THREAT MODEL](./docs/security/THREAT_MODEL.md): Foundation과 Public Preview 위협
 - [ADR](./docs/adr/): 주요 제품·아키텍처 결정
@@ -65,7 +67,8 @@ Enterprise
 - OAuth/OIDC JWT·JWKS·Membership
 - request size·timeout·process-local rate boundary
 - official SDK, MCP Inspector, Codex Tool conformance
-- statement 95.02%, branch 87.10%, critical module 최소 95% coverage gate
+- 501개 전체 회귀, normalized statement 96.24%, branch 90.75%, critical module 최소 95%
+  coverage gate
 
 이 기능은 Account Beta와 Enterprise의 자산으로 유지합니다. Public Preview 요청에는 OAuth 로그인, Organization, persistent content storage를 사용하지 않습니다.
 
@@ -81,6 +84,8 @@ Account 서비스 장애가 Public endpoint를 중단시키지 않도록 배포�
 - token 없이 호출하는 `psr.service.policy`
 - token을 바꿔도 같은 IP 한도를 새로 얻지 못하는 HMAC IP-first limiter
 - trusted proxy CIDR의 단일 canonical client IP만 소비하고 위조 header를 제거하는 경계
+- direct NGINX가 외부 forwarding·credential header를 폐기하고 TCP peer IP로 canonical
+  header를 덮어쓰는 기준 구성과 정적계약
 - workspace·외부 수집 전에 적용하고 성공·실패·취소 뒤 반환하는 process active quick 상한
 - production에서 명시해야 하며 UTC 일자별로 새 조사 진입을 막는 process daily quick budget
 - 서버 재시작 없이 새 조사만 멈추고 기존 purge는 유지하는 operator pause-file signal
@@ -131,13 +136,16 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 [Progressive Account/OCI 검증 보고서](./docs/validation/2026-07-16-progressive-account-and-container.md)에
 선택 가입·freshness-aware reuse 설계와 컨테이너 정적계약, 전체 회귀 및 남은 OCI build gate를
 기록했습니다.
+[Direct Gateway/Build Reproducibility 검증 보고서](./docs/validation/2026-07-16-direct-gateway-and-build-reproducibility.md)에
+해시 고정 OCI builder, NGINX 기준 구성과 TLS header spoof 통합시험, 남은 CI·staging gate를
+기록했습니다.
 
 ## 다음 구현 범위
 
 다음 작업은 이미 연결된 수직 슬라이스를 실제 공개 서비스 수준으로 검증하는 것입니다.
 
-1. OCI CI build와 non-root·read-only·tmpfs runtime smoke
-2. 실제 reverse proxy의 canonical client IP header 설정과 end-to-end spoof·leakage scan
+1. GitHub Actions에서 OCI build, NGINX `nginx -t`, non-root·read-only·tmpfs smoke 실행
+2. staging reverse proxy의 canonical client IP·Host·quota·leakage rehearsal
 3. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
 4. 공공업무 담당자의 curated 결과 유용성·과잉해석·누락 검토
 5. 국가법령정보센터 source adapter와 curated catalog 갱신 절차

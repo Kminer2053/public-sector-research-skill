@@ -4,30 +4,37 @@ ARG PYTHON_IMAGE=python:3.12.13-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7
 
 FROM ${PYTHON_IMAGE} AS builder
 
-ARG UV_VERSION=0.11.14
-
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     UV_NO_PROGRESS=1
 
 WORKDIR /build
 
-RUN python -m pip install --no-cache-dir "uv==${UV_VERSION}"
-
 COPY pyproject.toml uv.lock README.md ./
+COPY requirements/container-build.txt ./requirements/container-build.txt
 COPY src ./src
 
-RUN uv export \
+RUN python -m pip install \
+      --no-cache-dir \
+      --only-binary=:all: \
+      --require-hashes \
+      --requirement requirements/container-build.txt \
+    && uv export \
       --frozen \
       --no-dev \
       --no-emit-project \
       --format requirements.txt \
       --output-file /tmp/requirements.txt \
     && python -m pip wheel \
+      --only-binary=:all: \
       --require-hashes \
       --wheel-dir /wheels \
       --requirement /tmp/requirements.txt \
-    && uv build --wheel --out-dir /wheels
+    && uv build \
+      --no-build-isolation \
+      --python /usr/local/bin/python \
+      --wheel \
+      --out-dir /wheels
 
 FROM ${PYTHON_IMAGE} AS runtime-base
 

@@ -12,6 +12,8 @@ class ValidateContents(Protocol):
         *,
         dockerfile: str,
         dockerignore: str,
+        pyproject: str,
+        build_requirements: str,
         workflow: str,
     ) -> tuple[str, ...]: ...
 
@@ -37,6 +39,8 @@ USER root
 ENTRYPOINT ["psr-mcp"]
 """,
         dockerignore=".git\n",
+        pyproject='requires = ["hatchling>=1.27,<2"]\n',
+        build_requirements="uv==0.11.15 \\\n",
         workflow="docker build .\n",
     )
 
@@ -45,3 +49,5 @@ ENTRYPOINT ["psr-mcp"]
     assert "runtime must not switch back to root" in errors
     assert "CI missing read-only root filesystem" in errors
     assert ".dockerignore missing .env" in errors
+    assert "pyproject must pin the OCI PEP 517 backend exactly" in errors
+    assert "container build requirements must hash uv" in errors
