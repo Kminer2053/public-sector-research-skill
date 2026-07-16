@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Portable, local-first Evidence Research Agent Skill for public-sector work"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT"
 dependencies = []
 
 [project.optional-dependencies]
