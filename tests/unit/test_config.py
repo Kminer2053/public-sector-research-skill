@@ -263,6 +263,26 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     assert isinstance(container, PublicContainer)
 
 
+def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path),
+            "PSR_TRUSTED_PROXY_CIDRS": "10.0.0.7/8, 2001:db8::1/64",
+        }
+    )
+    assert settings.trusted_proxy_cidrs == ("10.0.0.0/8", "2001:db8::/64")
+
+    with pytest.raises(ValueError, match="TRUSTED_PROXY_CIDRS"):
+        Settings.from_env(
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": str(tmp_path),
+                "PSR_TRUSTED_PROXY_CIDRS": "not-a-network",
+            }
+        )
+
+
 @pytest.mark.parametrize(
     "overrides, message",
     [
@@ -430,15 +450,25 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
     with pytest.raises(ValueError, match="ABUSE_HMAC_KEY_REF"):
         Settings.from_env(base)
 
+    with pytest.raises(ValueError, match="TRUSTED_PROXY_CIDRS"):
+        Settings.from_env(
+            {
+                **base,
+                "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+            }
+        )
+
     settings = Settings.from_env(
         {
             **base,
             "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
             "PSR_SEARCH_PROVIDER": "curated",
+            "PSR_TRUSTED_PROXY_CIDRS": "127.0.0.1/32, 10.0.0.7/8",
         }
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
     assert settings.search_provider is SearchProviderMode.CURATED
+    assert settings.trusted_proxy_cidrs == ("127.0.0.1/32", "10.0.0.0/8")
     container = build_container(
         settings,
         secret_resolver=EnvironmentSecretResolver(
@@ -455,6 +485,7 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
                 **base,
                 "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
                 "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+                "PSR_TRUSTED_PROXY_CIDRS": "127.0.0.1/32",
             }
         )
 

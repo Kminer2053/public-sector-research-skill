@@ -156,7 +156,7 @@ flowchart LR
 | TM-PUB-010 | source prompt injection이 조사정책 변경 | source를 untrusted data로 tag, deterministic policy | `VAL-PUB-PLAN-008`, `PARSE-007` | PASS/local |
 | TM-PUB-011 | 악성·제한 source 우회수집 | robots/terms/access policy, no captcha/paywall bypass | `VAL-PUB-NET-012` | robots PASS; site Terms 운영검토 대기 |
 | TM-PUB-012 | 인용 없는 허위사실 출력 | FACT citation lint, gaps/inference 분리 | `VAL-PUB-EVD-*` | citation lint PASS; domain synthesis QA 대기 |
-| TM-PUB-013 | edge forwarded IP spoof | trusted proxy boundary, direct header 거부 | `VAL-PUB-EDGE-002` | 미구현/PG3 |
+| TM-PUB-013 | edge forwarded IP spoof | trusted proxy CIDR, canonical single-IP parse, untrusted header strip | `VAL-PUB-ABUSE-011~012`, `VAL-PUB-EDGE-002` | application PASS; gateway rehearsal 대기 |
 | TM-PUB-014 | feedback로 content 재식별 | one-time opaque token, no content join/free text | `VAL-PUB-FBK-*` | 미구현/PG3 |
 | TM-PUB-015 | Search query가 외부 provider에 보존 | 기본 disabled, service disclosure, provider 계약 분리 | `FR-PUB-026`, Live QA | 고지 구현; provider ZDR 미검증 |
 

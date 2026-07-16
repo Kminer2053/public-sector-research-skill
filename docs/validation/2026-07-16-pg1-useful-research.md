@@ -171,7 +171,7 @@ markdown: 한국어 필수 heading 9개, 약 18.7KB
 ### 전체 회귀
 
 ```text
-416 passed (391 non-PostgreSQL + 25 PostgreSQL)
+423 passed (398 non-PostgreSQL + 25 PostgreSQL)
 ```
 
 여기에는 PostgreSQL 17 로컬 클러스터를 사용하는 25개 test가 포함된다. Public code 추가 뒤에도
@@ -180,9 +180,9 @@ OAuth, tenant RLS, durable Job과 Foundation contract가 유지됐다.
 ### Coverage
 
 ```text
-pytest raw total coverage: 95.10%
-coverage gate normalized statement: 96.22%
-coverage gate branch: 90.70%
+pytest raw total coverage: 95.08%
+coverage gate normalized statement: 96.17%
+coverage gate branch: 90.79%
 critical module statement minimum: 95.0%
 status: pass
 ```

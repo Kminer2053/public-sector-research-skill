@@ -4,7 +4,8 @@
 
 [README](../../README.md) · [Architecture](../ARCHITECTURE.md) ·
 [Validation](../VALIDATION_CRITERIA.md) ·
-[PG1 보고서](../validation/2026-07-16-pg1-useful-research.md)
+[PG1 보고서](../validation/2026-07-16-pg1-useful-research.md) ·
+[Trusted Proxy 검증](../validation/2026-07-16-trusted-proxy-boundary.md)
 
 ## 1. 운영 원칙
 
@@ -78,6 +79,7 @@ export PSR_EPHEMERAL_ROOT=/restricted/psr-ephemeral
 
 export PSR_ABUSE_HMAC_KEY_REF=env://PSR_ABUSE_HMAC_KEY
 export PSR_ABUSE_HMAC_KEY='replace-with-at-least-32-random-bytes'
+export PSR_TRUSTED_PROXY_CIDRS='127.0.0.1/32'
 
 export PSR_SEARCH_PROVIDER=brave
 export PSR_SEARCH_API_KEY_REF=env://BRAVE_SEARCH_API_KEY
@@ -86,9 +88,11 @@ export BRAVE_SEARCH_API_KEY='replace-with-server-side-key'
 uv run --frozen psr-mcp
 ```
 
-production에서는 reverse proxy의 TLS, trusted client IP normalization, raw-IP edge quota,
-ephemeral volume permission과 outbound egress 정책을 별도로 구성해야 한다. 이 항목이 없는
-단독 process는 Public Preview release 조건을 충족하지 않는다.
+production에서는 reverse proxy가 외부의 `X-PSR-Client-IP`를 제거한 뒤 자신이 확인한 단일
+canonical IP로 overwrite해야 한다. application은 `PSR_TRUSTED_PROXY_CIDRS` 안의 peer가 보낸
+이 header만 소비한다. TLS, raw-IP edge quota, ephemeral volume permission과 outbound egress
+정책도 별도로 구성해야 한다. 이 항목이 없는 단독 process는 Public Preview release 조건을
+충족하지 않는다.
 
 ## 5. 외부 provider 고지
 
@@ -117,6 +121,7 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_SEARCH_MAX_RESPONSE_BYTES` | 1 MiB | 1 KiB..10 MiB |
 | `PSR_SEARCH_MAX_CONCURRENCY` | 7 | 1..10 |
 | `PSR_COLLECTION_MAX_CONCURRENCY` | 4 | 1..20 |
+| `PSR_TRUSTED_PROXY_CIDRS` | 빈 값 | production public mode 필수, comma-separated CIDR |
 | `PSR_QUICK_TIMEOUT_SECONDS` | 20 | 1..30, request timeout 이하 |
 | `PSR_MAX_RUN_SOURCES` | 12 | 1..100 |
 | `PSR_MAX_RUN_BYTES` | 30 MiB | 1..100 MiB |

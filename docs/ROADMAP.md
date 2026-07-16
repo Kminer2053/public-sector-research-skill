@@ -110,12 +110,16 @@
 
 - edge raw IP quota 계약
 - application rotating-HMAC IP bucket
+- trusted proxy CIDR에서만 canonical client IP header를 소비하고 downstream 전달 전 제거
 - quick/start/active run/global concurrency limit
 - token·invalid bearer·handle 변경으로 IP quota를 우회하지 못하는 test
 - `Retry-After`, stable error code
 - 새 조사만 중단하는 kill switch
 
 **난이도:** 높음
+**현재:** application IP-first limiter와 trusted proxy normalization은 local PASS. 실제 edge
+header overwrite와 multi-replica quota는 R4에서 검증한다.
+
 **완료 기준:** `VAL-PUB-ABUSE-*` 전부 통과
 
 #### WP-R1.3 Ephemeral Workspace

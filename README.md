@@ -73,6 +73,7 @@ Enterprise
 - OAuth·Membership·PostgreSQL content sink를 구성하지 않는 public container
 - token 없이 호출하는 `psr.service.policy`
 - token을 바꿔도 같은 IP 한도를 새로 얻지 못하는 HMAC IP-first limiter
+- trusted proxy CIDR의 단일 canonical client IP만 소비하고 위조 header를 제거하는 경계
 - public production의 HTTPS·absolute ephemeral root·abuse key fail-closed 설정
 - random workspace ID, directory `0700`, file `0600`
 - path traversal·symlink·만료 workspace 접근 차단
@@ -105,6 +106,8 @@ Planner·SafeCollector 기반 검증을 기록했습니다.
 [PG1 로컬 수직 슬라이스 보고서](./docs/validation/2026-07-16-pg1-useful-research.md)에
 전체 회귀, 실제 공식 URL 5종의 7개 track Evidence 선택, no-key curated end-to-end smoke와
 남은 사람 유용성 검증을 기록했습니다.
+[Trusted Proxy 검증 보고서](./docs/validation/2026-07-16-trusted-proxy-boundary.md)에
+canonical client IP, header spoof 방지와 production fail-closed 증적을 기록했습니다.
 
 ## 다음 구현 범위
 
@@ -114,7 +117,7 @@ Planner·SafeCollector 기반 검증을 기록했습니다.
 2. 국가법령정보센터 source adapter와 curated catalog 갱신 절차
 3. citation-constrained 조달 원칙 후보의 표현·적용범위와 conflict/gap 검증
 4. 선택형 live Search provider의 recall·비용·보존경계 비교검증
-5. edge client IP normalization과 end-to-end content leakage scan
+5. 실제 reverse proxy의 canonical client IP header 설정과 end-to-end spoof·leakage scan
 6. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
 7. `start/status/result/cancel` async flow
 

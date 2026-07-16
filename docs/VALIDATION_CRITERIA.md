@@ -106,6 +106,8 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-ABUSE-008 | global outbound limit | 동시성 상한 유지 |
 | VAL-PUB-ABUSE-009 | source host limit | 한 host가 worker 독점 불가 |
 | VAL-PUB-ABUSE-010 | cost/time/byte 상한 | partial 종료, 무한 retry 없음 |
+| VAL-PUB-ABUSE-011 | trusted proxy client IP | 정상 단일 IP만 bucket에 사용, header는 downstream에서 제거 |
+| VAL-PUB-ABUSE-012 | untrusted peer의 client IP header 위조 | header 변경으로 quota 추가 획득 불가 |
 | VAL-PUB-ABUSE-011 | kill switch ON | 새 quick/start 거부 |
 | VAL-PUB-ABUSE-012 | kill switch ON | status/result/cancel/purge 유지 |
 | VAL-PUB-ABUSE-013 | limiter backend 장애 | 새 고비용 요청 fail closed |
@@ -336,7 +338,7 @@ Live QA는 다음을 추가로 충족해야 한다.
 | ID | 기준 | Expected |
 |---|---|---|
 | VAL-PUB-EDGE-001 | TLS endpoint | supported cipher/cert 검증 |
-| VAL-PUB-EDGE-002 | trusted client IP | proxy spoof 방지 |
+| VAL-PUB-EDGE-002 | trusted client IP | app local PASS, 실제 gateway overwrite·spoof rehearsal |
 | VAL-PUB-EDGE-003 | edge IP quota | application limiter 앞에서 동작 |
 | VAL-PUB-EDGE-004 | request body/time | proxy와 app limit 일치 |
 | VAL-PUB-EDGE-005 | egress policy | private network route 없음 |

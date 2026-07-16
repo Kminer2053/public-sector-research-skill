@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from collections.abc import AsyncIterator
 
@@ -36,6 +37,26 @@ async def _echo_app(scope: Scope, receive: Receive, send: Send) -> None:
     }
     await send(response)
     await send({"type": "http.response.body", "body": bytes(body)})
+
+
+async def _client_scope_app(scope: Scope, receive: Receive, send: Send) -> None:
+    del receive
+    payload = json.dumps(
+        {
+            "client": scope.get("client", ("unknown", 0))[0],
+            "forwarded_header_present": any(
+                key.lower() == b"x-psr-client-ip" for key, _ in scope.get("headers", [])
+            ),
+        }
+    ).encode()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": payload})
 
 
 def _policy(*, limit: int = 10, timeout: float = 1.0) -> ASGIApp:
@@ -160,6 +181,120 @@ async def test_invalid_bearer_rotation_cannot_bypass_ip_quota() -> None:
     assert first.status_code == 200
     assert second.status_code == 200
     assert limited.status_code == 429
+
+
+@pytest.mark.anyio
+async def test_trusted_proxy_client_ip_drives_quota_without_trusting_spoofed_headers() -> None:
+    app = compose_http_policy(
+        _echo_app,
+        request_id_factory=lambda: "generated-request-id",
+        max_request_bytes=1024,
+        request_timeout_seconds=1,
+        rate_limit_requests=1,
+        rate_limit_window_seconds=60,
+        rate_limit_hmac_key=b"testing-rate-limit-hmac-key-32-bytes",
+        trusted_proxy_cidrs=("10.0.0.0/8",),
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=("10.0.0.10", 1234)),
+        base_url="http://test",
+    ) as trusted:
+        first = await trusted.post(
+            "/mcp",
+            content=b"first",
+            headers={"x-psr-client-ip": "203.0.113.10"},
+        )
+        limited = await trusted.post(
+            "/mcp",
+            content=b"second",
+            headers={"x-psr-client-ip": "203.0.113.10"},
+        )
+        other_client = await trusted.post(
+            "/mcp",
+            content=b"third",
+            headers={"x-psr-client-ip": "203.0.113.11"},
+        )
+    assert first.status_code == 200
+    assert limited.status_code == 429
+    assert other_client.status_code == 200
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=("198.51.100.20", 1234)),
+        base_url="http://test",
+    ) as direct:
+        direct_first = await direct.post(
+            "/mcp",
+            content=b"direct-first",
+            headers={"x-psr-client-ip": "203.0.113.100"},
+        )
+        direct_limited = await direct.post(
+            "/mcp",
+            content=b"direct-second",
+            headers={"x-psr-client-ip": "203.0.113.101"},
+        )
+    assert direct_first.status_code == 200
+    assert direct_limited.status_code == 429
+
+
+@pytest.mark.anyio
+async def test_client_ip_header_is_consumed_before_downstream_application() -> None:
+    app = compose_http_policy(
+        _client_scope_app,
+        request_id_factory=lambda: "generated-request-id",
+        max_request_bytes=1024,
+        request_timeout_seconds=1,
+        rate_limit_requests=10,
+        rate_limit_window_seconds=60,
+        rate_limit_hmac_key=b"testing-rate-limit-hmac-key-32-bytes",
+        trusted_proxy_cidrs=("10.0.0.0/8",),
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=("10.0.0.10", 1234)),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/mcp",
+            content=b"request",
+            headers={"x-psr-client-ip": "203.0.113.10"},
+        )
+
+    assert response.json() == {
+        "client": "203.0.113.10",
+        "forwarded_header_present": False,
+    }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "headers, error",
+    [
+        ({}, "trusted_proxy_client_ip_missing"),
+        ({"x-psr-client-ip": "not-an-ip"}, "trusted_proxy_client_ip_invalid"),
+        ({"x-psr-client-ip": "203.0.113.1, 203.0.113.2"}, "trusted_proxy_client_ip_invalid"),
+    ],
+)
+async def test_trusted_proxy_client_ip_fails_closed(
+    headers: dict[str, str],
+    error: str,
+) -> None:
+    app = compose_http_policy(
+        _echo_app,
+        request_id_factory=lambda: "generated-request-id",
+        max_request_bytes=1024,
+        request_timeout_seconds=1,
+        rate_limit_requests=10,
+        rate_limit_window_seconds=60,
+        rate_limit_hmac_key=b"testing-rate-limit-hmac-key-32-bytes",
+        trusted_proxy_cidrs=("10.0.0.0/8",),
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=("10.0.0.10", 1234)),
+        base_url="http://test",
+    ) as client:
+        response = await client.post("/mcp", content=b"request", headers=headers)
+
+    assert response.status_code == 400
+    assert response.json() == {"error": error}
 
 
 @pytest.mark.anyio

@@ -366,6 +366,12 @@ Public Preview는 계정 대신 bearer capability인 `run_handle`을 사용한�
 
 토큰·run handle을 바꾸어도 IP quota를 새로 얻을 수 없어야 한다.
 
+reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
+`X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
+값은 fail closed한다. trusted network 밖에서 보낸 같은 header는 quota 계산에 사용하지 않고
+downstream application에 전달하기 전에 제거한다. gateway는 외부 입력 header를 폐기하고
+자신이 확인한 client IP로 overwrite해야 한다.
+
 초기 구성 예:
 
 ```text

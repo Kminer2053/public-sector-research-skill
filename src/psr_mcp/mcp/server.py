@@ -207,6 +207,7 @@ def create_http_app(
             if isinstance(container, PublicContainer)
             else container.settings.cursor_signing_key.encode()
         ),
+        trusted_proxy_cidrs=container.settings.trusted_proxy_cidrs,
     )
 
     @asynccontextmanager

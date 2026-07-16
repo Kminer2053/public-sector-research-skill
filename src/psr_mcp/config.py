@@ -86,6 +86,7 @@ class Settings:
     search_max_concurrency: int = 7
     collection_max_concurrency: int = 4
     abuse_hmac_key_ref: str | None = None
+    trusted_proxy_cidrs: tuple[str, ...] = ()
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Settings:
@@ -153,6 +154,11 @@ class Settings:
                 search_max_concurrency=int(values.get("PSR_SEARCH_MAX_CONCURRENCY", "7")),
                 collection_max_concurrency=int(values.get("PSR_COLLECTION_MAX_CONCURRENCY", "4")),
                 abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
+                trusted_proxy_cidrs=tuple(
+                    value.strip()
+                    for value in values.get("PSR_TRUSTED_PROXY_CIDRS", "").split(",")
+                    if value.strip()
+                ),
             )
         except (TypeError, ValueError) as error:
             raise ValueError("invalid PSR configuration value") from error
@@ -202,6 +208,13 @@ class Settings:
             raise ValueError("PSR_SEARCH_MAX_CONCURRENCY must be 1..10")
         if self.collection_max_concurrency < 1 or self.collection_max_concurrency > 20:
             raise ValueError("PSR_COLLECTION_MAX_CONCURRENCY must be 1..20")
+        canonical_proxy_cidrs: list[str] = []
+        for value in self.trusted_proxy_cidrs:
+            try:
+                canonical_proxy_cidrs.append(str(ipaddress.ip_network(value, strict=False)))
+            except ValueError:
+                raise ValueError("PSR_TRUSTED_PROXY_CIDRS must contain valid IP networks") from None
+        object.__setattr__(self, "trusted_proxy_cidrs", tuple(canonical_proxy_cidrs))
         if self.ephemeral_root is not None and not Path(self.ephemeral_root).is_absolute():
             raise ValueError("PSR_EPHEMERAL_ROOT must be an absolute path")
         if self.abuse_hmac_key_ref and not re.fullmatch(
@@ -337,6 +350,8 @@ class Settings:
                 raise ValueError("production public mode must not enable fixture research")
             if not self.abuse_hmac_key_ref:
                 raise ValueError("public production requires PSR_ABUSE_HMAC_KEY_REF")
+            if not self.trusted_proxy_cidrs:
+                raise ValueError("public production requires PSR_TRUSTED_PROXY_CIDRS")
             return
         if self.auth_mode is not AuthMode.OAUTH:
             raise ValueError("production requires OAuth authentication")

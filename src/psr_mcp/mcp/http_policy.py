@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import math
@@ -32,6 +33,7 @@ def compose_http_policy(
     rate_limit_requests: int,
     rate_limit_window_seconds: float,
     rate_limit_hmac_key: bytes,
+    trusted_proxy_cidrs: tuple[str, ...] = (),
 ) -> ASGIApp:
     policy: ASGIApp = RequestTimeoutMiddleware(
         app,
@@ -44,6 +46,10 @@ def compose_http_policy(
         hmac_key=rate_limit_hmac_key,
     )
     policy = RequestBodyLimitMiddleware(policy, max_bytes=max_request_bytes)
+    policy = TrustedClientIpMiddleware(
+        policy,
+        trusted_proxy_cidrs=trusted_proxy_cidrs,
+    )
     return RequestTraceMiddleware(policy, request_id_factory=request_id_factory)
 
 
@@ -149,6 +155,54 @@ class RequestTimeoutMiddleware:
             return
         for message in messages:
             await send(message)
+
+
+class TrustedClientIpMiddleware:
+    """Accept one canonical client IP only from explicitly trusted proxy networks."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        trusted_proxy_cidrs: tuple[str, ...],
+        header_name: bytes = b"x-psr-client-ip",
+    ) -> None:
+        self._app = app
+        self._trusted_proxies = tuple(
+            ipaddress.ip_network(value, strict=False) for value in trusted_proxy_cidrs
+        )
+        self._header_name = header_name
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope.get("path") != "/mcp" or not self._trusted_proxies:
+            await self._app(scope, receive, send)
+            return
+        peer = scope.get("client")
+        if peer is None:
+            await _send_json(send, 400, {"error": "client_ip_unavailable"})
+            return
+        try:
+            peer_ip = ipaddress.ip_address(peer[0])
+        except ValueError:
+            await _send_json(send, 400, {"error": "client_ip_invalid"})
+            return
+        if not any(peer_ip in network for network in self._trusted_proxies):
+            await self._app(_without_header(scope, self._header_name), receive, send)
+            return
+        forwarded = _header(scope, self._header_name)
+        if forwarded is None:
+            await _send_json(send, 400, {"error": "trusted_proxy_client_ip_missing"})
+            return
+        try:
+            client_ip = ipaddress.ip_address(forwarded.decode("ascii").strip())
+        except (UnicodeDecodeError, ValueError):
+            await _send_json(send, 400, {"error": "trusted_proxy_client_ip_invalid"})
+            return
+        normalized_scope = {
+            **_without_header(scope, self._header_name),
+            "client": (str(client_ip), peer[1]),
+        }
+        await self._app(normalized_scope, receive, send)
 
 
 @dataclass(slots=True)
@@ -265,6 +319,13 @@ def _rate_keys(
 
 def _header(scope: Scope, name: bytes) -> bytes | None:
     return next((value for key, value in scope.get("headers", []) if key.lower() == name), None)
+
+
+def _without_header(scope: Scope, name: bytes) -> Scope:
+    return {
+        **scope,
+        "headers": [(key, value) for key, value in scope.get("headers", []) if key.lower() != name],
+    }
 
 
 async def _send_json(

@@ -23,6 +23,7 @@
 
 - 완료: `ServiceMode.PUBLIC_EPHEMERAL`, public composition root, 익명 `service.policy`
 - 완료: HMAC IP-first limiter와 invalid bearer rotation 우회 방지
+- 완료: trusted proxy CIDR에서 온 단일 `X-PSR-Client-IP`만 정규화하고 위조 header 제거
 - 완료: filesystem ephemeral workspace, access block, TTL purge sweeper
 - 완료: fixture quick lifecycle, content canary, immediate purge, quick kill switch
 - 완료: deterministic Government Planner v0와 bounded stop condition
@@ -39,8 +40,8 @@
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
 - 완료: 같은 URL의 cross-track provenance를 유지하면서 network fetch 1회로 통합
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 416 tests
-- coverage gate: raw 95.10%, normalized statement 96.22%, branch 90.70%,
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 423 tests
+- coverage gate: raw 95.08%, normalized statement 96.17%, branch 90.79%,
   critical module 95% 이상
 - supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
 - 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
@@ -243,6 +244,9 @@ src/psr_mcp/
 - quick/start/active/global/source-host limiter를 분리한다.
 - raw IP와 token은 log·DB에 저장하지 않는다.
 - kill switch는 새 quick/start만 거부한다.
+
+**상태:** process-local HMAC limiter와 trusted proxy CIDR/client IP 정규화는 구현 완료.
+실제 gateway의 header overwrite, raw-IP quota와 multi-replica quota는 CH-P3.1에서 검증한다.
 
 **DoD**
 
@@ -613,7 +617,7 @@ validate
 ### CH-P3.1 Deployment Boundary
 
 - TLS reverse proxy/WAF
-- trusted client IP normalization
+- gateway가 `X-PSR-Client-IP`를 단일 canonical IP로 overwrite하는 설정과 spoof rehearsal
 - edge quota와 application quota 이중 적용
 - encrypted ephemeral volume
 - egress allow/deny와 DNS policy

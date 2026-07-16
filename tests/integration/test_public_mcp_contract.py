@@ -57,6 +57,7 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.structuredContent["authentication_required"] is False
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["retention"]["server_saved"] is False
+    assert result.structuredContent["limits"]["trusted_proxy_networks"] == 0
 
 
 @pytest.mark.anyio
@@ -94,6 +95,49 @@ async def test_public_http_lifecycle_serves_policy_without_oauth(tmp_path: Path)
     assert payload["authentication_required"] is False
     assert payload["research_available"] is False
     assert (tmp_path / "ephemeral").is_dir()
+
+
+@pytest.mark.anyio
+async def test_public_http_composition_enforces_trusted_proxy_client_ip(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_TRUSTED_PROXY_CIDRS": "10.0.0.0/8",
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    app = create_http_app(container)
+    request = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {"name": "psr.service.policy", "arguments": {}},
+    }
+    headers = {
+        "accept": "application/json, text/event-stream",
+        "content-type": "application/json",
+    }
+    async with (
+        app.router.lifespan_context(app),
+        AsyncClient(
+            transport=ASGITransport(app=app, client=("10.0.0.10", 1234)),
+            base_url="http://127.0.0.1:8000",
+        ) as client,
+    ):
+        missing = await client.post("/mcp", headers=headers, json=request)
+        accepted = await client.post(
+            "/mcp",
+            headers={**headers, "x-psr-client-ip": "203.0.113.10"},
+            json=request,
+        )
+
+    assert missing.status_code == 400
+    assert missing.json() == {"error": "trusted_proxy_client_ip_missing"}
+    assert accepted.status_code == 200
 
 
 @pytest.mark.anyio
