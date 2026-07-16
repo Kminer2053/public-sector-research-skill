@@ -94,6 +94,7 @@ Enterprise
 - 동일 원문을 여러 track에 연결하되 네트워크 수집은 한 번만 수행
 - authority·primary·directness·freshness·snapshot·specificity·independence 점수 설명
 - 원문 anchor를 모두 확인한 경우에만 `RECOMMENDATION`을 만드는 deterministic Writer
+- 요약·검토안·사실·근거·확인 필요사항을 분리한 한국어 Markdown 검토 문서
 - Search→Collect→Parse→Evidence→Markdown/JSON quick vertical slice
 - 일부 Search·수집·파싱 실패를 보존하는 `PARTIAL` 결과
 

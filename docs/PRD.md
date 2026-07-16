@@ -243,7 +243,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-032 | 원문 locator와 짧은 excerpt를 제공한다. | Must | 채택 citation locator completeness 95% 이상 |
 | FR-PUB-033 | FACT·INFERENCE·RECOMMENDATION을 구분한다. | Must | 추론이 FACT로 출력되지 않음 |
 | FR-PUB-034 | conflicts, gaps, failures, as-of date를 항상 출력한다. | Must | 빈 경우도 명시적 배열 |
-| FR-PUB-035 | Markdown과 JSON을 지원한다. | Must | 두 형식의 핵심 claim/citation ID 일치 |
+| FR-PUB-035 | Markdown과 JSON을 지원하고 Markdown은 요약·검토안·사실·근거·확인 필요사항을 구분한다. | Must | 두 형식의 핵심 claim/citation ID 일치, 필수 한국어 heading 존재 |
 | FR-PUB-036 | 하나의 원문이 여러 조사 track을 지지하면 중복 원문 판정과 별개로 track 연결을 보존한다. | Must | citation에 `track_id`, 동일 PDF의 cross-track recall 유지 |
 | FR-PUB-037 | 같은 URL이 여러 track을 지지하더라도 원문 network fetch는 Run당 한 번만 수행한다. | Must | 두 track·한 URL fixture의 fetch count가 1 |
 | FR-PUB-038 | 업무용 권고안은 사전 검토된 anchor group이 모두 근거 excerpt에 있을 때만 생성한다. | Must | anchor 하나가 빠진 fixture에서 recommendation 0 |

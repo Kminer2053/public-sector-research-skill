@@ -354,26 +354,41 @@ def _scope(
 
 def _render_markdown(draft: ResearchDraft, plan: ResearchPlan) -> str:
     lines = [
-        "# Public Research Result",
+        "# 공공분야 공식자료 조사 결과",
         "",
         f"- 기준일: {plan.as_of_date.isoformat()}",
         f"- 관할: {plan.jurisdiction}",
-        f"- Profile: {plan.profile}",
-        f"- Source discovery: {draft.source_discovery}",
+        f"- 조사 프로필: {plan.profile}",
+        f"- 출처 발견 방식: {draft.source_discovery}",
+        "",
+        "## 조사 요약",
         "",
         _markdown_text(draft.summary),
-        "",
-        "## Findings",
     ]
-    for finding in draft.findings:
-        citations = ", ".join(_markdown_text(value) for value in finding.citation_ids) or "none"
-        lines.append(
-            f"- [{finding.kind}] {_markdown_text(finding.claim)} "
-            f"(citations: {citations}; confidence: {finding.confidence})"
-        )
-    lines.extend(("", "## Citations"))
+    _append_findings(
+        lines,
+        draft,
+        kind="RECOMMENDATION",
+        title="조달 원칙 검토안",
+        empty_message="근거 anchor가 충족된 검토안이 없습니다.",
+    )
+    _append_findings(
+        lines,
+        draft,
+        kind="FACT",
+        title="확인한 사실",
+        empty_message="인용 가능한 원문 사실이 없습니다.",
+    )
+    _append_findings(
+        lines,
+        draft,
+        kind="INFERENCE",
+        title="추론·해석",
+        empty_message="별도로 표시할 추론·해석이 없습니다.",
+    )
+    lines.extend(("", "## 근거"))
     if not draft.citations:
-        lines.append("- none")
+        lines.append("- 없음")
     for citation in draft.citations:
         lines.extend(
             (
@@ -383,41 +398,66 @@ def _render_markdown(draft: ResearchDraft, plan: ResearchPlan) -> str:
                     f"{_markdown_text(citation.publisher)}"
                 ),
                 f"  - URL: {citation.url}",
-                f"  - Track: {_markdown_text(citation.track_id)}",
-                f"  - Tier: {_markdown_text(citation.source_tier)}",
-                f"  - Retrieved: {citation.retrieved_at.isoformat()}",
-                f"  - Locator: {_markdown_text(citation.locator)}",
-                f"  - Snapshot SHA-256: {citation.document_sha256}",
-                f"  - Excerpt: {_markdown_text(citation.excerpt)}",
-                f"  - Evidence score: {citation.score.overall:.4f}",
+                f"  - 조사 트랙: {_markdown_text(citation.track_id)}",
+                f"  - 출처 등급: {_markdown_text(citation.source_tier)}",
+                f"  - 수집 시각: {citation.retrieved_at.isoformat()}",
+                f"  - 원문 위치: {_markdown_text(citation.locator)}",
+                f"  - 스냅샷 SHA-256: {citation.document_sha256}",
+                f"  - 원문 구간: {_markdown_text(citation.excerpt)}",
+                f"  - 근거 점수: {citation.score.overall:.4f}",
             )
         )
         for name, component in _score_components(citation.score):
             lines.append(
-                f"    - {name}: {component.value:.4f} — {_markdown_text(component.explanation)}"
+                f"    - {_SCORE_LABELS[name]}: {component.value:.4f} — "
+                f"{_markdown_text(component.explanation)}"
             )
-    lines.extend(("", "## Gaps"))
+    lines.extend(("", "## 확인 필요사항"))
     lines.extend(
         (f"- {_markdown_text(gap)}" for gap in draft.gaps),
     )
     if not draft.gaps:
-        lines.append("- none")
-    lines.extend(("", "## Conflicts"))
+        lines.append("- 없음")
+    lines.extend(("", "## 상충 정보"))
     lines.extend(
         (f"- {_markdown_text(conflict)}" for conflict in draft.conflicts),
     )
     if not draft.conflicts:
-        lines.append("- none")
-    lines.extend(("", "## Failures"))
+        lines.append("- 없음")
+    lines.extend(("", "## 수집·처리 실패"))
     for failure in draft.failures:
         lines.append(
             f"- [{_markdown_text(failure.code)}] "
             f"{_markdown_text(failure.message)} "
-            f"(retryable: {str(failure.retryable).lower()})"
+            f"(재시도 가능: {str(failure.retryable).lower()})"
         )
     if not draft.failures:
-        lines.append("- none")
+        lines.append("- 없음")
     return "\n".join(lines)
+
+
+def _append_findings(
+    lines: list[str],
+    draft: ResearchDraft,
+    *,
+    kind: Literal["FACT", "INFERENCE", "RECOMMENDATION"],
+    title: str,
+    empty_message: str,
+) -> None:
+    lines.extend(("", f"## {title}"))
+    selected = tuple(finding for finding in draft.findings if finding.kind == kind)
+    if not selected:
+        lines.append(f"- {empty_message}")
+        return
+    for finding in selected:
+        citations = ", ".join(_markdown_text(value) for value in finding.citation_ids) or "없음"
+        lines.extend(
+            (
+                f"- {_markdown_text(finding.claim)}",
+                f"  - 근거 ID: {citations}",
+                f"  - 신뢰도: {finding.confidence}",
+            )
+        )
 
 
 def _score_components(
@@ -432,6 +472,17 @@ def _score_components(
         ("freshness", score.freshness),
         ("independence", score.independence),
     )
+
+
+_SCORE_LABELS = {
+    "authority": "출처 권위성",
+    "primary_source": "1차 자료성",
+    "direct_relevance": "직접 관련성",
+    "original_snapshot": "원문 확보",
+    "specificity": "구체성",
+    "freshness": "최신성",
+    "independence": "독립성",
+}
 
 
 def _markdown_text(value: str) -> str:

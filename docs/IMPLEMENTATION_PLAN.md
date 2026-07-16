@@ -34,6 +34,7 @@
 - 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
 - 완료: document quality, URL/hash dedup, component Evidence Score와 citation composer
 - 완료: anchor가 모두 확인된 경우에만 조달 원칙 후보를 만드는 citation-constrained Writer
+- 완료: 요약·조달 원칙 검토안·사실·근거·확인 필요사항을 분리한 한국어 Markdown
 - 완료: track별 한·영 passage 선택어, 관련구간 excerpt, cross-track provenance 보존
 - 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
@@ -550,6 +551,7 @@ validate
 - `CuratedOfficialSourceProvider`와 `PSR_SEARCH_PROVIDER=curated` 구현
 - 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation gap 1
 - Writer는 12개 FACT와 근거 anchor가 충족된 5개 RECOMMENDATION을 생성
+- 실제 quick Markdown은 한국어 검토 순서와 동일 citation ID를 유지하고 약 19KB로 반환
 - 동일 PIPC·WEF URL은 각 1회만 수집하고 여러 track provenance를 보존
 - 결과 전달 뒤 `server_saved=false`, `PURGED`, ephemeral directory empty 확인
 - 개인정보위 PDF `pdf:page:40`, NIST AI RMF `pdf:page:20`,

@@ -81,6 +81,7 @@ reviewed seed→robots→수집→파싱→Evidence→Markdown/JSON→purge 전�
 - citation 없는 FACT를 만들지 않는 output contract
 - 사전 검토된 anchor group이 모두 있을 때만 조달 원칙 후보를 만드는 Writer
 - Markdown/JSON에 동일 citation ID, `track_id`와 score
+- Markdown을 요약→조달 원칙 검토안→확인한 사실→근거→확인 필요사항 순서로 분리
 - workspace purge 확인 뒤 quick 결과 반환
 
 ## 3. 실제 공식 원문 검증
@@ -150,6 +151,7 @@ gaps: 1 (실시간 검색이 아닌 curated 범위 제한)
 server_saved: false
 purge_state: PURGED
 ephemeral directory empty: true
+markdown: 한국어 필수 heading 9개, 약 18.7KB
 ```
 
 `PARTIAL`은 수집 실패가 아니라 curated mode가 실시간·범용 검색이 아니라는 의도적 limitation
@@ -230,6 +232,7 @@ repository에 고정하지 않고 release build에서 다시 생성한다.
 | 실제 공식 웹 | 고정 공식 URL 5종의 snapshot 수집·파싱·선택 | PASS/fixed-source |
 | curated discovery | no-key 실제 quick, 7 track·12 citation·purge | PASS/live |
 | constrained writer | anchor 충족 track만 recommendation 5건, citation 모두 연결 | PASS/baseline |
+| 한국어 검토 문서 | 요약·검토안·사실·근거·gap 분리, JSON 동일 citation ID | PASS/live |
 | 실제 검색 | production live Search credential로 실행하지 않음 | PENDING |
 | 업무 답변 유용성 | 보수적 evidence bundle까지만 검증, domain synthesis human QA 없음 | PENDING |
 | site terms | robots 외 사이트별 약관 자동판정 없음 | PENDING/operational |

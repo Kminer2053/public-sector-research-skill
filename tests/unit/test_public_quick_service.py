@@ -268,10 +268,16 @@ async def test_markdown_matches_structured_citations_and_escapes_untrusted_text(
     )
 
     citation = output.citations[0]
+    assert output.markdown.startswith("# 공공분야 공식자료 조사 결과")
+    assert "## 조사 요약" in output.markdown
+    assert "## 조달 원칙 검토안" in output.markdown
+    assert "## 확인한 사실" in output.markdown
+    assert "인용 가능한 원문 사실이 없습니다." in output.markdown
+    assert "## 추론·해석" in output.markdown
     assert f"[{citation.id}]" in output.markdown
     assert citation.document_sha256 in output.markdown
-    assert "Evidence score: 0.0000" in output.markdown
-    assert "authority: 0.0000" in output.markdown
-    assert "## Conflicts\n- none" in output.markdown
+    assert "근거 점수: 0.0000" in output.markdown
+    assert "출처 권위성: 0.0000" in output.markdown
+    assert "## 상충 정보\n- 없음" in output.markdown
     assert _markdown_text("<script>*[source]`") == ("&lt;script&gt;\\*\\[source\\]\\`")
     assert list(store.root.iterdir()) == []
