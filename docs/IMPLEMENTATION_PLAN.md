@@ -1,6 +1,6 @@
 # Public Sector Research MCP — Implementation Plan
 
-> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재: **S0 Core 완료, PG0 잔여항목 진행**
+> 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재: **Quick/Planner/SafeCollector 기반 완료, 실제 Search·Parser 연결 진행 전**
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
@@ -22,11 +22,18 @@
 - 완료: `ServiceMode.PUBLIC_EPHEMERAL`, public composition root, 익명 `service.policy`
 - 완료: HMAC IP-first limiter와 invalid bearer rotation 우회 방지
 - 완료: filesystem ephemeral workspace, access block, TTL purge sweeper
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 210 tests
-- coverage: statement 95.54%, branch 86.92%, public critical module 95% 이상
-- 남음: content를 받는 quick lifecycle canary, 실제 kill-switch action, edge IP normalization
+- 완료: fixture quick lifecycle, content canary, immediate purge, quick kill switch
+- 완료: deterministic Government Planner v0와 bounded stop condition
+- 완료: legacy crawlkit characterization과 reuse/refactor/replace 판단
+- 완료: HTTPS-only URL policy, redirect 재검증, 검증 IP 고정 transport, bounded SafeCollector
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 281 tests
+- coverage gate: statement 96.31%, branch 88.69%, critical module 95% 이상
+- 남음: edge IP normalization, SearchProvider, parser, Evidence Composer, 실제 quick backend
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
+
+Legacy 수집기 분석과 이식 판단은
+[Legacy crawlkit characterization](./analysis/legacy-crawlkit-characterization.md)에 고정했다.
 
 ## 2. 현재 기준선
 
@@ -43,12 +50,10 @@
 
 ### 2.2 아직 없음
 
-- public anonymous composition root
-- Public Tool catalog
-- ephemeral workspace와 TTL sweeper
-- Planner, Search, Collector, Parser
-- Evidence Composer와 실제 research result
-- quick/start/status/result/cancel public flow
+- official-first SearchProvider와 source registry
+- HTML/PDF/JSON bounded parser
+- Evidence Composer와 실제 official-source research result
+- start/status/result/cancel public async flow
 - content-free feedback와 product metric
 
 ### 2.3 확인된 보강 항목
@@ -149,7 +154,7 @@ src/psr_mcp/
 
 **추가**
 
-- `ServiceMode`: `FOUNDATION`, `PUBLIC_EPHEMERAL`, `ACCOUNT_OPT_IN`, `ENTERPRISE`
+- `ServiceMode`: `FOUNDATION`, `PUBLIC_EPHEMERAL`, `ACCOUNT_OPT_IN`, `PAID_PERSISTENT`, `ENTERPRISE`
 - public TTL, ephemeral root, source/byte/time budget, kill switch 설정
 - public production에서 OAuth/PostgreSQL을 요구하지 않는 대신 ephemeral root, HTTPS, abuse key를 요구
 - ADR 최대 TTL보다 긴 설정 fail closed
@@ -556,6 +561,8 @@ R4 product trigger 전에는 착수하지 않는다.
 5. `save=false` 기본값과 explicit consent
 6. export/delete/account close
 7. persistent object encryption과 deletion manifest
+8. saved preflight 실패 시 조사 시작 전 fail-closed
+9. 익명 완료 결과의 자동 소급 귀속 금지와 명시적 import
 
 Public Preview deployment와 Account deployment는 mode와 data sink가 분리돼야 한다.
 

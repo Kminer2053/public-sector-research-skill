@@ -2,7 +2,7 @@
 
 > 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 Release Target: **Public Preview**
 
-[VISION](./VISION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md)
+[VISION](./VISION.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md) · [ADR-0010](./adr/0010-progressive-identity-and-opt-in-persistence.md)
 
 ## 1. 문서 목적
 
@@ -273,6 +273,9 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-ACC-003 | `save=true`인 조사만 Personal Workspace에 저장한다. | Account Beta |
 | FR-ACC-004 | 사용자는 저장된 조사 export/delete를 수행할 수 있어야 한다. | Account Beta |
 | FR-ACC-005 | History·Evidence reuse는 저장된 조사에만 적용한다. | Account Beta |
+| FR-ACC-006 | 저장 요청은 실행 전에 인증·consent·quota·storage 가용성을 검증한다. | Account Beta |
+| FR-ACC-007 | 저장을 보장할 수 없으면 시작 전에 실패하고 ephemeral로 조용히 강등하지 않는다. | Account Beta |
+| FR-ACC-008 | 익명 완료 조사는 소급 귀속하지 않고 사용자 주도 import만 허용한다. | Account Beta |
 | FR-PAID-001 | quota·retention·가격·삭제정책을 구매 전에 명시한다. | Paid |
 | FR-PAID-002 | 저장공간과 장기 Job에 billing meter를 적용한다. | Paid |
 | FR-PAID-003 | Organization/SSO/RLS/Review는 팀·기관 mode에서 제공한다. | Enterprise |

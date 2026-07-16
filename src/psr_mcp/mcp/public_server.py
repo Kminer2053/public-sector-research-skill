@@ -2,13 +2,23 @@
 
 from __future__ import annotations
 
+from datetime import date
+from typing import Annotated, Literal
+
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from psr_mcp.bootstrap import PublicContainer
 from psr_mcp.config import Environment
 from psr_mcp.mcp.transport import transport_security
-from psr_mcp.public.schemas import ServicePolicyOutput
+from psr_mcp.public.schemas import (
+    PublicToolErrorPayload,
+    QuickResearchOutput,
+    ServicePolicyOutput,
+)
+from psr_mcp.public.service import PublicResearchError
 
 
 def create_public_server(container: PublicContainer) -> FastMCP:
@@ -21,8 +31,8 @@ def create_public_server(container: PublicContainer) -> FastMCP:
         ),
         instructions=(
             "가입 없이 공공분야 공식자료를 조사하기 위한 Public Preview 서버입니다. "
-            "현재 increment는 서비스 정책과 무보관 실행경계를 제공합니다. "
-            "실제 Research Tool은 PG1 검증 뒤 활성화됩니다."
+            "현재 quick Tool은 개발 fixture 또는 명시적으로 구성된 backend만 사용하며, "
+            "결과의 retention 상태와 조사 한계를 반드시 확인해야 합니다."
         ),
         website_url=settings.public_url,
         host=settings.host,
@@ -49,14 +59,17 @@ def create_public_server(container: PublicContainer) -> FastMCP:
             operation_id=container.ids.new(),
             service_mode=settings.service_mode,
             authentication_required=False,
-            research_available=False,
+            research_available=container.quick_service.available,
             kill_switch_active=settings.public_kill_switch,
             supported_profiles=["government-v0"],
             limits={
                 "request_bytes": settings.max_request_bytes,
                 "request_timeout_seconds": settings.request_timeout_seconds,
+                "quick_timeout_seconds": settings.quick_timeout_seconds,
                 "requests_per_window": settings.rate_limit_requests,
                 "rate_window_seconds": settings.rate_limit_window_seconds,
+                "max_run_sources": settings.max_run_sources,
+                "max_run_bytes": settings.max_run_bytes,
             },
             retention={
                 "server_saved": False,
@@ -66,5 +79,39 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "orphan_max_age_seconds": settings.orphan_max_age_seconds,
             },
         )
+
+    @server.tool(
+        name="psr.research.quick",
+        title="공식자료 우선 빠른 조사",
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=False,
+            openWorldHint=True,
+        ),
+    )
+    async def research_quick(
+        question: Annotated[str, Field(min_length=10, max_length=4_000)],
+        as_of_date: date | None = None,
+        jurisdiction: Literal["KR"] = "KR",
+        profile: Literal["government-v0"] = "government-v0",
+    ) -> QuickResearchOutput:
+        """임시 workspace에서 조사하고 content를 삭제한 뒤 결과만 반환합니다."""
+        try:
+            return await container.quick_service.quick(
+                question=question,
+                as_of_date=as_of_date,
+                jurisdiction=jurisdiction,
+                profile=profile,
+            )
+        except PublicResearchError as error:
+            raise ToolError(
+                PublicToolErrorPayload(
+                    code=error.code,
+                    message=error.message,
+                    retryable=error.retryable,
+                    operation_id=container.ids.new(),
+                ).model_dump_json()
+            ) from None
 
     return server

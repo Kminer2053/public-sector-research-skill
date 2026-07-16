@@ -250,10 +250,12 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
             "PSR_SERVICE_MODE": "public_ephemeral",
             "PSR_EPHEMERAL_ROOT": str(tmp_path),
             "PSR_PUBLIC_KILL_SWITCH": "true",
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
         }
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
     assert settings.public_kill_switch is True
+    assert settings.public_fixture_research_enabled is True
     assert settings.diagnostics()["abuse_hmac_key_ref"] is False
 
     container = build_container(settings)
@@ -305,6 +307,28 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
             },
             "invalid PSR configuration",
         ),
+        (
+            {
+                "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            },
+            "only in public ephemeral",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_QUICK_TIMEOUT_SECONDS": "31",
+            },
+            "QUICK_TIMEOUT_SECONDS",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_MAX_RUN_SOURCES": "0",
+            },
+            "MAX_RUN_SOURCES",
+        ),
     ],
 )
 def test_public_ephemeral_configuration_fails_closed(
@@ -332,3 +356,23 @@ def test_public_production_requires_https_root_and_abuse_key() -> None:
         }
     )
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
+
+    with pytest.raises(ValueError, match="must not enable fixture"):
+        Settings.from_env(
+            {
+                **base,
+                "PSR_ABUSE_HMAC_KEY_REF": "env://PSR_ABUSE_KEY",
+                "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["account_opt_in", "paid_persistent", "enterprise"],
+)
+def test_future_persistent_modes_fail_closed_until_composition_exists(mode: str) -> None:
+    settings = Settings.from_env({"PSR_SERVICE_MODE": mode})
+
+    with pytest.raises(RuntimeError, match="designed but not implemented"):
+        build_container(settings)

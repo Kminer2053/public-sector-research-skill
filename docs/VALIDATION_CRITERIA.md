@@ -371,6 +371,9 @@ PG3는 기술적 공개 가능성이다. Account Beta 시작은 다음 실제 �
 | VAL-ACC-008 | export | 저장 조사·metadata 완전 |
 | VAL-ACC-009 | delete/account close | DB/object deletion manifest 일치 |
 | VAL-ACC-010 | consent version | 저장 시점에 기록 |
+| VAL-ACC-011 | `saved` preflight storage 장애 | collection 시작 전 `PERSISTENCE_UNAVAILABLE` |
+| VAL-ACC-012 | 익명 완료 run을 account에 귀속 시도 | 자동 귀속 거부, 명시적 import만 허용 |
+| VAL-ACC-013 | Account service 장애 | anonymous Public Preview 정상 동작 |
 
 ## 11. Foundation Regression
 

@@ -2,7 +2,7 @@
 
 > 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 제품단계: **Public Preview 설계**
 
-[PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md)
+[PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md) · [ADR-0010](./adr/0010-progressive-identity-and-opt-in-persistence.md)
 
 ## 1. 한 줄 정의
 

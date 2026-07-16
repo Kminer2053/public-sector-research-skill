@@ -2,7 +2,7 @@
 
 > 문서 상태: Accepted · 기준일: 2026-07-16 · Current Mode: `PUBLIC_EPHEMERAL`
 
-[VISION](./VISION.md) · [PRD](./PRD.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md)
+[VISION](./VISION.md) · [PRD](./PRD.md) · [ROADMAP](./ROADMAP.md) · [ADR-0009](./adr/0009-public-zero-retention-first.md) · [ADR-0010](./adr/0010-progressive-identity-and-opt-in-persistence.md)
 
 ## 1. Architecture Drivers
 
@@ -39,6 +39,35 @@ class ServiceMode(StrEnum):
     PAID_PERSISTENT = "paid_persistent"
     ENTERPRISE = "enterprise"
 ```
+
+미구현 mode는 기존 Foundation composition으로 대체 실행하지 않는다. 각 mode의 전용 인증·저장
+adapter가 완성될 때까지 startup에서 fail closed한다.
+
+### 2.1 Account Beta의 요청별 보존 선택
+
+Account deployment 안에서는 인증 여부와 보존 의도를 별도 값으로 취급한다.
+
+```mermaid
+flowchart LR
+    Request["Research Request"]
+    Identity{"OIDC identity?"}
+    Intent{"retention_mode"}
+    Ephemeral["Ephemeral Runtime\npersistent write 없음"]
+    Preflight["Save Preflight\nconsent·quota·storage"]
+    Saved["Personal Workspace"]
+    Reject["PERSISTENCE_UNAVAILABLE"]
+
+    Request --> Identity
+    Identity --> Intent
+    Intent -->|"ephemeral (default)"| Ephemeral
+    Intent -->|"saved + authenticated"| Preflight
+    Intent -->|"saved + anonymous"| Reject
+    Preflight -->|"pass"| Saved
+    Preflight -->|"fail"| Reject
+```
+
+`saved`를 요청한 작업은 preflight가 실패하면 시작하지 않는다. 사용자가 요청한 저장을 보장하지
+못하면서 결과만 ephemeral로 반환하는 묵시적 downgrade는 금지한다.
 
 ## 3. Current Foundation Assessment
 
@@ -370,6 +399,11 @@ global cost budget: operator config
 
 사용자가 제공한 cookie, bearer, client certificate를 받지 않는다.
 
+현재 구현은 single-label·`.local`·`.internal` 등 non-public hostname도 거부한다.
+`ValidatedUrl`에 승인된 IP 목록을 포함하고 `PinnedNetworkBackend`가 그 IP로만 TCP 연결한다.
+TLS SNI와 HTTP `Host`는 원래 domain을 유지하므로 인증서 검증을 우회하지 않는다. 일반 DNS
+이름으로 다시 연결하는 transport는 Public SafeCollector에 사용할 수 없다.
+
 ### 11.3 Bounded Fetch
 
 - connect/read/total timeout
@@ -379,6 +413,10 @@ global cost budget: operator config
 - MIME sniff와 declared type 비교
 - login/error/empty page detection
 - source별 rate와 retry budget
+
+현재 HTTP/1.1 transport는 `Accept-Encoding: identity`, manual redirect, response byte/time limit,
+response header allowlist를 적용한다. `Set-Cookie` 등 credential-bearing header는 수집 결과에
+포함하지 않는다. SearchProvider와 parser가 붙기 전까지 production quick backend에는 주입하지 않는다.
 - robots/terms policy result
 
 ### 11.4 Parser

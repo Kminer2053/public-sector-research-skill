@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "alembic>=1.18,<2",
+  "httpcore>=1.0,<2",
   "httpx>=0.28,<1",
   "mcp>=1.28,<2",
   "PyJWT[crypto]>=2.10,<3",
@@ -41,7 +42,10 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "ASYNC"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/psr_mcp/collectors/httpcore_transport.py" = ["ASYNC109"]
 "tests/**/*.py" = ["S101"]
+"tests/unit/test_httpcore_transport.py" = ["ASYNC109"]
+"tests/unit/test_pinned_network_backend.py" = ["ASYNC109"]
 
 [tool.mypy]
 python_version = "3.12"

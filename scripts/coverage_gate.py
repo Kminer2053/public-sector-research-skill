@@ -13,8 +13,11 @@ MIN_BRANCH_PERCENT = 85.0
 MIN_CRITICAL_STATEMENT_PERCENT = 95.0
 CRITICAL_PATH_PREFIXES = (
     "src/psr_mcp/application/",
+    "src/psr_mcp/collectors/",
     "src/psr_mcp/domain/",
     "src/psr_mcp/ephemeral/",
+    "src/psr_mcp/planner/",
+    "src/psr_mcp/public/",
 )
 CRITICAL_EXACT_PATHS = {
     "src/psr_mcp/auth/policy.py",

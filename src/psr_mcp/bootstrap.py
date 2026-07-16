@@ -26,6 +26,12 @@ from psr_mcp.domain.identity import ActorType, Role
 from psr_mcp.domain.projects import Project, ProjectStatus
 from psr_mcp.domain.research import PlanStatus, ResearchPlan
 from psr_mcp.ephemeral import FilesystemEphemeralWorkspaceStore, PurgeSweeper
+from psr_mcp.planner import GovernmentPlanner
+from psr_mcp.public.service import (
+    FixtureResearchBackend,
+    PublicQuickResearchService,
+    UnavailableResearchBackend,
+)
 from psr_mcp.storage.memory import InMemoryStore
 from psr_mcp.storage.postgres import PostgresMembershipResolver, PostgresStore
 
@@ -63,6 +69,7 @@ class PublicContainer:
     workspace_store: FilesystemEphemeralWorkspaceStore
     purge_sweeper: PurgeSweeper
     abuse_hmac_key: bytes
+    quick_service: PublicQuickResearchService
 
     async def open(self) -> None:
         await self.workspace_store.open()
@@ -85,6 +92,10 @@ def build_container(
         return _build_public_container(
             settings,
             secret_resolver or EnvironmentSecretResolver(),
+        )
+    if settings.service_mode is not ServiceMode.FOUNDATION:
+        raise RuntimeError(
+            f"service mode {settings.service_mode.value} is designed but not implemented"
         )
     if (
         settings.environment is Environment.DEVELOPMENT
@@ -118,15 +129,34 @@ def _build_public_container(
         now=clock.now,
         create_root=settings.environment is Environment.DEVELOPMENT,
     )
+    ids = Uuid4Generator()
+    backend = (
+        FixtureResearchBackend(clock)
+        if settings.public_fixture_research_enabled
+        else UnavailableResearchBackend()
+    )
     return PublicContainer(
         settings=settings,
-        ids=Uuid4Generator(),
+        ids=ids,
         workspace_store=store,
         purge_sweeper=PurgeSweeper(
             store,
             interval_seconds=settings.purge_sweep_seconds,
         ),
         abuse_hmac_key=abuse_hmac_key,
+        quick_service=PublicQuickResearchService(
+            store=store,
+            planner=GovernmentPlanner(),
+            backend=backend,
+            clock=clock,
+            ids=ids,
+            run_ttl_seconds=settings.run_ttl_seconds,
+            orphan_max_age_seconds=settings.orphan_max_age_seconds,
+            max_sources=settings.max_run_sources,
+            max_bytes=settings.max_run_bytes,
+            timeout_seconds=settings.quick_timeout_seconds,
+            kill_switch=settings.public_kill_switch,
+        ),
     )
 
 

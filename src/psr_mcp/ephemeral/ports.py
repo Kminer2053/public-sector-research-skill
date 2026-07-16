@@ -9,6 +9,7 @@ from typing import Protocol
 
 
 class ArtifactKind(StrEnum):
+    QUESTION = "question"
     SOURCE = "source"
     EXTRACTED = "extracted"
     RESULT = "result"

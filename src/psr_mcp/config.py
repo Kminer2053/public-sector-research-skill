@@ -32,6 +32,7 @@ class ServiceMode(StrEnum):
     FOUNDATION = "foundation"
     PUBLIC_EPHEMERAL = "public_ephemeral"
     ACCOUNT_OPT_IN = "account_opt_in"
+    PAID_PERSISTENT = "paid_persistent"
     ENTERPRISE = "enterprise"
 
 
@@ -68,6 +69,10 @@ class Settings:
     orphan_max_age_seconds: int = 7_200
     purge_sweep_seconds: int = 60
     public_kill_switch: bool = False
+    public_fixture_research_enabled: bool = False
+    quick_timeout_seconds: float = 20.0
+    max_run_sources: int = 12
+    max_run_bytes: int = 31_457_280
     abuse_hmac_key_ref: str | None = None
 
     @classmethod
@@ -124,6 +129,13 @@ class Settings:
                     values.get("PSR_PUBLIC_KILL_SWITCH", "false"),
                     name="PSR_PUBLIC_KILL_SWITCH",
                 ),
+                public_fixture_research_enabled=_parse_bool(
+                    values.get("PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED", "false"),
+                    name="PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED",
+                ),
+                quick_timeout_seconds=float(values.get("PSR_QUICK_TIMEOUT_SECONDS", "20")),
+                max_run_sources=int(values.get("PSR_MAX_RUN_SOURCES", "12")),
+                max_run_bytes=int(values.get("PSR_MAX_RUN_BYTES", "31457280")),
                 abuse_hmac_key_ref=values.get("PSR_ABUSE_HMAC_KEY_REF"),
             )
         except (TypeError, ValueError) as error:
@@ -158,6 +170,14 @@ class Settings:
             raise ValueError("PSR_ORPHAN_MAX_AGE_SECONDS must be at most 7200")
         if self.purge_sweep_seconds < 1 or self.purge_sweep_seconds > 60:
             raise ValueError("PSR_PURGE_SWEEP_SECONDS must be 1..60")
+        if self.quick_timeout_seconds < 1 or self.quick_timeout_seconds > 30:
+            raise ValueError("PSR_QUICK_TIMEOUT_SECONDS must be 1..30")
+        if self.quick_timeout_seconds > self.request_timeout_seconds:
+            raise ValueError("PSR_QUICK_TIMEOUT_SECONDS must not exceed request timeout")
+        if self.max_run_sources < 1 or self.max_run_sources > 100:
+            raise ValueError("PSR_MAX_RUN_SOURCES must be 1..100")
+        if self.max_run_bytes < 1_048_576 or self.max_run_bytes > 104_857_600:
+            raise ValueError("PSR_MAX_RUN_BYTES must be 1048576..104857600")
         if self.ephemeral_root is not None and not Path(self.ephemeral_root).is_absolute():
             raise ValueError("PSR_EPHEMERAL_ROOT must be an absolute path")
         if self.abuse_hmac_key_ref and not re.fullmatch(
@@ -242,6 +262,8 @@ class Settings:
                 raise ValueError("public ephemeral mode must not configure persistent storage")
             if not self.ephemeral_root:
                 raise ValueError("public ephemeral mode requires PSR_EPHEMERAL_ROOT")
+        elif self.public_fixture_research_enabled:
+            raise ValueError("fixture research is available only in public ephemeral mode")
         if self.environment is Environment.DEVELOPMENT:
             if self.auth_mode is AuthMode.OAUTH and not self.issuer_url:
                 raise ValueError("OAuth requires PSR_ISSUER_URL")
@@ -263,6 +285,8 @@ class Settings:
         if parsed_resource_url.scheme != "https":
             raise ValueError("production PSR_RESOURCE_SERVER_URL must use HTTPS")
         if self.service_mode is ServiceMode.PUBLIC_EPHEMERAL:
+            if self.public_fixture_research_enabled:
+                raise ValueError("production public mode must not enable fixture research")
             if not self.abuse_hmac_key_ref:
                 raise ValueError("public production requires PSR_ABUSE_HMAC_KEY_REF")
             return

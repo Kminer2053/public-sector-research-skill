@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -19,6 +21,7 @@ async def public_session(tmp_path: Path) -> AsyncGenerator[ClientSession]:
         {
             "PSR_SERVICE_MODE": "public_ephemeral",
             "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
         }
     )
     container = build_container(settings)
@@ -40,14 +43,17 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     public_session: ClientSession,
 ) -> None:
     tools = await public_session.list_tools()
-    assert [tool.name for tool in tools.tools] == ["psr.service.policy"]
+    assert [tool.name for tool in tools.tools] == [
+        "psr.service.policy",
+        "psr.research.quick",
+    ]
 
     result = await public_session.call_tool("psr.service.policy", {})
     assert result.isError is False
     assert result.structuredContent is not None
     assert result.structuredContent["service_mode"] == "public_ephemeral"
     assert result.structuredContent["authentication_required"] is False
-    assert result.structuredContent["research_available"] is False
+    assert result.structuredContent["research_available"] is True
     assert result.structuredContent["retention"]["server_saved"] is False
 
 
@@ -86,3 +92,99 @@ async def test_public_http_lifecycle_serves_policy_without_oauth(tmp_path: Path)
     assert payload["authentication_required"] is False
     assert payload["research_available"] is False
     assert (tmp_path / "ephemeral").is_dir()
+
+
+@pytest.mark.anyio
+async def test_quick_fixture_returns_result_and_purges_all_content(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    question_canary = "QUESTION-CANARY-9f3d 공공기관 AI 구매 데이터 권리를 조사해줘"
+    root = tmp_path / "ephemeral"
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(root),
+            "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            with caplog.at_level(logging.INFO):
+                result = await session.call_tool(
+                    "psr.research.quick",
+                    {"question": question_canary},
+                )
+    finally:
+        await container.close()
+
+    assert result.isError is False
+    assert result.structuredContent is not None
+    output = result.structuredContent
+    assert output["status"] == "PARTIAL"
+    assert output["retention"]["server_saved"] is False
+    assert output["retention"]["purge_state"] == "PURGED"
+    assert "data-rights" in output["scope"]["source_tracks"]
+    assert "procurement" in output["scope"]["source_tracks"]
+    assert output["failures"][0]["code"] == "FIXTURE_ONLY"
+    assert list(root.iterdir()) == []
+
+    serialized = json.dumps(output, ensure_ascii=False)
+    assert question_canary not in serialized
+    assert question_canary not in caplog.text
+    assert "PSR-SOURCE-CONTENT-CANARY" not in caplog.text
+    assert "PSR-RESULT-CONTENT-CANARY" not in caplog.text
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "overrides, expected_code",
+    [
+        (
+            {
+                "PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED": "true",
+                "PSR_PUBLIC_KILL_SWITCH": "true",
+            },
+            "PUBLIC_SERVICE_PAUSED",
+        ),
+        ({}, "RESEARCH_NOT_AVAILABLE"),
+    ],
+)
+async def test_quick_fails_safely_when_paused_or_backend_unavailable(
+    tmp_path: Path,
+    overrides: dict[str, str],
+    expected_code: str,
+) -> None:
+    settings = Settings.from_env(
+        {
+            "PSR_SERVICE_MODE": "public_ephemeral",
+            "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
+            **overrides,
+        }
+    )
+    container = build_container(settings)
+    assert isinstance(container, PublicContainer)
+    await container.open()
+    try:
+        server = create_server(container)
+        async with create_connected_server_and_client_session(
+            server,
+            raise_exceptions=False,
+        ) as session:
+            result = await session.call_tool(
+                "psr.research.quick",
+                {"question": "공공기관 AI 구매 원칙을 공식자료 중심으로 조사해줘"},
+            )
+    finally:
+        await container.close()
+
+    assert result.isError is True
+    assert expected_code in result.content[0].text  # type: ignore[union-attr]
+    assert list((tmp_path / "ephemeral").iterdir()) == []

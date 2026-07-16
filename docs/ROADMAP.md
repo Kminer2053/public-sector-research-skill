@@ -2,7 +2,7 @@
 
 > 문서 상태: Accepted · 기준일: 2026-07-16 · 현재 목표: **Public Preview**
 
-[VISION](./VISION.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
+[VISION](./VISION.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [IMPLEMENTATION PLAN](./IMPLEMENTATION_PLAN.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md) · [ADR-0010](./adr/0010-progressive-identity-and-opt-in-persistence.md)
 
 ## 1. 구현 전략
 
@@ -89,7 +89,9 @@
 
 실제 검색·수집을 붙이기 전에 익명 요청을 제한하고 content를 임시로 처리·삭제하는 실행경계를 만든다.
 
-> 구현 상태: 2026-07-16 기준 public mode, 익명 policy Tool, IP-first limiter, filesystem workspace와 sweeper는 완료됐다. content canary를 포함한 quick lifecycle과 edge IP normalization이 남아 있어 R1/PG0 전체는 아직 종료되지 않았다.
+> 구현 상태: 2026-07-16 기준 public mode, 익명 policy/quick Tool, IP-first limiter,
+> filesystem workspace, content canary, immediate purge, quick kill switch와 sweeper는 완료됐다.
+> trusted edge IP normalization과 삭제 retry/backoff alert가 남아 있어 R1/PG0 전체는 아직 종료되지 않았다.
 
 ### 작업 패키지
 
@@ -164,6 +166,9 @@
 **난이도:** 중간  
 **완료 기준:** 재사용 판단표와 고정 fixture가 code 이식보다 먼저 merge
 
+**상태:** 완료. `docs/analysis/legacy-crawlkit-characterization.md`에 source hash, 실제 저장 사례,
+MIME/empty/403 failure와 이식 판단을 기록했다.
+
 #### WP-R2.2 Safe Search and URL Policy
 
 - `SearchProvider` port와 provider 1종
@@ -174,6 +179,9 @@
 
 **난이도:** 매우 높음
 **완료 기준:** SSRF·redirect·DNS rebinding corpus 100% 차단
+
+**상태:** 부분 완료. HTTPS/userinfo/port/hostname/IP/redirect 정책과 검증 IP 고정 transport는
+구현됐다. SearchProvider와 운영 edge/network egress 검증은 남아 있다.
 
 #### WP-R2.3 Bounded Collector and Parser
 
@@ -198,6 +206,8 @@
 
 **난이도:** 높음
 **완료 기준:** AI 구매 원칙 golden question의 필수 track recall 통과
+
+**상태:** deterministic baseline 완료. 실제 search query generation과 source registry 연결은 남아 있다.
 
 #### WP-R2.5 Evidence Composer and Quick Tool
 
@@ -308,6 +318,8 @@
 - self-service signup과 Personal Workspace
 - `save=true`인 조사만 persistent store로 이동
 - 저장한 조사 History·검색·재사용
+- `saved` preflight 실패 시 조사 시작 전 명시적 거부
+- 익명 완료 결과는 자동 소급 귀속하지 않고 export/import로만 이전
 - 기존 저장 근거의 freshness 표시
 - export/delete/account close
 - 저장 동의 version과 retention 표시

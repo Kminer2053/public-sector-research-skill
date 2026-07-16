@@ -18,6 +18,7 @@ from psr_mcp.ephemeral.ports import ArtifactKind, PurgeResult, WorkspaceRef
 _LEASE_NAME: Final = "lease.json"
 _BLOCKED_NAME: Final = "purge.marker"
 _ARTIFACT_NAMES: Final = {
+    ArtifactKind.QUESTION: "question.bin",
     ArtifactKind.SOURCE: "source.bin",
     ArtifactKind.EXTRACTED: "extracted.bin",
     ArtifactKind.RESULT: "result.bin",

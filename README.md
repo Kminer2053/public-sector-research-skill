@@ -2,7 +2,7 @@
 
 누구나 가입 없이 공신력 있는 공공자료를 조사하고, 원문 근거가 연결된 결과를 받은 뒤 서버에는 질문·원문·보고서가 남지 않도록 만드는 Evidence-First Public Research MCP입니다.
 
-> 현재 상태: OAuth·PostgreSQL·Tenant 기반 Foundation `F0~F4/G0~G5`와 Public Safety Core `S0`의 첫 구현이 완료됐습니다. 익명 `psr.service.policy`, IP-first quota, public composition root, 제한된 ephemeral workspace와 purge sweeper가 동작합니다. SafeCollector와 실제 조사 결과 생성은 아직 없으므로 현재 code를 공개 리서치 완성품으로 배포하면 안 됩니다.
+> 현재 상태: OAuth·PostgreSQL·Tenant 기반 Foundation과 Public Safety Core가 구현됐습니다. 익명 `psr.service.policy`, 개발 fixture 기반 `psr.research.quick`, Government Planner v0, IP-first quota, ephemeral purge, SSRF URL 정책과 검증 IP 고정 SafeCollector가 동작합니다. 검색 provider·HTML/PDF parser·실제 Evidence Composer는 아직 연결되지 않았으므로 공개 리서치 완성품으로 배포하면 안 됩니다.
 
 ## 제품 성장 순서
 
@@ -71,18 +71,24 @@ Enterprise
 - path traversal·symlink·만료 workspace 접근 차단
 - startup/periodic/final purge sweeper
 - fake-clock 만료·corrupt lease·삭제·재시작 기반 test
+- question/source/result canary를 쓰는 quick 실행 후 즉시 purge
+- Government Profile v0의 법령·정책·조달·개인정보·국제표준 track
+- HTTPS-only URL, userinfo·비표준 port·내부 DNS/IP 차단
+- redirect별 DNS 재검증과 검증된 IP로 고정하는 HTTP/1.1 transport
+- response byte·timeout·content-encoding 상한과 cookie header 제거
 
 [S0 검증 보고서](./docs/validation/2026-07-16-public-s0.md)에 210개 전체 회귀와 coverage 증적을 기록했습니다.
+[P1 기반 검증 보고서](./docs/validation/2026-07-16-public-p1-foundation.md)에 최신 281개 전체 회귀와 collector 검증을 기록했습니다.
 
 ## 다음 구현 범위
 
 첫 구현은 crawler 연결이 아니라 공개 안전경계입니다.
 
-1. content canary leakage test와 kill-switch 실행경로
-2. fake collector 기반 quick lifecycle
-3. legacy `crawlkit.py` characterization
-4. SSRF-safe Search/Collector/Parser
-5. Government Profile·Evidence Composer·실제 quick result
+1. official-first SearchProvider 1종과 source candidate model
+2. HTML/JSON bounded parser와 document kind sniff
+3. PDF parser 격리·page/byte/time budget
+4. Evidence Composer와 SafeCollector를 실제 quick backend에 연결
+5. edge client IP normalization과 end-to-end content leakage scan
 6. start/status/result/cancel async flow
 
 상세 순서는 [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md)을 따릅니다.
@@ -99,7 +105,9 @@ psr.service.policy
 psr.feedback.submit
 ```
 
-위 catalog는 목표 계약이며 아직 현재 server에 구현되지 않았습니다. 현재 server는 Foundation Project/Run Tool만 제공합니다.
+위 catalog는 목표 계약입니다. 현재 public server에는 `psr.service.policy`와
+`psr.research.quick`만 구현돼 있습니다. quick은 개발 fixture를 명시적으로 켠 경우에만 동작하고,
+production에서는 실제 backend가 연결될 때까지 `research_available=false`로 fail closed합니다.
 
 ## 무보관 약속
 
