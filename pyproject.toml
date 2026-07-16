@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "public-sector-research-agent"
+version = "0.1.0"
+description = "Portable, local-first Evidence Research Agent Skill for public-sector work"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["pypdf>=5,<7"]
+dev = [
+  "pytest>=8,<10",
+  "pytest-cov>=5,<8",
+  "ruff>=0.9,<1",
+]
+
+[project.scripts]
+psr = "psr_core.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["skills/public-sector-research/scripts/psr_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-config"
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "RUF"]
+
+[tool.coverage.run]
+branch = true
+source = ["psr_core"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true

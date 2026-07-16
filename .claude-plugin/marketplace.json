@@ -1,0 +1,21 @@
+{
+  "name": "public-sector-research-agent",
+  "owner": {
+    "name": "Kminer2053"
+  },
+  "metadata": {
+    "description": "Portable Evidence-First Agent Skill for public-sector research",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "public-sector-research",
+      "description": "Official-source-first public-sector research with local evidence memory",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/public-sector-research"
+      ]
+    }
+  ]
+}

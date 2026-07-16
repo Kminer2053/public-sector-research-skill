@@ -1,0 +1,25 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "codex/**", "product/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e ".[dev,pdf]"
+      - run: ruff check .
+      - run: pytest --cov=psr_core --cov-branch --cov-report=term-missing
+      - run: python skills/public-sector-research/scripts/psr.py --version
