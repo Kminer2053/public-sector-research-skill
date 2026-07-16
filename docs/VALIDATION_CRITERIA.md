@@ -295,6 +295,21 @@ Live QA는 다음을 추가로 충족해야 한다.
 - 사람이 읽는 결과에서 unsupported legal conclusion 0건
 - generic evidence bundle이 불충분하면 citation-constrained Writer 보강
 
+사람 검토는 `scripts/live_curated_review.py`가 출력하는 표준 packet을 사용한다. 자동 구조
+검사는 FACT·RECOMMENDATION citation coverage, locator completeness, unique document 기준
+공식 1차자료 비율과 필수 track recall만 판정한다. 업무 적합성, 법적 과잉해석, 상충·누락과
+한국어 품질은 자동 PASS로 승격하지 않고 공공업무 담당자가 별도로 판정한다.
+
+### 6.7 Human Review Packet
+
+| ID | 기준 | Expected |
+|---|---|---|
+| VAL-PUB-HQA-001 | 구조지표 | citation·locator·official-primary·track recall을 재현 가능하게 계산 |
+| VAL-PUB-HQA-002 | 사람 전용 판단 | 업무 적합성·법적 과잉해석·누락·한국어 품질을 자동 PASS 처리하지 않음 |
+| VAL-PUB-HQA-003 | capability 비노출 | packet에 feedback token과 operation ID 0건 |
+| VAL-PUB-HQA-004 | 보존 경계 | local stdout만 사용하고 server/DB 자동 저장 0건 |
+| VAL-PUB-HQA-005 | 근거 적용범위 | 개인정보 근거를 기관 데이터 전체 권리로 확대하지 않음 |
+
 ## 7. PG2 — Zero-Retention Async
 
 ### 7.1 Handle

@@ -116,6 +116,8 @@ Planner·SafeCollector 기반 검증을 기록했습니다.
 canonical client IP, header spoof 방지와 production fail-closed 증적을 기록했습니다.
 [Content-free Feedback 검증 보고서](./docs/validation/2026-07-16-content-free-feedback.md)에
 purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증을 기록했습니다.
+[Human Review Packet 검증 보고서](./docs/validation/2026-07-16-human-review-packet.md)에
+구조 품질지표, 실제 curated 결과 검토와 과잉범위 권고 수정 증적을 기록했습니다.
 
 ## 다음 구현 범위
 
@@ -130,6 +132,14 @@ purge-after token 발급, 비연결 boolean 집계, replay와 digest TTL 검증�
 7. `start/status/result/cancel` async flow
 
 상세 순서는 [IMPLEMENTATION PLAN](./docs/IMPLEMENTATION_PLAN.md)을 따릅니다.
+
+curated 전체 결과와 표준 사람 검토표는 로컬에서 다음처럼 생성합니다.
+
+```bash
+uv run --frozen python scripts/live_curated_review.py
+```
+
+이 출력은 질문과 결과를 포함하므로 서버나 CI가 자동 저장하지 않습니다.
 
 ## Public Preview Tool 목표
 

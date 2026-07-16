@@ -108,6 +108,27 @@ def test_writer_matches_compact_korean_and_caps_extractive_fact() -> None:
     assert findings[-1].claim.endswith("…")
 
 
+def test_data_rights_recommendation_stays_within_personal_and_user_input_scope() -> None:
+    citation = _citation(
+        citation_id="cit-e",
+        track_id="data-rights",
+        excerpt=(
+            "이용자 입력데이터를 AI 학습에 이용하는 사실과 옵트아웃 선택권, "
+            "보유기간 및 파기 방법을 고지한다."
+        ),
+    )
+
+    recommendation = next(
+        finding
+        for finding in CitationConstrainedWriter().write((citation,))
+        if finding.kind == "RECOMMENDATION"
+    )
+
+    assert "개인정보 또는 이용자 입력데이터" in recommendation.claim
+    assert "정보주체의 선택권" in recommendation.claim
+    assert "기관 데이터" not in recommendation.claim
+
+
 @pytest.mark.parametrize(
     "kwargs, message",
     [

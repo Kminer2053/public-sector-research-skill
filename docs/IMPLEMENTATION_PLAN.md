@@ -575,6 +575,11 @@ validate
   WEF 조달자료 `pdf:page:19`와 `pdf:page:26:chunk-1` 선택 확인
 - 국가법령정보센터 동적 shell은 Evidence 제외, 정적 조문정보는 사용 가능
 - live Search provider recall·비용·보존경계와 공공업무 담당자 human QA는 PENDING
+- local review packet은 구조지표를 자동 계산하고 법적 과잉해석·업무 유용성은 사람 판정으로
+  남기며, 질문·결과는 stdout에만 출력하고 feedback token은 제외한다.
+- 첫 실제 packet 내부 검토에서 개인정보 근거를 “기관 데이터 전체”로 확대한 권고를 발견해
+  개인정보·이용자 입력데이터와 정보주체의 선택권 범위로 좁혔다. 외부 공공업무 담당자
+  독립 QA와 GR-002~004는 PENDING이다.
 
 **DoD**
 

@@ -55,6 +55,16 @@ research.quick.scope.source_discovery = curated_seed
 uv run --frozen python scripts/live_curated_smoke.py
 ```
 
+사람이 읽는 전체 결과와 표준 검토표를 stdout으로 생성한다.
+
+```bash
+uv run --frozen python scripts/live_curated_review.py
+```
+
+review script는 질문과 결과를 포함하므로 production access log나 CI artifact에 자동 업로드하지
+않는다. 서버·DB에는 저장하지 않으며, 보존이 필요하면 검토자가 승인된 로컬 문서공간에
+명시적으로 저장한다. feedback token과 operation ID는 packet에 포함하지 않는다.
+
 2026-07-16 관찰값은 7개 track, 12개 citation, recommendation 5건, failure 0이었다.
 gap은 curated 범위 제한 1건과 government-policy·procurement missing-anchor 2건이며,
 `PURGED`, ephemeral directory empty를 확인했다. 이 수치는 source 변경에 따라 달라질 수

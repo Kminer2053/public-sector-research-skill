@@ -259,6 +259,11 @@ Markdown은 조사 요약, 조달 원칙 검토안, 확인한 사실, 근거, �
 공공업무 담당자의 초안 유용성, live Search recall과 conflict/recommendation 표현 품질은
 아직 승인되지 않았다.
 
+**Human QA 준비 상태:** local review packet이 FACT·권고 citation coverage, locator,
+unique-document 기준 공식 1차자료 비율과 필수 track recall을 계산한다. 실제 curated 결과를
+내부 검토해 개인정보 근거를 “기관 데이터 전체”로 넓힌 권고문을 발견·수정했다. 외부
+공공업무 담당자의 독립 평가와 GR-002~004는 여전히 PENDING이다.
+
 ### R2 종료 게이트
 
 - quick 호출은 30초 안에 결과 또는 async 전환 안내를 반환한다.
