@@ -7,13 +7,13 @@
 법령·정책·조달·개인정보·표준의 **공식 원문을 우선 조사**하고,<br>
 인용 구간·수집시점·원문 해시·신뢰도 설명을 사용자 PC에 함께 보존합니다.
 
-[![CI](https://github.com/Kminer2053/public-sector-research-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Kminer2053/public-sector-research-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/Kminer2053/public-sector-research-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/Kminer2053/public-sector-research-skill/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg)](LICENSE)
 ![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-111827)](https://agentskills.io/)
 ![Storage](https://img.shields.io/badge/storage-local%20SQLite-0F766E)
 ![Report](https://img.shields.io/badge/report-한국어-1D4ED8)
-[![GitHub stars](https://img.shields.io/github/stars/Kminer2053/public-sector-research-mcp?style=social)](https://github.com/Kminer2053/public-sector-research-mcp/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/Kminer2053/public-sector-research-skill?style=social)](https://github.com/Kminer2053/public-sector-research-skill/stargazers)
 
 [5분 시작](#5분-시작) ·
 [업무 활용 예시](#이런-업무에-사용하세요) ·
@@ -198,7 +198,7 @@ flowchart LR
 
 ```bash
 python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
-  --repo Kminer2053/public-sector-research-mcp \
+  --repo Kminer2053/public-sector-research-skill \
   --path skills/public-sector-research
 ```
 
@@ -218,7 +218,7 @@ $public-sector-research를 사용해서
 Claude Code에서 marketplace를 등록하고 Skill을 설치합니다.
 
 ```text
-/plugin marketplace add Kminer2053/public-sector-research-mcp
+/plugin marketplace add Kminer2053/public-sector-research-skill
 /plugin install public-sector-research@public-sector-research-agent
 ```
 
@@ -236,8 +236,8 @@ Use the public-sector-research skill.
 <summary><strong>공통 설치 또는 다른 Agent 호스트</strong></summary>
 
 ```bash
-git clone https://github.com/Kminer2053/public-sector-research-mcp.git
-cd public-sector-research-mcp
+git clone https://github.com/Kminer2053/public-sector-research-skill.git
+cd public-sector-research-skill
 python3 scripts/install_skill.py --target all
 ```
 
@@ -403,7 +403,7 @@ python3 skills/public-sector-research/scripts/psr.py --version
 - 반복 조사에서 실제로 시간이 절약되는가
 - 기관별 Research Profile에 어떤 기준이 필요한가
 
-[Issue를 등록](https://github.com/Kminer2053/public-sector-research-mcp/issues)할 때는
+[Issue를 등록](https://github.com/Kminer2053/public-sector-research-skill/issues)할 때는
 개인정보·내부문서·비공개 URL·인증정보를 첨부하지 마세요.
 
 ---
@@ -416,6 +416,6 @@ python3 skills/public-sector-research/scripts/psr.py --version
 
 [처음부터 시작하기](#5분-시작) ·
 [설계 문서 보기](docs/ARCHITECTURE.md) ·
-[피드백 남기기](https://github.com/Kminer2053/public-sector-research-mcp/issues)
+[피드백 남기기](https://github.com/Kminer2053/public-sector-research-skill/issues)
 
 </div>
