@@ -8,6 +8,7 @@
 인용 구간·수집시점·원문 해시·신뢰도 설명을 사용자 PC에 함께 보존합니다.
 
 [![CI](https://github.com/Kminer2053/public-sector-research-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Kminer2053/public-sector-research-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg)](LICENSE)
 ![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
 [![Agent Skills](https://img.shields.io/badge/Agent%20Skills-compatible-111827)](https://agentskills.io/)
 ![Storage](https://img.shields.io/badge/storage-local%20SQLite-0F766E)
@@ -386,6 +387,11 @@ python3 skills/public-sector-research/scripts/psr.py --version
 | [ROADMAP.md](docs/ROADMAP.md) | Skill에서 MCP·서비스로 발전하는 단계 |
 | [BRANCH_STRATEGY.md](docs/BRANCH_STRATEGY.md) | 제품별 브랜치와 승격 기준 |
 | [VALIDATION.md](docs/VALIDATION.md) | 테스트와 릴리스 Gate |
+
+## 라이선스
+
+이 프로젝트는 [MIT License](LICENSE)로 공개됩니다.
+저작권 고지와 라이선스 전문을 유지하는 조건으로 사용·복제·수정·배포할 수 있습니다.
 
 ## 기여와 피드백
 
