@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 
@@ -42,6 +43,7 @@ class EvidenceComposer:
         question: str,
         as_of_date: date,
         documents: tuple[EvidenceDocument, ...],
+        terms_by_track: Mapping[str, tuple[str, ...]] | None = None,
     ) -> EvidencePack:
         if not documents:
             return EvidencePack(
@@ -49,10 +51,15 @@ class EvidenceComposer:
                 gaps=("수집·파싱에 성공한 공식 문서가 없습니다.",),
                 deduplicated_count=0,
             )
-        terms = _terms(question)
+        question_terms = _terms(question)
+        configured_terms = terms_by_track or {}
         selections: list[_Selection] = []
         gaps: list[str] = []
         for document in documents:
+            terms = _selection_terms(
+                question_terms,
+                configured_terms.get(document.candidate.track_id, ()),
+            )
             passages = self._select_document(document, terms)
             if not passages:
                 gaps.append(f"{document.candidate.publisher}: 관련 Passage를 선택하지 못했습니다.")
@@ -68,10 +75,13 @@ class EvidenceComposer:
             ),
             reverse=True,
         )
-        unique: dict[str, _Selection] = {}
+        unique: dict[tuple[str, str], _Selection] = {}
         deduplicated = 0
         for selection in ranked:
-            key = _text_key(selection.passage.text)
+            key = (
+                selection.document.candidate.track_id,
+                _text_key(selection.passage.text),
+            )
             existing = unique.get(key)
             if existing is None:
                 unique[key] = selection
@@ -91,7 +101,7 @@ class EvidenceComposer:
             reverse=True,
         )
         final = _balance_tracks(ranked_unique, self._max_citations)
-        citations = tuple(self._citation(selection, terms, as_of_date) for selection in final)
+        citations = tuple(self._citation(selection, as_of_date) for selection in final)
         return EvidencePack(
             citations=citations,
             gaps=tuple(gaps),
@@ -108,6 +118,7 @@ class EvidenceComposer:
                 document=document,
                 passage=passage,
                 relevance=_relevance(passage, terms),
+                terms=terms,
             )
             for passage in document.parsed.passages
         ]
@@ -124,12 +135,15 @@ class EvidenceComposer:
     def _citation(
         self,
         selection: _Selection,
-        terms: frozenset[str],
         as_of_date: date,
     ) -> EvidenceCitation:
         document = selection.document
         passage = selection.passage
-        excerpt = passage.text[: self._max_excerpt_chars]
+        excerpt = _excerpt(
+            passage.text,
+            selection.terms,
+            self._max_excerpt_chars,
+        )
         citation_id = (
             "cit-"
             + hashlib.sha256(
@@ -156,7 +170,7 @@ class EvidenceComposer:
             score=_score(
                 document=document,
                 passage=passage,
-                terms=terms,
+                terms=selection.terms,
                 as_of_date=as_of_date,
                 relevance=selection.relevance,
             ),
@@ -168,6 +182,7 @@ class _Selection:
     document: EvidenceDocument
     passage: Passage
     relevance: float
+    terms: frozenset[str]
 
 
 def _score(
@@ -181,7 +196,7 @@ def _score(
     tier = document.candidate.source_tier
     authority_value = _authority_value(tier)
     primary_value = _PRIMARY_VALUES[tier]
-    direct_value = min(1.0, 0.2 + relevance / max(1, len(terms)))
+    direct_value = round(min(1.0, 0.2 + relevance * 0.15), 4)
     specificity_value = 1.0 if passage.locator else 0.2
     if document.candidate.published_at is None:
         freshness_value = 0.5
@@ -243,8 +258,9 @@ def _score(
 
 
 def _relevance(passage: Passage, terms: frozenset[str]) -> float:
-    haystack = f"{passage.heading or ''} {passage.text}".casefold()
-    return float(sum(term in haystack for term in terms))
+    haystack = _normalized(f"{passage.heading or ''} {passage.text}")
+    compact_haystack = _compact(haystack)
+    return float(sum(term in haystack or _compact(term) in compact_haystack for term in terms))
 
 
 def _terms(question: str) -> frozenset[str]:
@@ -253,6 +269,47 @@ def _terms(question: str) -> frozenset[str]:
         for token in re.findall(r"[0-9A-Za-z가-힣_-]{2,}", question)
         if token.casefold() not in _STOP_TERMS
     )
+
+
+def _selection_terms(
+    question_terms: frozenset[str],
+    configured_terms: tuple[str, ...],
+) -> frozenset[str]:
+    result = set(question_terms)
+    for value in configured_terms:
+        normalized = _normalized(value)
+        if not normalized:
+            continue
+        result.add(normalized)
+    return frozenset(result)
+
+
+def _excerpt(text: str, terms: frozenset[str], limit: int) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    lowered = normalized.casefold()
+    positions = [position for term in terms if (position := lowered.find(term)) >= 0]
+    if not positions:
+        return normalized[:limit]
+    center = min(positions)
+    start = max(0, center - limit // 3)
+    end = min(len(normalized), start + limit)
+    start = max(0, end - limit)
+    excerpt = normalized[start:end]
+    if start:
+        excerpt = f"…{excerpt[1:]}"
+    if end < len(normalized):
+        excerpt = f"{excerpt[:-1]}…"
+    return excerpt
+
+
+def _normalized(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _compact(value: str) -> str:
+    return re.sub(r"[\W_]+", "", value, flags=re.UNICODE)
 
 
 def _text_key(text: str) -> str:
@@ -306,11 +363,16 @@ _STOP_TERMS = frozenset(
         "공공기관",
         "공식자료",
         "중심으로",
+        "인공지능",
+        "조사",
         "조사해줘",
+        "확인",
+        "포함해줘",
         "알려줘",
         "원칙",
         "대한",
         "위한",
+        "ai",
         "the",
         "and",
         "for",

@@ -417,7 +417,7 @@ async def test_pipeline_source_limit_and_collection_failures_are_typed() -> None
 
 
 @pytest.mark.anyio
-async def test_pipeline_parser_exception_and_snapshot_duplicate_are_isolated() -> None:
+async def test_pipeline_parser_exception_and_track_aware_dedup_are_isolated() -> None:
     plan = _plan("공공기관 AI 정책과 개인정보 조달 기준 조사")
     law = _candidate(
         "law-regulation",
@@ -429,11 +429,17 @@ async def test_pipeline_parser_exception_and_snapshot_duplicate_are_isolated() -
         host="policy.go.kr",
         tier=SourceTier.OFFICIAL_PRIMARY,
     )
+    policy_mirror = _candidate(
+        "government-policy",
+        host="policy-mirror.go.kr",
+        tier=SourceTier.REPUTABLE_MEDIA,
+        candidate_id="policy-mirror",
+    )
     privacy = _candidate("privacy", host="privacy.go.kr")
     duplicate_body = b"AI policy evidence with enough reviewable text"
     results = {
         "law-regulation": SearchResult(candidates=(law,)),
-        "government-policy": SearchResult(candidates=(policy,)),
+        "government-policy": SearchResult(candidates=(policy, policy_mirror)),
         "privacy": SearchResult(candidates=(privacy,)),
     }
     _, _, collector = _pipeline(
@@ -450,6 +456,11 @@ async def test_pipeline_parser_exception_and_snapshot_duplicate_are_isolated() -
                 headers={"content-type": "text/plain"},
                 body=duplicate_body,
             ),
+            policy_mirror.url: RawHttpResponse(
+                status=200,
+                headers={"content-type": "text/plain"},
+                body=duplicate_body,
+            ),
             privacy.url: RawHttpResponse(
                 status=200,
                 headers={"content-type": "text/plain"},
@@ -459,7 +470,8 @@ async def test_pipeline_parser_exception_and_snapshot_duplicate_are_isolated() -
         records={
             "law.go.kr": ("93.184.216.34",),
             "policy.go.kr": ("93.184.216.35",),
-            "privacy.go.kr": ("93.184.216.36",),
+            "policy-mirror.go.kr": ("93.184.216.36",),
+            "privacy.go.kr": ("93.184.216.37",),
         },
     )
     exploding = PublicResearchPipeline(
@@ -489,6 +501,7 @@ async def test_pipeline_parser_exception_and_snapshot_duplicate_are_isolated() -
     assert any(
         citation.publisher == "government-policy 담당기관" for citation in deduplicated.citations
     )
+    assert any(citation.track_id == "law-regulation" for citation in deduplicated.citations)
 
 
 def test_pipeline_candidate_normalization_and_confidence_boundaries() -> None:
@@ -500,10 +513,19 @@ def test_pipeline_candidate_normalization_and_confidence_boundaries() -> None:
         url="https://law.go.kr:443/law-regulation#section",
     )
     unknown = _candidate("unknown-track", host="unknown.go.kr")
+    cross_track = replace(
+        primary,
+        id="privacy-copy",
+        track_id="privacy",
+    )
 
-    selected = _select_candidates(plan, (duplicate, primary, unknown))
+    selected = _select_candidates(plan, (duplicate, primary, cross_track, unknown))
 
-    assert len(selected) == 1
+    assert len(selected) == 2
+    assert {candidate.track_id for candidate in selected} == {
+        "law-regulation",
+        "privacy",
+    }
     assert _candidate_url_key("https://source.go.kr:bad/path") == ("https://source.go.kr:bad/path")
     assert _confidence(0.8) == "HIGH"
     assert _confidence(0.7) == "MEDIUM"

@@ -1,7 +1,8 @@
 # Public Sector Research MCP — Implementation Plan
 
 > 문서 상태: In Implementation · 기준일: 2026-07-16 · 현재:
-> **PG1 로컬 수직 슬라이스 구현 완료, 실제 공식 웹 유용성 검증 대기**
+> **PG1 로컬 수직 슬라이스와 고정 공식 URL Evidence 검증 완료,
+> Search provider·사람 유용성 QA 대기**
 
 [DETAILED DESIGN](./DETAILED_DESIGN.md) · [PRD](./PRD.md) · [ARCHITECTURE](./ARCHITECTURE.md) · [ROADMAP](./ROADMAP.md) · [VALIDATION CRITERIA](./VALIDATION_CRITERIA.md)
 
@@ -31,11 +32,15 @@
 - 완료: robots 선검사와 source access typed policy
 - 완료: HTML·JSON·text parser와 subprocess-isolated PDF parser
 - 완료: document quality, URL/hash dedup, component Evidence Score와 citation composer
+- 완료: track별 한·영 passage 선택어, 관련구간 excerpt, cross-track provenance 보존
+- 완료: 동적 법령 shell 제외와 NIST 호스팅/저자 경계의 보수적 source 판정
 - 완료: Search→Collect→Parse→Evidence→Markdown/JSON quick backend
-- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 397 tests
-- coverage gate: normalized statement 96.11%, branch 90.31%, critical module 95% 이상
+- 검증: PostgreSQL 17·OAuth·TCP/TLS 포함 401 tests
+- coverage gate: raw 94.85%, normalized statement 96.03%, branch 90.13%,
+  critical module 95% 이상
 - supply chain: 53 package 알려진 취약점 0, `pypdf 6.14.2` BSD-3-Clause manifest 반영
-- 남음: 실제 Search credential 기반 공식 웹 golden scenario, domain claim/writer QA,
+- 검증: 고정 공식 URL 5종으로 7개 track citation과 실제 PDF page/HTML locator 확인
+- 남음: 실제 Search credential 기반 golden scenario, 법령 source adapter, domain claim/writer QA,
   edge IP normalization, async flow
 
 [Public S0 검증 보고서](./validation/2026-07-16-public-s0.md)를 따른다.
@@ -477,8 +482,10 @@ identity encoding, header allowlist와 typed partial failure를 적용했다. pr
 
 **상태:** 핵심 구현 완료. citation ID, 원문 SHA-256, locator, 짧은 excerpt와 7개 설명형
 score component를 반환한다. URL·동일 passage·동일 document hash를 중복 제거하고 track별
-citation을 우선 확보한다. 현재 자동 finding은 보수적인 원문 확인 문장이고, 실제 업무 판단
-문장과 conflict synthesis는 실웹 QA 뒤 고도화한다.
+citation을 우선 확보한다. 동일 원문이 여러 track을 지지하는 관계를 보존하고, Government
+Profile의 한·영 selection term으로 관련 구간 주변 excerpt를 만든다. 현재 자동 finding은
+원문 발췌 중심의 보수적 문장이고, 실제 업무 판단 문장과 conflict synthesis는 사람 QA 뒤
+고도화한다.
 
 ### CH-P1.7 Quick Research Tool
 
@@ -530,6 +537,14 @@ validate
 - generic evidence bundle이 실제 공공업무 초안에 충분한지 평가
 - 부족하면 LLM을 바로 신뢰하지 않고 citation-constrained Writer 계약과 lint를 추가
 - query/provider 비용, timeout, 403, robots unavailable 비율 측정
+
+**2026-07-16 중간 결과**
+
+- fixed official URL 5종으로 7개 track의 실제 citation/locator 선택은 PASS
+- 개인정보위 PDF `pdf:page:40`, NIST AI RMF `pdf:page:20`,
+  WEF 조달자료 `pdf:page:19`와 `pdf:page:26:chunk-1` 선택 확인
+- 국가법령정보센터 동적 shell은 Evidence 제외, 정적 조문정보는 사용 가능
+- Search provider recall·비용·보존경계와 공공업무 담당자 human QA는 PENDING
 
 **DoD**
 

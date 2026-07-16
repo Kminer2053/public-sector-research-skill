@@ -76,6 +76,26 @@ def test_document_quality_uses_title_and_bounded_inspection() -> None:
     assert quality.status is DocumentQualityStatus.ERROR_PAGE
 
 
+def test_document_quality_rejects_law_shell_without_article_body() -> None:
+    shell = _document("본문목록열림 본문 제정·개정이유 원문다운로드 조문 선택 화면내검색")
+    rejected = DocumentQualityAssessor().assess(
+        shell,
+        source_url="https://www.law.go.kr/LSW/lsInfoP.do?lsId=014820",
+    )
+    article = DocumentQualityAssessor().assess(
+        _document("본문목록열림 원문다운로드 제34조(고영향 인공지능과 관련한 사업자의 책무)"),
+        source_url="https://www.law.go.kr/LSW/lsInfoP.do?lsId=014820",
+    )
+    common_info = DocumentQualityAssessor().assess(
+        shell,
+        source_url="https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1",
+    )
+
+    assert rejected.status is DocumentQualityStatus.DYNAMIC_CONTENT_MISSING
+    assert article.status is DocumentQualityStatus.USABLE
+    assert common_info.status is DocumentQualityStatus.USABLE
+
+
 @pytest.mark.parametrize(
     "kwargs, message",
     [

@@ -20,6 +20,7 @@ class SourceRule:
     domain: str
     publisher: str
     source_tier: SourceTier
+    path_prefix: str | None = None
 
 
 class GovernmentSourceRegistry:
@@ -28,7 +29,10 @@ class GovernmentSourceRegistry:
         self._rules = tuple(
             sorted(
                 configured,
-                key=lambda rule: len(rule.domain),
+                key=lambda rule: (
+                    len(rule.domain),
+                    len(rule.path_prefix or ""),
+                ),
                 reverse=True,
             )
         )
@@ -40,11 +44,16 @@ class GovernmentSourceRegistry:
         preferred_domains: tuple[str, ...],
     ) -> SourceIdentity:
         try:
-            host = (urlsplit(url).hostname or "").casefold().rstrip(".")
+            parsed = urlsplit(url)
+            host = (parsed.hostname or "").casefold().rstrip(".")
+            path = parsed.path or "/"
         except ValueError:
             host = ""
+            path = "/"
         for rule in self._rules:
-            if _matches(host, rule.domain):
+            if _matches(host, rule.domain) and (
+                rule.path_prefix is None or path.startswith(rule.path_prefix)
+            ):
                 return SourceIdentity(
                     publisher=rule.publisher,
                     source_tier=rule.source_tier,
@@ -79,7 +88,23 @@ _DEFAULT_RULES = (
     SourceRule("korea.kr", "대한민국 정책브리핑", SourceTier.OFFICIAL_SECONDARY),
     SourceRule("mois.go.kr", "행정안전부", SourceTier.OFFICIAL_PRIMARY),
     SourceRule("nia.or.kr", "한국지능정보사회진흥원", SourceTier.OFFICIAL_PRIMARY),
-    SourceRule("nist.gov", "NIST", SourceTier.OFFICIAL_PRIMARY),
+    SourceRule(
+        "tsapps.nist.gov",
+        "NIST",
+        SourceTier.OFFICIAL_PRIMARY,
+        "/publication/",
+    ),
+    SourceRule(
+        "nist.gov",
+        "NIST",
+        SourceTier.OFFICIAL_PRIMARY,
+        "/publications/",
+    ),
+    SourceRule(
+        "nist.gov",
+        "NIST 호스팅 자료(저자 미확인)",
+        SourceTier.OFFICIAL_SECONDARY,
+    ),
     SourceRule("oecd.org", "OECD", SourceTier.OFFICIAL_PRIMARY),
     SourceRule("iso.org", "ISO", SourceTier.OFFICIAL_PRIMARY),
     SourceRule("gov.uk", "UK Government", SourceTier.OFFICIAL_PRIMARY),

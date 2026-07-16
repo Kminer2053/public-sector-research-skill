@@ -97,15 +97,16 @@ Enterprise
 [P1 기반 검증 보고서](./docs/validation/2026-07-16-public-p1-foundation.md)에
 Planner·SafeCollector 기반 검증을 기록했습니다.
 [PG1 로컬 수직 슬라이스 보고서](./docs/validation/2026-07-16-pg1-useful-research.md)에
-PostgreSQL 포함 397개 전체 회귀, parser·Evidence·Search와 남은 실웹 검증을 기록했습니다.
+전체 회귀, 실제 공식 URL 5종의 7개 track Evidence 선택, 그리고 남은 Search provider·사람
+유용성 검증을 기록했습니다.
 
 ## 다음 구현 범위
 
 다음 작업은 이미 연결된 수직 슬라이스를 실제 공개 서비스 수준으로 검증하는 것입니다.
 
-1. 운영자가 선택한 Search provider credential로 실제 공식자료 golden scenario 실행
-2. 직접 공식 URL seed와 Search provider 장애 시 fallback 정책
-3. 실제 법령·가이드의 의미 있는 claim 작성 품질과 conflict/gap 검증
+1. 운영자가 선택한 Search provider credential로 검색부터 시작하는 golden scenario 실행
+2. 국가법령정보센터 source adapter와 Search provider 장애 시 fallback 정책
+3. 실제 법령·가이드의 citation-constrained claim 작성 품질과 conflict/gap 검증
 4. edge client IP normalization과 end-to-end content leakage scan
 5. source-host별 운영 rate, 일일 비용상한과 kill-switch rehearsal
 6. `start/status/result/cancel` async flow

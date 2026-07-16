@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 from psr_mcp.parsers.models import ParsedDocument
 
@@ -14,6 +16,7 @@ class DocumentQualityStatus(StrEnum):
     ACCESS_RESTRICTED = "ACCESS_RESTRICTED"
     ERROR_PAGE = "ERROR_PAGE"
     TOO_LITTLE_TEXT = "TOO_LITTLE_TEXT"
+    DYNAMIC_CONTENT_MISSING = "DYNAMIC_CONTENT_MISSING"
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +43,12 @@ class DocumentQualityAssessor:
         self._minimum_text_chars = minimum_text_chars
         self._inspection_char_limit = inspection_char_limit
 
-    def assess(self, document: ParsedDocument) -> DocumentQuality:
+    def assess(
+        self,
+        document: ParsedDocument,
+        *,
+        source_url: str | None = None,
+    ) -> DocumentQuality:
         text = _document_text(document, self._inspection_char_limit)
         if len(text) < self._minimum_text_chars:
             return DocumentQuality(
@@ -63,6 +71,11 @@ class DocumentQualityAssessor:
                 DocumentQualityStatus.ERROR_PAGE,
                 "document appears to be an error page",
             )
+        if source_url is not None and _law_page_is_dynamic_shell(source_url, text):
+            return DocumentQuality(
+                DocumentQualityStatus.DYNAMIC_CONTENT_MISSING,
+                "official law page shell was collected without its article body",
+            )
         return DocumentQuality(
             DocumentQualityStatus.USABLE,
             "document contains reviewable extracted text",
@@ -84,6 +97,20 @@ def _document_text(document: ParsedDocument, limit: int) -> str:
 
 def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
     return any(pattern in text for pattern in patterns)
+
+
+def _law_page_is_dynamic_shell(source_url: str, text: str) -> bool:
+    try:
+        parsed = urlsplit(source_url)
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").casefold().rstrip(".")
+    if not (host == "law.go.kr" or host.endswith(".law.go.kr")):
+        return False
+    if not parsed.path.casefold().endswith("/lsinfop.do"):
+        return False
+    normalized = " ".join(text.split())
+    return "본문목록열림" in normalized and _LAW_ARTICLE_PATTERN.search(normalized) is None
 
 
 _LOGIN_PATTERNS = (
@@ -114,3 +141,4 @@ _ERROR_PATTERNS = (
     "service unavailable",
     "internal server error",
 )
+_LAW_ARTICLE_PATTERN = re.compile(r"제\s*\d+조(?:의\s*\d+)?\s*\(")

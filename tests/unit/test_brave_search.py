@@ -349,6 +349,22 @@ def test_brave_search_and_registry_configuration_fail_closed() -> None:
         "https://[invalid",
         preferred_domains=(),
     )
+    nist_publication = registry.classify(
+        "https://www.nist.gov/publications/artificial-intelligence-risk-management-framework",
+        preferred_domains=(),
+    )
+    nist_hosted_third_party = registry.classify(
+        "https://www.nist.gov/system/files/documents/2021/08/23/ai-rmf-rfi-0039-1.pdf",
+        preferred_domains=(),
+    )
+    nist_catalog_pdf = registry.classify(
+        "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=936225",
+        preferred_domains=(),
+    )
     assert subdomain.publisher == "개인정보보호위원회"
     assert preferred.source_tier is SourceTier.OFFICIAL_SECONDARY
     assert malformed.source_tier is SourceTier.UNVERIFIED_WEB
+    assert nist_publication.source_tier is SourceTier.OFFICIAL_PRIMARY
+    assert nist_catalog_pdf.source_tier is SourceTier.OFFICIAL_PRIMARY
+    assert nist_hosted_third_party.source_tier is SourceTier.OFFICIAL_SECONDARY
+    assert "저자 미확인" in nist_hosted_third_party.publisher

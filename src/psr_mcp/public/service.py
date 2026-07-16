@@ -98,6 +98,7 @@ class FixtureResearchBackend:
         track_titles = ", ".join(track.title for track in plan.tracks)
         citation = Citation(
             id="cit-fixture-1",
+            track_id=plan.tracks[0].id,
             title="Public quick lifecycle development fixture",
             publisher="PSR MCP test fixture",
             url=HttpUrl("https://fixture.invalid/public-quick-lifecycle"),
@@ -374,6 +375,7 @@ def _render_markdown(draft: ResearchDraft, plan: ResearchPlan) -> str:
                     f"{_markdown_text(citation.publisher)}"
                 ),
                 f"  - URL: {citation.url}",
+                f"  - Track: {_markdown_text(citation.track_id)}",
                 f"  - Tier: {_markdown_text(citation.source_tier)}",
                 f"  - Retrieved: {citation.retrieved_at.isoformat()}",
                 f"  - Locator: {_markdown_text(citation.locator)}",

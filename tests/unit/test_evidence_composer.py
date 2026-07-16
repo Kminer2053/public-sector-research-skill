@@ -214,6 +214,93 @@ def test_composer_reserves_a_citation_for_each_represented_track() -> None:
     }
 
 
+def test_composer_uses_bilingual_track_terms_and_centers_excerpt() -> None:
+    document = _document(
+        candidate_id="g",
+        tier=SourceTier.OFFICIAL_SECONDARY,
+        text=(
+            ("background " * 80) + "The contract should define data ownership, access to data, "
+            "and deletion at the end of service." + (" appendix" * 80)
+        ),
+        locator="pdf:page:19",
+        publisher="공식 저장소",
+    )
+
+    pack = EvidenceComposer(max_excerpt_chars=180).compose(
+        question="공공기관 AI 구매 원칙의 데이터 권리를 조사해줘",
+        as_of_date=date(2026, 7, 16),
+        documents=(document,),
+        terms_by_track={
+            "data-rights": (
+                "data ownership",
+                "access to data",
+                "data deletion",
+            )
+        },
+    )
+
+    citation = pack.citations[0]
+    assert "data ownership" in citation.excerpt
+    assert citation.excerpt.startswith("…")
+    assert citation.excerpt.endswith("…")
+    assert citation.score.direct_relevance.value >= 0.65
+
+
+def test_composer_matches_korean_terms_when_pdf_spacing_is_lost() -> None:
+    document = _document(
+        candidate_id="h",
+        tier=SourceTier.OFFICIAL_PRIMARY,
+        text="이용자대화데이터의학습재사용여부와보유기간및파기정책을고지해야합니다.",
+        locator="pdf:page:39",
+        publisher="개인정보보호위원회",
+    )
+
+    pack = EvidenceComposer().compose(
+        question="학습 재사용과 보유기간을 확인해줘",
+        as_of_date=date(2026, 7, 16),
+        documents=(document,),
+        terms_by_track={
+            "data-rights": ("학습 재사용", "보유기간", "파기"),
+        },
+    )
+
+    assert pack.citations[0].score.direct_relevance.value >= 0.65
+
+
+def test_composer_preserves_same_passage_for_different_tracks() -> None:
+    first = _document(
+        candidate_id="i",
+        tier=SourceTier.OFFICIAL_PRIMARY,
+        text="학습 데이터의 보유기간과 파기 기준을 계약서에 명시한다.",
+        locator="pdf:page:20",
+        publisher="개인정보보호위원회",
+    )
+    second = EvidenceDocument(
+        candidate=SourceCandidate(
+            id="j",
+            track_id="privacy",
+            url=first.candidate.url,
+            title=first.candidate.title,
+            publisher=first.candidate.publisher,
+            source_tier=first.candidate.source_tier,
+        ),
+        collected=first.collected,
+        parsed=first.parsed,
+    )
+
+    pack = EvidenceComposer(max_citations=2).compose(
+        question="학습 데이터 보유기간과 파기 기준",
+        as_of_date=date(2026, 7, 16),
+        documents=(first, second),
+    )
+
+    assert {citation.track_id for citation in pack.citations} == {
+        "data-rights",
+        "privacy",
+    }
+    assert pack.deduplicated_count == 0
+
+
 @pytest.mark.parametrize(
     "kwargs, message",
     [

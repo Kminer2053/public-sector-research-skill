@@ -386,7 +386,11 @@ global cost budget: operator config
 
 - 모든 검색은 `SearchProvider` port 뒤에 둔다.
 - `GovernmentQueryBuilder`가 Planner track별 query와 preferred official domain을 만든다.
-- `GovernmentSourceRegistry`가 hostname suffix로 publisher와 source tier를 분류한다.
+- `GovernmentSourceRegistry`가 hostname과 신뢰 가능한 path 규칙으로 publisher와 source tier를
+  보수적으로 분류한다.
+- 공식기관 domain이 제3자 제출자료를 호스팅할 수 있으므로 host만으로 저자·1차자료 여부를
+  확정하지 않는다. 예: NIST publication catalog는 primary, 일반 `system/files`는
+  authorship 미확인 secondary다.
 - 검색어는 provider에 전달되지만 PSR log/DB에 보관하지 않는다.
 - provider별 개인정보·약관 고지를 서비스 정책에 포함한다.
 - 검색 결과는 Evidence가 아니라 candidate다.
@@ -461,6 +465,9 @@ robots.txt SafeCollector fetch
 - blank scanned PDF는 `OCR_REQUIRED`, password PDF는 `ENCRYPTED_DOCUMENT`, malformed 문서는
   `INVALID_DOCUMENT`다.
 - login, CAPTCHA/access denied, error page와 지나치게 짧은 문서는 Evidence에서 제외한다.
+- 국가법령정보센터 `lsInfoP.do`처럼 article 본문 없이 shell만 수집된 문서는
+  `DYNAMIC_CONTENT_MISSING`으로 제외한다. 정적 조문정보 또는 향후 source adapter가 확보한
+  본문만 Evidence가 된다.
 - source text는 instruction이 아닌 untrusted data다.
 - executable attachment, macro document와 OCR은 현재 미지원이다.
 
@@ -499,20 +506,22 @@ Evidence Composer는 영구 ID graph 대신 한 결과 안에서만 안정적인
 
 ```text
 Finding --citation_ids--> Citation
-Citation --> publisher/url/retrieved_at/locator/excerpt/tier
+Citation --> track_id/publisher/url/retrieved_at/locator/excerpt/tier
 ```
 
 FACT는 citation이 없으면 finding으로 확정하지 않고 gap 또는 inference로 낮춘다.
 
 현재 구현:
 
-- canonical URL로 Search candidate 중복 제거
-- exact document SHA-256로 mirror snapshot 중복 제거
-- normalized passage text로 재인용 구간 중복 제거
+- 같은 track 안에서 canonical URL로 Search candidate 중복 제거
+- 같은 track 안에서 exact document SHA-256로 mirror snapshot 중복 제거
+- 같은 track 안에서 normalized passage text로 재인용 구간 중복 제거
+- 하나의 문서·passage가 여러 track을 지지하면 각 track 연결은 보존
 - 각 represented track의 citation을 먼저 확보한 뒤 score 순으로 채움
+- track별 한·영 selection term과 공백·구두점 정규화로 다국어 passage 선택
 - `authority`, `primary_source`, `direct_relevance`, `original_snapshot`, `specificity`,
   `freshness`, `independence`를 0..1 값과 설명으로 반환
-- excerpt 500자 상한, locator와 document SHA-256 필수
+- 관련 구문 주변 excerpt 500자 상한, `track_id`, locator와 document SHA-256 필수
 
 현재 자동 finding은 과잉해석을 막기 위해 “어느 원문의 어느 구간을 확인했다”는 보수적 사실만
 만든다. 실제 정책 claim, recommendation, conflict와 법적 적용 판단은 live official-source

@@ -223,6 +223,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-024 | response·압축해제·PDF page·parser time에 상한을 둔다. | Must | bomb fixture가 process를 고갈시키지 않음 |
 | FR-PUB-025 | 공식 원문 미확보를 결과에서 명시한다. | Must | 대체 기사만 있을 때 gap 생성 |
 | FR-PUB-026 | 외부 Search provider로 전달되는 데이터와 provider-side retention을 공개해야 한다. | Must | `service.policy`와 연결문서가 실제 adapter와 일치 |
+| FR-PUB-027 | 동적 shell·뷰어만 수집되고 본문이 빠진 문서를 Evidence로 사용하지 않는다. | Must | 국가법령정보센터 shell fixture가 `DYNAMIC_CONTENT_MISSING` |
 
 ### 8.4 Evidence and Output
 
@@ -234,6 +235,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-033 | FACT·INFERENCE·RECOMMENDATION을 구분한다. | Must | 추론이 FACT로 출력되지 않음 |
 | FR-PUB-034 | conflicts, gaps, failures, as-of date를 항상 출력한다. | Must | 빈 경우도 명시적 배열 |
 | FR-PUB-035 | Markdown과 JSON을 지원한다. | Must | 두 형식의 핵심 claim/citation ID 일치 |
+| FR-PUB-036 | 하나의 원문이 여러 조사 track을 지지하면 중복 원문 판정과 별개로 track 연결을 보존한다. | Must | citation에 `track_id`, 동일 PDF의 cross-track recall 유지 |
 
 ### 8.5 Ephemeral Lifecycle
 
@@ -314,7 +316,7 @@ stateDiagram-v2
 | `RUN_EXPIRED_OR_NOT_FOUND` | handle 없음 또는 만료 | 존재 여부 통합 |
 | `SOURCE_POLICY_BLOCKED` | 안전·약관 정책상 수집 불가 | limitation에 표시 |
 | `NETWORK_TRANSIENT` | source 일시 장애 | 제한된 retry |
-| `CONTENT_INVALID` | 로그인 페이지·빈 문서·형식 위장 | Evidence 제외 |
+| `CONTENT_INVALID` | 로그인 페이지·빈 문서·형식 위장·본문 없는 동적 shell | Evidence 제외 |
 | `BUDGET_EXHAUSTED` | 시간·byte·source 한도 도달 | partial 결과 |
 | `RESULT_TOO_LARGE` | MCP 응답 상한 초과 | 요약·citation 중심 축소 |
 | `PURGE_PENDING` | 삭제 재시도 중 | content 접근 차단 |

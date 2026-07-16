@@ -228,9 +228,10 @@ MIME sniff, HTML·JSON·text locator와 subprocess PDF parser를 구현했다. �
 **난이도:** 높음
 **완료 기준:** citation 없는 FACT 0개, locator completeness 95% 이상
 
-**상태:** 로컬 수직 슬라이스 완료. component score, URL/passage/document hash dedup, citation,
-Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 현재 finding은 보수적 원문
-확인 문장이므로 실제 업무 초안 유용성과 conflict/recommendation 품질은 아직 승인되지 않았다.
+**상태:** 로컬 수직 슬라이스와 고정 공식 URL Evidence 선택 완료. component score,
+track-aware URL/passage/document hash dedup, citation `track_id`, 한·영 passage 선택,
+Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 실제 Search provider recall과
+업무 초안 유용성, conflict/recommendation 품질은 아직 승인되지 않았다.
 
 ### R2 종료 게이트
 
@@ -239,8 +240,9 @@ Markdown/JSON, partial failure와 purge-after-quick을 구현했다. 현재 find
 - 일부 source 실패에도 usable partial 결과를 반환한다.
 - 질문·원문·결과 canary는 응답 후 남지 않는다.
 
-**현재 판정:** deterministic/local implementation은 통과했지만 R2 종료 게이트는 열려 있다.
-실제 공식 웹 GR-001~004, 사람의 유용성 검토, provider 비용·보존 고지가 남았다.
+**현재 판정:** deterministic/local implementation과 고정 공식 URL의 수집·파싱·Evidence
+선택은 통과했지만 R2 종료 게이트는 열려 있다. 검색부터 시작하는 GR-001~004, 사람의 유용성
+검토, 법령 source adapter, provider 비용·보존 고지가 남았다.
 
 ## 6. R3 — Ephemeral Async
 

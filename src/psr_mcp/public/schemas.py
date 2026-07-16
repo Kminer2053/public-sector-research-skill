@@ -77,6 +77,7 @@ class Citation(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: str
+    track_id: str
     title: str
     publisher: str
     url: HttpUrl

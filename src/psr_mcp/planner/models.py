@@ -13,6 +13,7 @@ class ResearchTrack:
     research_question: str
     evidence_types: tuple[str, ...]
     source_tiers: tuple[str, ...]
+    selection_terms: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

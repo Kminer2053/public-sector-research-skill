@@ -38,6 +38,9 @@ def test_ai_procurement_question_has_required_government_tracks() -> None:
     assert plan.stop_conditions.max_sources == 12
     assert plan.stop_conditions.require_official_primary is True
     assert all(track.source_tiers for track in plan.tracks)
+    data_rights = next(track for track in plan.tracks if track.id == "data-rights")
+    assert "data ownership" in data_rights.selection_terms
+    assert "학습 재사용" in data_rights.selection_terms
 
 
 def test_planner_is_deterministic_and_deduplicates_keyword_tracks() -> None:

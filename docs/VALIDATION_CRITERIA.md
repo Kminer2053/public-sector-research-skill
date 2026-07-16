@@ -267,8 +267,10 @@ PG1은 두 층으로 판정한다.
 2. **Live Official-Source QA:** 실제 공식 source로 GR-001~004를 실행하고 공공업무 담당자가
    claim·citation·gap의 유용성을 검토한다.
 
-2026-07-16 현재 1은 PASS, 2는 PENDING이다. 따라서 “Search/Parser/Evidence가 구현됐다”는
-표현은 허용하지만 “공공분야 리서치 품질 검증 완료” 또는 “PG1 최종 PASS”는 허용하지 않는다.
+2026-07-16 현재 1은 PASS다. 2는 고정 공식 URL의 수집·파싱·Evidence 선택까지 PASS했지만,
+실제 Search provider와 공공업무 담당자 human QA는 PENDING이다. 따라서
+“실제 공식 원문에서 Evidence 선택을 검증했다”는 표현은 허용하지만
+“공공분야 리서치 품질 검증 완료” 또는 “PG1 최종 PASS”는 허용하지 않는다.
 
 Live QA는 다음을 추가로 충족해야 한다.
 
@@ -276,6 +278,8 @@ Live QA는 다음을 추가로 충족해야 한다.
 - 외부 provider에 전달되는 query와 provider-side retention 고지
 - site별 robots 결과와 Terms/저작권 운영검토
 - 실제 공식 1차 source 비율과 locator completeness 측정
+- 동적 법령 shell처럼 본문이 빠진 문서의 Evidence 제외
+- 동일 원문의 여러 track 연결 보존과 citation `track_id` 노출
 - 사람이 읽는 결과에서 unsupported legal conclusion 0건
 - generic evidence bundle이 불충분하면 citation-constrained Writer 보강
 

@@ -106,6 +106,7 @@ class PublicResearchPipeline:
             question=plan.question,
             as_of_date=plan.as_of_date,
             documents=tuple(unique_documents),
+            terms_by_track={track.id: track.selection_terms for track in plan.tracks},
         )
         citations = tuple(_citation(citation) for citation in evidence_pack.citations)
         findings = tuple(_finding(citation) for citation in evidence_pack.citations)
@@ -227,7 +228,10 @@ class PublicResearchPipeline:
                         retryable=False,
                     ),
                 )
-            quality = self._quality.assess(parsed)
+            quality = self._quality.assess(
+                parsed,
+                source_url=collected.final_url,
+            )
             if not quality.usable:
                 return _CollectionResult(
                     document=None,
@@ -294,11 +298,11 @@ def _select_candidates(
 ) -> tuple[SourceCandidate, ...]:
     track_order = {track.id: index for index, track in enumerate(plan.tracks)}
     grouped: dict[str, list[SourceCandidate]] = defaultdict(list)
-    seen_urls: set[str] = set()
+    seen_urls: set[tuple[str, str]] = set()
     for candidate in candidates:
         if candidate.track_id not in track_order:
             continue
-        key = _candidate_url_key(candidate.url)
+        key = (candidate.track_id, _candidate_url_key(candidate.url))
         if key in seen_urls:
             continue
         seen_urls.add(key)
@@ -326,10 +330,13 @@ def _select_candidates(
 def _deduplicate_documents(
     documents: list[EvidenceDocument],
 ) -> tuple[list[EvidenceDocument], int]:
-    by_hash: dict[str, EvidenceDocument] = {}
+    by_hash: dict[tuple[str, str], EvidenceDocument] = {}
     duplicates = 0
     for document in documents:
-        key = document.collected.sha256
+        key = (
+            document.candidate.track_id,
+            document.collected.sha256,
+        )
         existing = by_hash.get(key)
         if existing is None:
             by_hash[key] = document
@@ -368,6 +375,7 @@ def _gaps(plan: ResearchPlan, evidence_pack: EvidencePack) -> tuple[str, ...]:
 def _citation(citation: EvidenceCitation) -> Citation:
     return Citation(
         id=citation.id,
+        track_id=citation.track_id,
         title=citation.title,
         publisher=citation.publisher,
         url=HttpUrl(citation.url),
@@ -381,10 +389,12 @@ def _citation(citation: EvidenceCitation) -> Citation:
 
 
 def _finding(citation: EvidenceCitation) -> Finding:
+    excerpt = " ".join(citation.excerpt.split())
+    if len(excerpt) > 220:
+        excerpt = f"{excerpt[:219]}…"
     return Finding(
         claim=(
-            f"{citation.publisher}의 「{citation.title}」 "
-            f"{citation.locator}에서 질문과 관련된 원문 근거를 확인했습니다."
+            f"{citation.publisher}의 「{citation.title}」 {citation.locator} 관련 원문: {excerpt}"
         ),
         kind="FACT",
         citation_ids=[citation.id],
