@@ -77,6 +77,7 @@ class Settings:
     public_kill_switch: bool = False
     public_fixture_research_enabled: bool = False
     quick_timeout_seconds: float = 20.0
+    public_max_active_quick: int = 8
     max_run_sources: int = 12
     max_run_bytes: int = 31_457_280
     search_provider: SearchProviderMode = SearchProviderMode.DISABLED
@@ -143,6 +144,7 @@ class Settings:
                     name="PSR_PUBLIC_FIXTURE_RESEARCH_ENABLED",
                 ),
                 quick_timeout_seconds=float(values.get("PSR_QUICK_TIMEOUT_SECONDS", "20")),
+                public_max_active_quick=int(values.get("PSR_PUBLIC_MAX_ACTIVE_QUICK", "8")),
                 max_run_sources=int(values.get("PSR_MAX_RUN_SOURCES", "12")),
                 max_run_bytes=int(values.get("PSR_MAX_RUN_BYTES", "31457280")),
                 search_provider=SearchProviderMode(values.get("PSR_SEARCH_PROVIDER", "disabled")),
@@ -196,6 +198,8 @@ class Settings:
             raise ValueError("PSR_QUICK_TIMEOUT_SECONDS must be 1..30")
         if self.quick_timeout_seconds > self.request_timeout_seconds:
             raise ValueError("PSR_QUICK_TIMEOUT_SECONDS must not exceed request timeout")
+        if self.public_max_active_quick < 1 or self.public_max_active_quick > 100:
+            raise ValueError("PSR_PUBLIC_MAX_ACTIVE_QUICK must be 1..100")
         if self.max_run_sources < 1 or self.max_run_sources > 100:
             raise ValueError("PSR_MAX_RUN_SOURCES must be 1..100")
         if self.max_run_bytes < 1_048_576 or self.max_run_bytes > 104_857_600:

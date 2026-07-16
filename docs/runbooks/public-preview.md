@@ -123,6 +123,7 @@ provider 정책에 따라 질의를 최대 90일 보관할 수 있고 Enterprise
 | `PSR_COLLECTION_MAX_CONCURRENCY` | 4 | 1..20 |
 | `PSR_TRUSTED_PROXY_CIDRS` | 빈 값 | production public mode 필수, comma-separated CIDR |
 | `PSR_QUICK_TIMEOUT_SECONDS` | 20 | 1..30, request timeout 이하 |
+| `PSR_PUBLIC_MAX_ACTIVE_QUICK` | 8 | process당 동시 quick 상한, 1..100 |
 | `PSR_MAX_RUN_SOURCES` | 12 | 1..100 |
 | `PSR_MAX_RUN_BYTES` | 30 MiB | 1..100 MiB |
 | `PSR_PUBLIC_KILL_SWITCH` | `false` | 새 quick/start 중지 |

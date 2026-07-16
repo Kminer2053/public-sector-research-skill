@@ -366,6 +366,13 @@ Public Preview는 계정 대신 bearer capability인 `run_handle`을 사용한�
 
 토큰·run handle을 바꾸어도 IP quota를 새로 얻을 수 없어야 한다.
 
+현재 `PublicQuickResearchService`는 `PSR_PUBLIC_MAX_ACTIVE_QUICK` 값으로 한 application
+process에서 동시에 실행할 quick 조사 수를 제한한다. 상한 확인과 slot 확보는 Planner,
+ephemeral workspace 생성과 외부 source network보다 먼저 수행한다. slot은 성공, typed error,
+예상하지 못한 오류와 task 취소의 `finally` 경로에서 반환된다. 이 counter는 의도적으로
+process-local이므로 replica가 둘 이상이면 gateway 또는 공유 limiter backend에서 별도의
+배포 전체 상한을 적용해야 한다.
+
 reverse proxy 뒤의 application은 `PSR_TRUSTED_PROXY_CIDRS`에 포함된 peer에서 온 요청만
 `X-PSR-Client-IP` 단일 값을 신뢰한다. 값은 IPv4/IPv6 한 개여야 하며 누락·쉼표 목록·비정상
 값은 fail closed한다. trusted network 밖에서 보낸 같은 header는 quota 계산에 사용하지 않고
@@ -378,6 +385,7 @@ downstream application에 전달하기 전에 제거한다. gateway는 외부 �
 quick: IP당 분당 5회
 async start: IP당 시간당 3회
 active run: IP당 1개
+active quick: process당 8개(초기 기본값)
 source documents: run당 12개
 download: run당 30MB
 runtime: run당 10분
@@ -574,6 +582,7 @@ PSR_SERVICE_MODE=public_ephemeral
 PSR_PUBLIC_ACCESS_ENABLED=true
 PSR_EPHEMERAL_ROOT=/restricted/path
 PSR_QUICK_TIMEOUT_SECONDS=20
+PSR_PUBLIC_MAX_ACTIVE_QUICK=8
 PSR_RUN_TTL_SECONDS=3600
 PSR_DELIVERED_PURGE_SECONDS=60
 PSR_ORPHAN_MAX_AGE_SECONDS=7200

@@ -226,7 +226,7 @@ src/psr_mcp/
 
 ### CH-S0.3 Abuse Limiter 교체
 
-**요구사항:** `FR-PUB-050~054`
+**요구사항:** `FR-PUB-050~055`
 
 **수정/추가**
 
@@ -245,13 +245,17 @@ src/psr_mcp/
 - raw IP와 token은 log·DB에 저장하지 않는다.
 - kill switch는 새 quick/start만 거부한다.
 
-**상태:** process-local HMAC limiter와 trusted proxy CIDR/client IP 정규화는 구현 완료.
-실제 gateway의 header overwrite, raw-IP quota와 multi-replica quota는 CH-P3.1에서 검증한다.
+**상태:** process-local HMAC limiter, trusted proxy CIDR/client IP 정규화와
+`PSR_PUBLIC_MAX_ACTIVE_QUICK` 기반 process-local quick 동시실행 상한은 구현 완료했다.
+초과 요청은 workspace와 source network를 만들기 전에 `PUBLIC_LIMIT_REACHED`로 거부하며,
+성공·오류·취소 경로 모두 slot을 반환한다. 실제 gateway의 header overwrite, raw-IP quota와
+multi-replica 공유 quota는 CH-P3.1에서 검증한다.
 
 **DoD**
 
 - 100개의 invalid bearer를 회전해도 같은 IP budget을 초과할 수 없다.
 - 다른 IP fixture는 독립 bucket을 사용한다.
+- process active quick 상한에서 초과 요청은 workspace 생성 전에 거부되고 종료 뒤 slot이 반환된다.
 - `Retry-After`와 `PUBLIC_LIMIT_REACHED`가 일관되다.
 - HMAC key rotation과 counter TTL test가 있다.
 

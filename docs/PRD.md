@@ -270,6 +270,7 @@ Public Preview 서버는 저장하지 않는다. Tool 결과는 Markdown/JSON으
 | FR-PUB-052 | 1회 조사 비용·시간 상한을 초과하면 partial 종료한다. | Must | 무제한 retry 없음 |
 | FR-PUB-053 | 운영자가 public start/collection을 즉시 중지하는 kill switch를 가진다. | Must | 기존 결과 조회·purge는 계속 가능 |
 | FR-PUB-054 | abuse counter는 회전 HMAC key와 TTL을 사용한다. | Must | raw IP·question이 app DB에 없음 |
+| FR-PUB-055 | 동시에 실행할 수 있는 quick 조사를 프로세스별 설정값으로 제한한다. | Must | 상한 초과 요청은 workspace·외부 network 생성 전에 `PUBLIC_LIMIT_REACHED`, 완료·실패·취소 뒤 slot 반환 |
 
 ### 8.7 Feedback
 

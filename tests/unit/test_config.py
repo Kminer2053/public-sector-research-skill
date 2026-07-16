@@ -257,6 +257,7 @@ def test_public_ephemeral_development_requires_absolute_root(tmp_path: Path) -> 
     assert settings.service_mode is ServiceMode.PUBLIC_EPHEMERAL
     assert settings.public_kill_switch is True
     assert settings.public_fixture_research_enabled is True
+    assert settings.public_max_active_quick == 8
     assert settings.diagnostics()["abuse_hmac_key_ref"] is False
 
     container = build_container(settings)
@@ -341,6 +342,22 @@ def test_trusted_proxy_cidrs_are_validated_and_canonicalized(tmp_path: Path) -> 
                 "PSR_QUICK_TIMEOUT_SECONDS": "31",
             },
             "QUICK_TIMEOUT_SECONDS",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_MAX_ACTIVE_QUICK": "0",
+            },
+            "PUBLIC_MAX_ACTIVE_QUICK",
+        ),
+        (
+            {
+                "PSR_SERVICE_MODE": "public_ephemeral",
+                "PSR_EPHEMERAL_ROOT": "/tmp/psr",
+                "PSR_PUBLIC_MAX_ACTIVE_QUICK": "101",
+            },
+            "PUBLIC_MAX_ACTIVE_QUICK",
         ),
         (
             {

@@ -7,6 +7,7 @@ import html
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
+from threading import Lock
 from typing import Literal, Protocol
 
 from pydantic import HttpUrl
@@ -33,6 +34,7 @@ class PublicErrorCode(StrEnum):
     PUBLIC_SERVICE_PAUSED = "PUBLIC_SERVICE_PAUSED"
     RESEARCH_NOT_AVAILABLE = "RESEARCH_NOT_AVAILABLE"
     BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
+    PUBLIC_LIMIT_REACHED = "PUBLIC_LIMIT_REACHED"
     PURGE_PENDING = "PURGE_PENDING"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
@@ -191,6 +193,7 @@ class PublicQuickResearchService:
         max_sources: int,
         max_bytes: int,
         timeout_seconds: float,
+        max_active_quick: int,
         kill_switch: bool,
     ) -> None:
         self._store = store
@@ -203,6 +206,9 @@ class PublicQuickResearchService:
         self._max_sources = max_sources
         self._max_bytes = max_bytes
         self._timeout_seconds = timeout_seconds
+        self._max_active_quick = max_active_quick
+        self._active_quick = 0
+        self._active_quick_lock = Lock()
         self._kill_switch = kill_switch
 
     @property
@@ -229,6 +235,28 @@ class PublicQuickResearchService:
                 "unsupported public research profile",
                 retryable=False,
             )
+        if not self._try_acquire_quick_slot():
+            raise PublicResearchError(
+                PublicErrorCode.PUBLIC_LIMIT_REACHED,
+                "public quick research concurrency limit reached",
+                retryable=True,
+            )
+        try:
+            return await self._run_quick(
+                question=question,
+                as_of_date=as_of_date,
+                jurisdiction=jurisdiction,
+            )
+        finally:
+            self._release_quick_slot()
+
+    async def _run_quick(
+        self,
+        *,
+        question: str,
+        as_of_date: date | None,
+        jurisdiction: str,
+    ) -> QuickResearchOutput:
         now = self._clock.now()
         try:
             plan = self._planner.plan(
@@ -318,6 +346,19 @@ class PublicQuickResearchService:
         finally:
             if ref is not None and not purged:
                 await _best_effort_purge(self._store, ref)
+
+    def _try_acquire_quick_slot(self) -> bool:
+        with self._active_quick_lock:
+            if self._active_quick >= self._max_active_quick:
+                return False
+            self._active_quick += 1
+            return True
+
+    def _release_quick_slot(self) -> None:
+        with self._active_quick_lock:
+            if self._active_quick <= 0:
+                raise RuntimeError("public quick concurrency counter underflow")
+            self._active_quick -= 1
 
 
 async def _best_effort_purge(

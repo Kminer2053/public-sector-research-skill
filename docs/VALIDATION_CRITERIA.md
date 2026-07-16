@@ -102,15 +102,15 @@ uv run --frozen psrctl verify-retention --ephemeral-root ...
 | VAL-PUB-ABUSE-004 | 서로 다른 IP fixture | 독립 IP bucket |
 | VAL-PUB-ABUSE-005 | raw IP 저장소·log scan | 0건 |
 | VAL-PUB-ABUSE-006 | HMAC bucket key rotation | 이전 counter TTL 뒤 삭제 |
-| VAL-PUB-ABUSE-007 | active run limit | 초과 start 거부 |
+| VAL-PUB-ABUSE-007 | process active quick limit | 설정 상한 초과 quick은 workspace·network 전 거부, 종료 뒤 slot 반환 |
 | VAL-PUB-ABUSE-008 | global outbound limit | 동시성 상한 유지 |
 | VAL-PUB-ABUSE-009 | source host limit | 한 host가 worker 독점 불가 |
 | VAL-PUB-ABUSE-010 | cost/time/byte 상한 | partial 종료, 무한 retry 없음 |
 | VAL-PUB-ABUSE-011 | trusted proxy client IP | 정상 단일 IP만 bucket에 사용, header는 downstream에서 제거 |
 | VAL-PUB-ABUSE-012 | untrusted peer의 client IP header 위조 | header 변경으로 quota 추가 획득 불가 |
-| VAL-PUB-ABUSE-011 | kill switch ON | 새 quick/start 거부 |
-| VAL-PUB-ABUSE-012 | kill switch ON | status/result/cancel/purge 유지 |
-| VAL-PUB-ABUSE-013 | limiter backend 장애 | 새 고비용 요청 fail closed |
+| VAL-PUB-ABUSE-013 | kill switch ON | 새 quick/start 거부 |
+| VAL-PUB-ABUSE-014 | kill switch ON | status/result/cancel/purge 유지 |
+| VAL-PUB-ABUSE-015 | limiter backend 장애 | 새 고비용 요청 fail closed |
 
 ### 5.3 Ephemeral Store
 

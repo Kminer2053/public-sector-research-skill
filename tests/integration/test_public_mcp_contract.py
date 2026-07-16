@@ -57,6 +57,7 @@ async def test_public_catalog_requires_no_account_and_hides_foundation_tools(
     assert result.structuredContent["authentication_required"] is False
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["retention"]["server_saved"] is False
+    assert result.structuredContent["limits"]["max_active_quick"] == 8
     assert result.structuredContent["limits"]["trusted_proxy_networks"] == 0
 
 
@@ -187,6 +188,7 @@ async def test_curated_policy_is_available_without_account_or_search_processor(
             "PSR_SERVICE_MODE": "public_ephemeral",
             "PSR_EPHEMERAL_ROOT": str(tmp_path / "ephemeral"),
             "PSR_SEARCH_PROVIDER": "curated",
+            "PSR_PUBLIC_MAX_ACTIVE_QUICK": "3",
         }
     )
     container = build_container(settings)
@@ -208,6 +210,7 @@ async def test_curated_policy_is_available_without_account_or_search_processor(
     assert result.structuredContent["authentication_required"] is False
     assert result.structuredContent["research_available"] is True
     assert result.structuredContent["source_discovery"] == "curated_seed"
+    assert result.structuredContent["limits"]["max_active_quick"] == 3
     assert result.structuredContent["external_services"] == []
 
 

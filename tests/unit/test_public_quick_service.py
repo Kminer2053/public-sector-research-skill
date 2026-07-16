@@ -20,6 +20,7 @@ from psr_mcp.ephemeral.ports import (
 )
 from psr_mcp.planner import GovernmentPlanner
 from psr_mcp.planner.models import ResearchPlan
+from psr_mcp.public.schemas import QuickResearchOutput
 from psr_mcp.public.service import (
     FixtureResearchBackend,
     PublicErrorCode,
@@ -60,6 +61,38 @@ class SlowBackend:
         del plan
         await asyncio.sleep(1)
         raise AssertionError("timeout should cancel the backend")
+
+
+class BlockingBackend:
+    def __init__(self) -> None:
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+        self._delegate = FixtureResearchBackend(cast(Clock, FixedClock()))
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    async def research(self, plan: ResearchPlan) -> ResearchDraft:
+        self.entered.set()
+        await self.release.wait()
+        return await self._delegate.research(plan)
+
+
+class FailsOnceBackend:
+    def __init__(self) -> None:
+        self.calls = 0
+        self._delegate = FixtureResearchBackend(cast(Clock, FixedClock()))
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    async def research(self, plan: ResearchPlan) -> ResearchDraft:
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("first call failed")
+        return await self._delegate.research(plan)
 
 
 class StoreWrapper:
@@ -120,6 +153,7 @@ def _service(
     backend: ResearchBackend,
     *,
     timeout_seconds: float = 20,
+    max_active_quick: int = 8,
     kill_switch: bool = False,
 ) -> PublicQuickResearchService:
     return PublicQuickResearchService(
@@ -133,6 +167,7 @@ def _service(
         max_sources=12,
         max_bytes=31_457_280,
         timeout_seconds=timeout_seconds,
+        max_active_quick=max_active_quick,
         kill_switch=kill_switch,
     )
 
@@ -145,6 +180,15 @@ async def _store(tmp_path: Path) -> FilesystemEphemeralWorkspaceStore:
     )
     await store.open()
     return store
+
+
+async def _quick_request(service: PublicQuickResearchService) -> QuickResearchOutput:
+    return await service.quick(
+        question="공공기관 정책을 공식자료 중심으로 조사해줘",
+        as_of_date=None,
+        jurisdiction="KR",
+        profile="government-v0",
+    )
 
 
 @pytest.mark.anyio
@@ -196,6 +240,72 @@ async def test_timeout_and_unexpected_backend_failure_purge_workspace(tmp_path: 
             )
         assert error.value.code is expected
         assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_active_quick_limit_rejects_before_workspace_and_releases_slot(
+    tmp_path: Path,
+) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    backend = BlockingBackend()
+    service = _service(store, backend, max_active_quick=1)
+
+    first = asyncio.create_task(_quick_request(service))
+    await backend.entered.wait()
+
+    with pytest.raises(PublicResearchError) as limited:
+        await _quick_request(service)
+
+    assert limited.value.code is PublicErrorCode.PUBLIC_LIMIT_REACHED
+    assert limited.value.retryable is True
+    assert len(store.created) == 1
+
+    backend.release.set()
+    first_output = await first
+    second_output = await _quick_request(service)
+
+    assert first_output.retention.purge_state == "PURGED"
+    assert second_output.retention.purge_state == "PURGED"
+    assert len(store.created) == 2
+    assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_active_quick_slot_is_released_after_backend_failure(tmp_path: Path) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    backend = FailsOnceBackend()
+    service = _service(store, backend, max_active_quick=1)
+
+    with pytest.raises(PublicResearchError) as failed:
+        await _quick_request(service)
+    recovered = await _quick_request(service)
+
+    assert failed.value.code is PublicErrorCode.INTERNAL_ERROR
+    assert recovered.retention.purge_state == "PURGED"
+    assert backend.calls == 2
+    assert list(store.inner.root.iterdir()) == []
+
+
+@pytest.mark.anyio
+async def test_active_quick_slot_is_released_after_task_cancellation(
+    tmp_path: Path,
+) -> None:
+    store = StoreWrapper(await _store(tmp_path))
+    backend = BlockingBackend()
+    service = _service(store, backend, max_active_quick=1)
+
+    cancelled = asyncio.create_task(_quick_request(service))
+    await backend.entered.wait()
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+
+    backend.release.set()
+    recovered = await _quick_request(service)
+
+    assert recovered.retention.purge_state == "PURGED"
+    assert len(store.created) == 2
+    assert list(store.inner.root.iterdir()) == []
 
 
 @pytest.mark.anyio

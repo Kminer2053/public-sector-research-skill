@@ -68,6 +68,7 @@ def create_public_server(container: PublicContainer) -> FastMCP:
                 "request_bytes": settings.max_request_bytes,
                 "request_timeout_seconds": settings.request_timeout_seconds,
                 "quick_timeout_seconds": settings.quick_timeout_seconds,
+                "max_active_quick": settings.public_max_active_quick,
                 "requests_per_window": settings.rate_limit_requests,
                 "rate_window_seconds": settings.rate_limit_window_seconds,
                 "max_run_sources": settings.max_run_sources,

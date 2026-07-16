@@ -265,6 +265,7 @@ def _build_public_container(
             max_sources=settings.max_run_sources,
             max_bytes=settings.max_run_bytes,
             timeout_seconds=settings.quick_timeout_seconds,
+            max_active_quick=settings.public_max_active_quick,
             kill_switch=settings.public_kill_switch,
         ),
     )
