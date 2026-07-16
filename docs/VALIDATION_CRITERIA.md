@@ -36,7 +36,9 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy src tests
 uv run pytest
-uv run pytest --cov=psr_mcp --cov-branch --cov-report=term-missing
+uv run pytest --cov=psr_mcp --cov-branch \
+  --cov-report=term-missing --cov-report=json:coverage.json
+uv run python scripts/coverage_gate.py --coverage-json coverage.json
 ```
 
 PostgreSQL 환경:
@@ -315,6 +317,8 @@ Foundation Internal Alpha 기준이며 production SLO가 아니다.
 - test가 wall clock, random UUID, locale, network에 직접 의존하지 않음
 
 Coverage 수치만으로 Gate를 통과하지 않는다. security negative case와 environment integration이 우선한다.
+
+`pytest-cov`의 기본 combined percentage는 위 세 임계값을 개별적으로 증명하지 않는다. CI는 coverage JSON에서 statement, branch, critical module을 각각 판정한다. 2026-07-16 완료 감사와 보강 결과는 [Foundation Coverage Gate 감사 보고서](./validation/2026-07-16-foundation-coverage-audit.md)에 기록한다.
 
 ## 19. Schema Compatibility
 

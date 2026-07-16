@@ -32,6 +32,7 @@
 - [THREAT MODEL](./docs/security/THREAT_MODEL.md): Foundation 위협·통제·잔여위험
 - [DATA DICTIONARY](./docs/data/DATA_DICTIONARY.md): 실제 PostgreSQL schema와 데이터 의미
 - [REMOTE G5 REPORT](./docs/validation/2026-07-16-remote-g5.md): F4 실행 증적과 미완료 gate
+- [COVERAGE GATE AUDIT](./docs/validation/2026-07-16-foundation-coverage-audit.md): statement·branch·critical module 독립 기준 검증
 - [ADR](./docs/adr/): 구현 결정을 고정하는 Architecture Decision Records
 
 ## 프로토콜 기준
@@ -72,7 +73,9 @@ uv run --frozen ruff check .
 uv run --frozen mypy src tests scripts
 uv audit --preview-features audit --frozen
 uv run --frozen python scripts/dependency_licenses.py --check
-uv run --frozen pytest --cov=psr_mcp --cov-branch --cov-report=term-missing
+uv run --frozen pytest --cov=psr_mcp --cov-branch \
+  --cov-report=term-missing --cov-report=json:coverage.json
+uv run --frozen python scripts/coverage_gate.py --coverage-json coverage.json
 uv run --frozen psrctl doctor --json
 uv run --frozen psrctl serve mcp
 ```
