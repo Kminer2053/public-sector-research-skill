@@ -6,7 +6,7 @@
 > official-first Search port, API key가 필요 없는 제한적 curated source mode, 선택형 Brave
 > adapter, robots 정책, SafeCollector, HTML·JSON·PDF parser, Evidence Composer와 실제 quick
 > pipeline, citation-constrained Writer까지 연결됐습니다. curated mode의 실제 검토 원문
-> 5종·7개 track smoke, 근거 anchor 기반 조달 원칙 후보 4건과 즉시 purge는 통과했지만 사람
+> 5종·7개 track smoke, 근거 anchor 기반 조달 원칙 후보 5건과 즉시 purge는 통과했지만 사람
 > 유용성 QA, edge quota, async lifecycle과 운영 배포는 아직 검증되지 않았으므로 공개
 > 완성품으로 표현하거나 배포하면 안 됩니다.
 

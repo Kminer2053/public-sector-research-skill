@@ -58,7 +58,7 @@ def test_writer_emits_extractive_facts_and_anchor_backed_recommendations() -> No
     oversight = _citation(
         citation_id="cit-b",
         track_id="law-regulation",
-        excerpt="고영향 인공지능에는 사람의 관리·감독 조치를 이행하여야 한다.",
+        excerpt="고영향 인공지능에는 사람의 관리ㆍ감독 조치를 이행하여야 한다.",
     )
 
     findings = CitationConstrainedWriter().write((procurement, oversight))

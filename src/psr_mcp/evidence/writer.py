@@ -103,11 +103,22 @@ def _contains(value: str, term: str) -> bool:
 
 
 def _normalized(value: str) -> str:
-    return " ".join(value.casefold().split())
+    normalized = value.casefold().translate(_SEPARATOR_TRANSLATION)
+    return " ".join(normalized.split())
 
 
 def _compact(value: str) -> str:
     return re.sub(r"[\W_]+", "", value, flags=re.UNICODE)
+
+
+_SEPARATOR_TRANSLATION = str.maketrans(
+    {
+        "ㆍ": " ",
+        "·": " ",
+        "∙": " ",
+        "・": " ",
+    }
+)
 
 
 def _confidence(

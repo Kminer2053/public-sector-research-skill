@@ -549,7 +549,7 @@ validate
 - fixed official URL 5종으로 7개 track의 실제 citation/locator 선택은 PASS
 - `CuratedOfficialSourceProvider`와 `PSR_SEARCH_PROVIDER=curated` 구현
 - 실제 quick smoke에서 7개 track, 12개 citation, failure 0, curated limitation gap 1
-- Writer는 12개 FACT와 근거 anchor가 충족된 4개 RECOMMENDATION을 생성
+- Writer는 12개 FACT와 근거 anchor가 충족된 5개 RECOMMENDATION을 생성
 - 동일 PIPC·WEF URL은 각 1회만 수집하고 여러 track provenance를 보존
 - 결과 전달 뒤 `server_saved=false`, `PURGED`, ephemeral directory empty 확인
 - 개인정보위 PDF `pdf:page:40`, NIST AI RMF `pdf:page:20`,
