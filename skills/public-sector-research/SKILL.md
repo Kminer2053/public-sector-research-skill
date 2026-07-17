@@ -1,6 +1,6 @@
 ---
 name: public-sector-research
-description: Evidence-first public-sector research with official-source planning, bounded collection, passage-level citations, explainable evidence scoring, local SQLite memory, and Korean Markdown reports. Use when an agent must investigate laws, government policy, procurement, privacy, standards, public-sector strategy, or institutional guidance while preserving reviewable source snapshots and clearly separating verified evidence, gaps, failures, and later human judgment.
+description: Evidence-first public-sector research with official-source planning, bounded collection, passage-level citations, explainable scoring, local SQLite memory, and readable Korean Markdown plus interactive HTML reports. Use when an agent must investigate laws, government policy, public services, procurement, privacy, standards, evaluation, strategy, or institutional guidance while preserving reviewable source snapshots and separating verified facts, inference, recommendations, gaps, and failures.
 ---
 
 # Public Sector Research
@@ -24,9 +24,11 @@ python3 <skill-directory>/scripts/psr.py --version
 3. `research plan`을 실행하고 생성된 `plan.json`을 읽는다.
 4. 각 track의 query와 preferred domain을 사용해 공식 원문을 우선 탐색한다.
 5. 선택한 출처를 JSONL manifest에 기록한다. 출처 등급을 추측하지 말고 확인 가능한 범위에서 지정한다.
-6. `research run`으로 출처를 병렬 수집·파싱하고 Evidence Report를 생성한다.
-7. `PARTIAL`, gap, failure, 발행일 미확인, `UNVERIFIED_WEB` 항목을 먼저 검토한다.
-8. 사용자에게 결론만 제시하지 말고 보고서 경로, 핵심 citation ID, 공식 원문 미확보 범위를 함께 알린다.
+6. `research run`으로 출처를 병렬 수집·파싱하고 보수적인 초안 보고서를 생성한다.
+7. `result.json`의 citation을 검토한 뒤 [reporting.md](references/reporting.md)에 따라 `brief.json`을 작성한다.
+8. `report build --brief-file <path> --format all`로 Markdown과 HTML을 함께 생성한다.
+9. `PARTIAL`, gap, failure, 발행일 미확인, `UNVERIFIED_WEB` 항목을 먼저 검토한다.
+10. 사용자에게 핵심 내용과 함께 HTML·Markdown 경로, 핵심 citation ID, 공식 원문 미확보 범위를 알린다.
 
 ## 빠른 시작
 
@@ -56,7 +58,8 @@ python3 <skill-directory>/scripts/psr.py --project . research run <run-id> \
 ```bash
 python3 <skill-directory>/scripts/psr.py --project . memory search "학습 재사용"
 python3 <skill-directory>/scripts/psr.py --project . evidence list --run-id <run-id>
-python3 <skill-directory>/scripts/psr.py --project . report build <run-id>
+python3 <skill-directory>/scripts/psr.py --project . report build <run-id> \
+  --brief-file brief.json --format all
 ```
 
 네트워크 접근이 없으면 기존 Evidence Memory를 먼저 검색하고, 새 원문을 확인하지 못했다는 사실을 결과에 표시한다.
@@ -68,6 +71,8 @@ python3 <skill-directory>/scripts/psr.py --project . report build <run-id>
 - `OFFICIAL_PRIMARY`는 발행 주체와 원문성을 확인한 경우에만 사용한다.
 - 사실은 citation passage가 직접 지지하는 범위까지만 표현한다.
 - 출처에 없는 해석은 `INFERENCE`, 정책 제안은 `RECOMMENDATION`으로 별도 표시한다.
+- `FACT`와 `INFERENCE`는 하나 이상의 유효한 citation ID에 연결한다.
+- 메뉴·푸터·쿠키·로그인 등 페이지 공통 문구를 업무 근거로 채택하지 않는다.
 - 로그인, CAPTCHA, paywall, 접근제한을 우회하지 않는다.
 - robots.txt의 명시적 차단을 우회하지 않는다.
 - 보고서를 자동 법률판단이나 최종 결재자료로 표현하지 않는다.
@@ -78,4 +83,5 @@ python3 <skill-directory>/scripts/psr.py --project . report build <run-id>
 - 출처 등급과 Evidence Score: [evidence-policy.md](references/evidence-policy.md)
 - source manifest 계약: [source-manifest.md](references/source-manifest.md)
 - Research Profile 확장: [research-profiles.md](references/research-profiles.md)
+- 한국어 Markdown·HTML 보고서와 `brief.json`: [reporting.md](references/reporting.md)
 - Codex·Claude·기타 호스트 사용: [portability.md](references/portability.md)

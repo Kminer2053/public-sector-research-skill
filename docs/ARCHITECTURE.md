@@ -27,7 +27,8 @@ flowchart TB
     FLOW --> COL["collector.py"]
     FLOW --> PAR["parsers.py"]
     FLOW --> EVI["evidence.py"]
-    FLOW --> REP["reporting.py"]
+    FLOW --> BRIEF["briefing.py"]
+    BRIEF --> REP["reporting.py"]
     PLAN --> DB["storage.py"]
     COL --> DB
     PAR --> DB
@@ -44,10 +45,26 @@ flowchart TB
 ├─ project.json
 ├─ research.db
 ├─ profiles/
-├─ runs/<run-id>/{plan.json,result.json,report.md}
+├─ runs/<run-id>/{plan.json,result.json,brief.json,report.md,report.html}
 ├─ sources/<source-id>/documents/<document-id>/snapshots/<snapshot-id>/
 └─ reports/
 ```
+
+`result.json`은 수집 사실·citation·실패·공백의 시스템 기록이다. `brief.json`은 사람이
+읽는 보고서의 제목, 핵심 내용, 시사점, 권고와 citation 연결을 저장한다. `reporting.py`는
+검증된 동일 brief에서 Markdown과 HTML을 결정적으로 렌더링한다.
+
+```mermaid
+flowchart LR
+    RESULT["result.json + Citation"] --> BRIEF["brief.json validator"]
+    BRIEF --> MD["report.md"]
+    BRIEF --> HTML["report.html"]
+    HTML --> SOURCE["공식 원문 / 로컬 보존본"]
+```
+
+HTML은 외부 runtime 없이 동작하는 단일 파일이다. CSS·JavaScript를 inline으로 포함하고,
+모든 사용자 문자열을 escape한다. 외부 링크는 `http`·`https`만 활성화하며 로컬 보존본은
+`.psr` 상대경로로 연결한다.
 
 ID:
 
@@ -72,6 +89,9 @@ SQLite MVP entity:
 - Event
 
 Knowledge Graph, Claim, Review, ChangeEvent는 제품 단계 브랜치에서 추가한다.
+
+`brief.json`의 항목은 DB Claim entity가 아니라 보고서용 projection이다. MVP에서는 파일로
+검증·보존하고, 장기 Claim·Review 생명주기는 제품 단계에서 별도 migration한다.
 
 ## 안전 경계
 

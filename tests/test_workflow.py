@@ -75,9 +75,15 @@ def test_end_to_end_run_stores_evidence_and_reuses_snapshots(tmp_path: Path) -> 
     assert all(len(citation.document_sha256) == 64 for citation in first.citations)
     assert Path(first.report_path).exists()
     assert Path(first.result_path).exists()
+    assert Path(first.html_report_path).exists()
+    assert Path(first.brief_path).exists()
     report = Path(first.report_path).read_text(encoding="utf-8")
-    assert "사람 검토 체크" in report
-    assert "Evidence Score" in report
+    assert "담당자 검토 체크" in report
+    assert "근거 점수" in report
+    html = Path(first.html_report_path).read_text(encoding="utf-8")
+    assert "한눈에 보기" in html
+    assert "citation-chip" in html
+    assert "https://cdn" not in html
 
     second = execute_run(
         store=store,
@@ -94,6 +100,7 @@ def test_end_to_end_run_stores_evidence_and_reuses_snapshots(tmp_path: Path) -> 
     assert len(store.list_citations(run_id=plan.id)) == len(second.citations)
     rebuilt = rebuild_report(store, plan.id)
     assert Path(rebuilt["report_path"]).exists()
+    assert Path(rebuilt["report_html_path"]).exists()
 
 
 def test_partial_failure_preserves_success(tmp_path: Path) -> None:

@@ -70,6 +70,16 @@ def build_parser() -> argparse.ArgumentParser:
     report_commands = report.add_subparsers(dest="report_command", required=True)
     report_build = report_commands.add_parser("build")
     report_build.add_argument("run_id")
+    report_build.add_argument(
+        "--format",
+        choices=("md", "html", "all"),
+        default="all",
+        help="report format to write (default: all)",
+    )
+    report_build.add_argument(
+        "--brief-file",
+        help="validated brief.json with citation-linked facts, inferences, and recommendations",
+    )
 
     memory = commands.add_parser("memory", help="search local stored passages")
     memory_commands = memory.add_subparsers(dest="memory_command", required=True)
@@ -150,7 +160,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 }
             )
         if args.command == "report" and args.report_command == "build":
-            return _emit({"status": "ok", **rebuild_report(store, args.run_id)})
+            return _emit(
+                {
+                    "status": "ok",
+                    **rebuild_report(
+                        store,
+                        args.run_id,
+                        output_format=args.format,
+                        brief_file=args.brief_file,
+                    ),
+                }
+            )
         if args.command == "memory" and args.memory_command == "search":
             if args.limit < 1 or args.limit > 100:
                 raise ValueError("--limit must be 1..100")

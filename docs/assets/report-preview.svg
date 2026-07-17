@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Public Sector Research HTML 보고서 미리보기</title>
+  <desc id="desc">민원 대기시간 개선 조사보고서의 첫 화면, 핵심 확인사항, 근거 버튼을 보여주는 예시</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8f3f1"/>
+      <stop offset="1" stop-color="#eef2f6"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102d43"/>
+      <stop offset="0.66" stop-color="#174c5b"/>
+      <stop offset="1" stop-color="#0e766f"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#12324a" flood-opacity=".18"/>
+    </filter>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+      .muted { fill:#617080; }
+      .nav { fill:#40505d; font-size:15px; }
+      .label { fill:#087f75; font-size:13px; font-weight:700; letter-spacing:1px; }
+      .body { fill:#17212b; font-size:17px; }
+    </style>
+  </defs>
+  <rect width="1440" height="900" rx="32" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <rect x="72" y="52" width="1296" height="796" rx="22" fill="#fff"/>
+    <path d="M94 52h1252a22 22 0 0 1 22 22v42H72V74a22 22 0 0 1 22-22z" fill="#f6f8f8"/>
+    <circle cx="108" cy="84" r="7" fill="#ef7064"/>
+    <circle cx="132" cy="84" r="7" fill="#e8ba51"/>
+    <circle cx="156" cy="84" r="7" fill="#69b982"/>
+    <rect x="246" y="69" width="948" height="30" rx="15" fill="#e7ecec"/>
+    <text x="720" y="90" text-anchor="middle" font-size="13" fill="#70808d">report.html · 로컬에서 안전하게 열림</text>
+    <rect x="72" y="116" width="1296" height="284" fill="url(#hero)"/>
+    <text x="132" y="164" fill="#a9e3db" font-size="13" font-weight="800" letter-spacing="2">UI PREVIEW · EXAMPLE DATA</text>
+    <text x="132" y="230" fill="#fff" font-size="48" font-weight="760" letter-spacing="-2">민원 대기시간, 측정에서 개선까지</text>
+    <text x="132" y="275" fill="#d6e8ea" font-size="19">공공기관이 바로 검토할 수 있는 운영·계약·개인정보 기준을 공식자료 중심으로 정리했습니다.</text>
+    <g transform="translate(132 316)">
+      <rect width="108" height="34" rx="17" fill="#dff7ed"/><text x="54" y="23" text-anchor="middle" font-size="13" font-weight="800" fill="#075a49">SUCCEEDED</text>
+      <rect x="120" width="140" height="34" rx="17" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".24"/><text x="190" y="23" text-anchor="middle" font-size="13" fill="#fff">기준일 2026-07-17</text>
+      <rect x="272" width="142" height="34" rx="17" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".24"/><text x="343" y="23" text-anchor="middle" font-size="13" fill="#fff">공식 1차자료 5건</text>
+      <rect x="426" width="130" height="34" rx="17" fill="#ffffff" fill-opacity=".1" stroke="#ffffff" stroke-opacity=".24"/><text x="491" y="23" text-anchor="middle" font-size="13" fill="#fff">추가 확인 2건</text>
+    </g>
+    <rect x="72" y="400" width="1296" height="448" fill="#f5f7f6"/>
+    <g transform="translate(132 446)">
+      <text class="label" x="0" y="0">INDEX</text>
+      <text class="nav" x="0" y="38">한눈에 보기</text>
+      <text class="nav" x="0" y="72">핵심 확인사항</text>
+      <text class="nav" x="0" y="106">업무 시사점</text>
+      <text class="nav" x="0" y="140">검토 권고</text>
+      <text class="nav" x="0" y="174">원문 근거</text>
+    </g>
+    <g transform="translate(370 448)">
+      <text x="0" y="0" font-size="30" font-weight="750" fill="#17212b">한눈에 보기</text>
+      <text x="0" y="30" font-size="15" class="muted">원문이 직접 뒷받침하는 핵심 내용입니다.</text>
+      <g transform="translate(0 58)">
+        <rect width="286" height="164" rx="18" fill="#fff" stroke="#dce3e3"/>
+        <text x="22" y="31" class="label">01 · 확인된 사실</text>
+        <text x="22" y="66" class="body"><tspan x="22" dy="0">대기시간과 처리 결과를</tspan><tspan x="22" dy="27">정기적으로 측정하고 우선</tspan><tspan x="22" dy="27">개선할 절차를 정합니다.</tspan></text>
+        <rect x="22" y="126" width="122" height="25" rx="12" fill="#f4fbfa" stroke="#b9d8d4"/>
+        <text x="83" y="143" text-anchor="middle" font-size="11" font-weight="700" fill="#09675f">근거 · 정책기관</text>
+      </g>
+      <g transform="translate(302 58)">
+        <rect width="286" height="164" rx="18" fill="#fff" stroke="#dce3e3"/>
+        <text x="22" y="31" class="label">02 · 확인된 사실</text>
+        <text x="22" y="66" class="body"><tspan x="22" dy="0">지연 사유와 새로운 처리</tspan><tspan x="22" dy="27">예정일을 이용자에게</tspan><tspan x="22" dy="27">명확히 안내합니다.</tspan></text>
+        <rect x="22" y="126" width="122" height="25" rx="12" fill="#f4fbfa" stroke="#b9d8d4"/>
+        <text x="83" y="143" text-anchor="middle" font-size="11" font-weight="700" fill="#09675f">근거 · 법령기관</text>
+      </g>
+      <g transform="translate(604 58)">
+        <rect width="286" height="164" rx="18" fill="#fff" stroke="#dce3e3"/>
+        <text x="22" y="31" fill="#5942a6" font-size="13" font-weight="700">03 · 해석</text>
+        <text x="22" y="66" class="body"><tspan x="22" dy="0">응답시간·장애 대응·기록</tspan><tspan x="22" dy="27">반환을 하나의 서비스</tspan><tspan x="22" dy="27">수준으로 관리합니다.</tspan></text>
+        <rect x="22" y="126" width="122" height="25" rx="12" fill="#f4fbfa" stroke="#b9d8d4"/>
+        <text x="83" y="143" text-anchor="middle" font-size="11" font-weight="700" fill="#09675f">근거 · 조달기관</text>
+      </g>
+      <text x="0" y="270" font-size="27" font-weight="750" fill="#17212b">핵심 확인사항</text>
+      <g transform="translate(0 292)">
+        <rect width="890" height="94" rx="16" fill="#fff" stroke="#dce3e3"/>
+        <text x="24" y="34" font-size="22" font-weight="300" fill="#9fb6b5">01</text>
+        <text x="78" y="32" font-size="18" font-weight="730" fill="#17212b">먼저 대기시간을 같은 기준으로 측정합니다</text>
+        <text x="78" y="61" font-size="14" fill="#526371">민원 서비스의 대기시간과 처리 결과를 정기적으로 측정해 개선 우선순위를 비교합니다.</text>
+        <rect x="734" y="24" width="130" height="29" rx="14" fill="#e8f3f1"/>
+        <text x="799" y="43" text-anchor="middle" font-size="11" font-weight="700" fill="#087f75">원문 근거 바로보기</text>
+      </g>
+    </g>
+  </g>
+</svg>

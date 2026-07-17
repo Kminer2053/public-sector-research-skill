@@ -81,7 +81,10 @@ python3 <skill-directory>/scripts/psr.py --project <project> research run <run-i
 5. URL·문서 hash·Passage text 중복 제거
 6. Evidence Score 구성요소 계산
 7. SQLite와 원문 파일 저장
-8. `result.json`과 `report.md` 생성
+8. `result.json`, `brief.json`, `report.md`, `report.html` 생성
+
+기본 보고서는 원문 구간을 사용한 보수적 초안이다. 최종 한국어 보고서는
+[reporting.md](reporting.md)에 따라 `brief.json`을 작성하고 다시 생성한다.
 
 ## 5. 부분 실패
 

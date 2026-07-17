@@ -25,6 +25,27 @@ def test_html_extracts_title_heading_and_passages() -> None:
     assert document.passages[0].locator == "html:block:1"
 
 
+def test_html_excludes_navigation_footer_and_forms() -> None:
+    body = b"""
+    <html><title>Policy</title><body>
+      <header><p>Government newsroom home</p></header>
+      <nav><ul><li>Policy menu</li></ul></nav>
+      <main><h1>Policy</h1><p>Official policy requires a documented review.</p></main>
+      <form><p>Supplier registration</p></form>
+      <footer><p>Cookies and privacy settings</p></footer>
+    </body></html>
+    """
+
+    document = parse_document(body, "text/html; charset=utf-8")
+
+    text = " ".join(passage.text for passage in document.passages)
+    assert "documented review" in text
+    assert "newsroom" not in text
+    assert "Policy menu" not in text
+    assert "Supplier registration" not in text
+    assert "Cookies" not in text
+
+
 def test_json_uses_json_pointer_locators() -> None:
     body = json.dumps(
         {"title": "정책", "requirements": [{"name": "데이터 삭제"}]},
