@@ -32,7 +32,7 @@
     <rect x="246" y="69" width="948" height="30" rx="15" fill="#e7ecec"/>
     <text x="720" y="90" text-anchor="middle" font-size="13" fill="#70808d">report.html · 로컬에서 안전하게 열림</text>
     <rect x="72" y="116" width="1296" height="284" fill="url(#hero)"/>
-    <text x="132" y="164" fill="#a9e3db" font-size="13" font-weight="800" letter-spacing="2">PUBLIC SECTOR RESEARCH BRIEF</text>
+    <text x="132" y="164" fill="#a9e3db" font-size="13" font-weight="800" letter-spacing="2">UI PREVIEW · EXAMPLE DATA</text>
     <text x="132" y="230" fill="#fff" font-size="48" font-weight="760" letter-spacing="-2">민원 대기시간, 측정에서 개선까지</text>
     <text x="132" y="275" fill="#d6e8ea" font-size="19">공공기관이 바로 검토할 수 있는 운영·계약·개인정보 기준을 공식자료 중심으로 정리했습니다.</text>
     <g transform="translate(132 316)">
