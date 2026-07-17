@@ -95,6 +95,9 @@ def test_end_to_end_run_stores_evidence_and_reuses_snapshots(tmp_path: Path) -> 
     for citation in first.citations:
         assert citation.local_snapshot_path
         assert (store.root / citation.local_snapshot_path).exists()
+    assert "한눈에 보기" in html
+    assert "citation-chip" in html
+    assert "https://cdn" not in html
 
     second = execute_run(
         store=store,

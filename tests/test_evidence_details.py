@@ -37,3 +37,21 @@ def test_content_quality_rejects_page_furniture() -> None:
         )
         > 0
     )
+
+
+def test_page_furniture_has_no_evidence_quality() -> None:
+    values = ["Home", "Newsroom", "Cookies", "Supplier Registration", "본문 바로가기"]
+
+    for index, value in enumerate(values):
+        passage = Passage(id=f"p{index}", text=value, locator=f"html:block:{index}")
+        assert _content_quality(passage) == 0
+
+
+def test_short_substantive_clause_is_not_rejected_by_length() -> None:
+    passage = Passage(
+        id="legal-clause",
+        text="제5조 개인정보는 파기한다.",
+        locator="pdf:page:3",
+    )
+
+    assert _content_quality(passage) > 0
