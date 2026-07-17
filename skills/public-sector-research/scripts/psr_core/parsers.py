@@ -96,6 +96,13 @@ class _PassageHTMLParser(HTMLParser):
         "figcaption",
     }
     _IGNORE_TAGS: ClassVar[set] = {
+        "aside",
+        "button",
+        "dialog",
+        "footer",
+        "form",
+        "header",
+        "nav",
         "script",
         "style",
         "noscript",

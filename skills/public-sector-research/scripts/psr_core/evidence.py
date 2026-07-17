@@ -26,6 +26,7 @@ class EvidenceSelection:
     document: StoredDocument
     passage: Passage
     relevance: float
+    content_quality: float
     terms: Sequence[str]
 
 
@@ -49,16 +50,24 @@ def compose_citations(
                 document=document,
                 passage=passage,
                 relevance=_relevance(passage, terms),
+                content_quality=_content_quality(passage),
                 terms=terms,
             )
             for passage in document.parsed.passages
         ]
-        relevant = [selection for selection in scored if selection.relevance > 0]
-        pool = relevant or scored[:1]
+        pool = [
+            selection
+            for selection in scored
+            if selection.relevance > 0 and selection.content_quality > 0
+        ]
         selections.extend(
             sorted(
                 pool,
-                key=lambda value: (value.relevance, value.passage.locator),
+                key=lambda value: (
+                    value.relevance,
+                    value.content_quality,
+                    value.passage.locator,
+                ),
                 reverse=True,
             )[:max_per_document]
         )
@@ -67,6 +76,7 @@ def compose_citations(
         selections,
         key=lambda value: (
             value.relevance,
+            value.content_quality,
             _authority(value.document.source_tier),
             value.passage.locator,
         ),
@@ -126,6 +136,7 @@ def _citation(
         source_tier=document.source_tier,
         document_sha256=document.collected.sha256,
         score=_score(plan, selection),
+        local_snapshot_path=_snapshot_path(document),
     )
 
 
@@ -133,7 +144,10 @@ def _score(plan: ResearchPlan, selection: EvidenceSelection) -> EvidenceScore:
     tier = selection.document.source_tier
     authority = _authority(tier)
     primary = _primary(tier)
-    direct = round(min(1.0, 0.2 + selection.relevance * 0.15), 4)
+    direct = round(
+        min(1.0, (0.2 + selection.relevance * 0.15) * selection.content_quality),
+        4,
+    )
     specificity = 1.0 if selection.passage.locator else 0.2
     published_at = parse_date(selection.document.published_at)
     if published_at is None:
@@ -164,7 +178,10 @@ def _score(plan: ResearchPlan, selection: EvidenceSelection) -> EvidenceScore:
         ),
         direct_relevance=ScoreComponent(
             direct,
-            f"질문·track 핵심어 {int(selection.relevance)}개 일치",
+            (
+                f"질문·track 핵심어 {int(selection.relevance)}개 일치; "
+                f"본문 품질 {selection.content_quality:.2f}"
+            ),
         ),
         original_snapshot=ScoreComponent(
             original_snapshot,
@@ -189,6 +206,7 @@ def _balance_tracks(
     selections.sort(
         key=lambda value: (
             value.relevance,
+            value.content_quality,
             _authority(value.document.source_tier),
             value.passage.locator,
         ),
@@ -212,6 +230,43 @@ def _relevance(passage: Passage, terms: Sequence[str]) -> float:
     compact = _compact(haystack)
     return float(
         sum(term in haystack or _compact(term) in compact for term in terms if term)
+    )
+
+
+def _content_quality(passage: Passage) -> float:
+    """Reject page furniture and rank substantive passages without length gates."""
+
+    text = _normalize(passage.text)
+    compact = _compact(text)
+    if not text or compact in _BOILERPLATE_COMPACT:
+        return 0.0
+    tokens = re.findall(r"[0-9A-Za-z가-힣]+", text)
+    if not tokens:
+        return 0.0
+    if len(tokens) <= 5 and any(term in compact for term in _BOILERPLATE_COMPACT):
+        return 0.0
+    quality = 0.55
+    if len(tokens) >= 8:
+        quality += 0.15
+    if len(tokens) >= 20:
+        quality += 0.10
+    if re.search(r"[.!?。]|다\.?(?:\s|$)|함(?:\s|$)|한다(?:\s|$)", text):
+        quality += 0.10
+    if re.search(r"\d|제\s*\d+\s*조|법|지침|정책|기준|요건|의무|권고", text):
+        quality += 0.10
+    return round(min(1.0, quality), 4)
+
+
+def _snapshot_path(document: StoredDocument) -> str:
+    extension = {
+        "HTML": ".html",
+        "JSON": ".json",
+        "PDF": ".pdf",
+        "TEXT": ".txt",
+    }.get(document.parsed.kind, ".bin")
+    return (
+        f"sources/{document.source_id}/documents/{document.document_id}/"
+        f"snapshots/{document.snapshot_id}/original{extension}"
     )
 
 
@@ -290,4 +345,27 @@ _STOP_TERMS = {
     "and",
     "for",
     "with",
+}
+
+
+_BOILERPLATE_COMPACT = {
+    _compact(_normalize(value))
+    for value in {
+        "Home",
+        "Newsroom",
+        "Cookies",
+        "Cookie settings",
+        "Privacy settings",
+        "Supplier Registration",
+        "Skip to content",
+        "Back to top",
+        "로그인",
+        "회원가입",
+        "전체메뉴",
+        "메뉴",
+        "누리집 안내",
+        "관련사이트",
+        "맨위로",
+        "본문 바로가기",
+    }
 }

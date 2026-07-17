@@ -492,7 +492,7 @@ class ProjectStore:
                 c.id, c.run_id, c.track_id, c.excerpt, c.score_json,
                 p.locator, p.heading, p.text,
                 s.title, s.publisher, s.canonical_locator, s.source_tier,
-                sn.retrieved_at, d.sha256
+                sn.retrieved_at, sn.original_path, d.sha256
             FROM citation c
             JOIN passage p ON p.id = c.passage_id
             JOIN snapshot sn ON sn.id = p.snapshot_id
@@ -519,6 +519,7 @@ class ProjectStore:
                 "locator": row["locator"],
                 "excerpt": row["excerpt"],
                 "document_sha256": row["sha256"],
+                "local_snapshot_path": row["original_path"],
                 "score": json.loads(row["score_json"]),
             }
             for row in rows
@@ -574,24 +575,52 @@ class ProjectStore:
         run_id: str,
         *,
         result: Dict[str, Any],
-        markdown: str,
+        brief: Dict[str, Any],
+        markdown: Optional[str] = None,
+        html: Optional[str] = None,
+        stable_html: Optional[str] = None,
     ) -> Dict[str, str]:
         run_dir = self.root / "runs" / run_id
         run_dir.mkdir(parents=True, exist_ok=True)
         result_path = run_dir / "result.json"
-        report_path = run_dir / "report.md"
-        stable_report_path = self.root / "reports" / f"{run_id}.md"
+        brief_path = run_dir / "brief.json"
         result_path.write_text(
             json.dumps(result, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-        report_path.write_text(markdown, encoding="utf-8")
-        stable_report_path.write_text(markdown, encoding="utf-8")
-        return {
+        brief_path.write_text(
+            json.dumps(brief, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        paths = {
             "result_path": str(result_path),
-            "report_path": str(report_path),
-            "stable_report_path": str(stable_report_path),
+            "brief_path": str(brief_path),
         }
+        if markdown is not None:
+            report_path = run_dir / "report.md"
+            stable_report_path = self.root / "reports" / f"{run_id}.md"
+            report_path.write_text(markdown, encoding="utf-8")
+            stable_report_path.write_text(markdown, encoding="utf-8")
+            paths.update(
+                {
+                    "report_path": str(report_path),
+                    "report_markdown_path": str(report_path),
+                    "stable_report_path": str(stable_report_path),
+                    "stable_report_markdown_path": str(stable_report_path),
+                }
+            )
+        if html is not None:
+            html_path = run_dir / "report.html"
+            stable_html_path = self.root / "reports" / f"{run_id}.html"
+            html_path.write_text(html, encoding="utf-8")
+            stable_html_path.write_text(stable_html or html, encoding="utf-8")
+            paths.update(
+                {
+                    "report_html_path": str(html_path),
+                    "stable_report_html_path": str(stable_html_path),
+                }
+            )
+        return paths
 
     def _migrate(self, connection: sqlite3.Connection) -> None:
         connection.executescript(_SCHEMA)

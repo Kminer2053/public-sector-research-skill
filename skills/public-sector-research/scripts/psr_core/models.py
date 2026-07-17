@@ -142,6 +142,7 @@ class Citation:
     source_tier: str
     document_sha256: str
     score: EvidenceScore
+    local_snapshot_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -186,6 +187,8 @@ class RunResult:
     collected_sources: int
     report_path: str
     result_path: str
+    html_report_path: str = ""
+    brief_path: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         payload = asdict(self)
