@@ -13,7 +13,7 @@ from psr_core.workflow import execute_run, rebuild_report
 
 def _plan(store: ProjectStore):
     return build_plan(
-        question="공공기관 인공지능 정책 검토를 위한 공식자료 기준을 조사한다",
+        question="공공기관 인공지능 정책 종합 검토를 위한 공식자료 기준을 조사한다",
         as_of_date=date(2026, 7, 17),
         jurisdiction="KR",
         profile=load_profile(store.profile_dir, "government"),
@@ -75,9 +75,26 @@ def test_end_to_end_run_stores_evidence_and_reuses_snapshots(tmp_path: Path) -> 
     assert all(len(citation.document_sha256) == 64 for citation in first.citations)
     assert Path(first.report_path).exists()
     assert Path(first.result_path).exists()
+    assert Path(first.html_report_path).exists()
+    assert Path(first.brief_path).exists()
+    assert (store.root / "reports" / f"{plan.id}.md").exists()
+    assert (store.root / "reports" / f"{plan.id}.html").exists()
     report = Path(first.report_path).read_text(encoding="utf-8")
-    assert "사람 검토 체크" in report
-    assert "Evidence Score" in report
+    assert "담당자 검토 체크" in report
+    assert "근거 점수" in report
+    html = Path(first.html_report_path).read_text(encoding="utf-8")
+    assert '<section id="overview">' in html
+    assert f'id="evidence-{first.citations[0].id}"' in html
+    assert '<script src=' not in html
+    assert '<link rel="stylesheet"' not in html
+    assert "../../sources/" in html
+    stable_html = (store.root / "reports" / f"{plan.id}.html").read_text(
+        encoding="utf-8"
+    )
+    assert "../sources/" in stable_html
+    for citation in first.citations:
+        assert citation.local_snapshot_path
+        assert (store.root / citation.local_snapshot_path).exists()
 
     second = execute_run(
         store=store,
@@ -94,6 +111,91 @@ def test_end_to_end_run_stores_evidence_and_reuses_snapshots(tmp_path: Path) -> 
     assert len(store.list_citations(run_id=plan.id)) == len(second.citations)
     rebuilt = rebuild_report(store, plan.id)
     assert Path(rebuilt["report_path"]).exists()
+    assert Path(rebuilt["report_html_path"]).exists()
+
+
+def test_report_rebuild_uses_validated_brief_and_selected_format(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    store = ProjectStore.initialize(project, name="curated-report")
+    plan = _plan(store)
+    store.save_plan(plan)
+    result = execute_run(
+        store=store,
+        plan=plan,
+        sources=_source_files(tmp_path),
+        refresh=False,
+        reuse_max_age_days=7,
+    )
+    citation_id = result.citations[0].id
+    original_markdown = Path(result.report_path).read_text(encoding="utf-8")
+    curated = {
+        "schema_version": "1.0",
+        "title": "<script>alert(1)</script> 공공복리 보고서",
+        "subtitle": "담당자가 편집한 브리프",
+        "executive_summary": [
+            {
+                "kind": "FACT",
+                "text": "정책 <검토> & 확인",
+                "citation_ids": [citation_id],
+            }
+        ],
+        "key_findings": [
+            {
+                "id": "finding-curated",
+                "title": "근거가 연결된 확인사항",
+                "kind": "FACT",
+                "text": "공식자료가 확인하는 범위만 기술한다.",
+                "citation_ids": [citation_id],
+                "track_id": result.citations[0].track_id,
+            }
+        ],
+        "implications": [
+            {
+                "kind": "INFERENCE",
+                "text": "담당자의 적용범위 검토가 필요하다는 해석이다.",
+                "citation_ids": [citation_id],
+            }
+        ],
+        "recommendations": [
+            {
+                "kind": "RECOMMENDATION",
+                "text": "최신 시행일을 별도로 확인할 것을 권고한다.",
+                "citation_ids": [],
+            }
+        ],
+        "open_questions": ["기관 내부 규정과의 관계는 추가 확인이 필요하다."],
+    }
+    brief_file = tmp_path / "brief-curated.json"
+    brief_file.write_text(
+        json.dumps(curated, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    html_paths = rebuild_report(
+        store,
+        plan.id,
+        output_format="html",
+        brief_file=str(brief_file),
+    )
+
+    assert "report_path" not in html_paths
+    html = Path(html_paths["report_html_path"]).read_text(encoding="utf-8")
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;alert(1)&lt;/script&gt; 공공복리 보고서" in html
+    assert "정책 &lt;검토&gt; &amp; 확인" in html
+    assert 'data-kind="INFERENCE"' in html
+    assert 'data-kind="RECOMMENDATION"' in html
+    assert Path(result.report_path).read_text(encoding="utf-8") == original_markdown
+
+    markdown_paths = rebuild_report(store, plan.id, output_format="md")
+
+    assert "report_html_path" not in markdown_paths
+    markdown = Path(markdown_paths["report_path"]).read_text(encoding="utf-8")
+    assert "공공복리 보고서" in markdown
+    assert "**해석**" in markdown
+    assert "**검토 권고**" in markdown
+    stored_brief = json.loads(Path(markdown_paths["brief_path"]).read_text(encoding="utf-8"))
+    assert stored_brief == curated
 
 
 def test_partial_failure_preserves_success(tmp_path: Path) -> None:

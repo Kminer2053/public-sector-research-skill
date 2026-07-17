@@ -12,7 +12,7 @@
 - Government profile
 - SQLite·filesystem Evidence Store
 - HTML·JSON·TEXT·PDF 처리
-- Evidence Score와 Markdown/JSON report
+- Evidence Score와 citation 검증 Markdown/HTML/JSON report
 - 로컬 Memory와 snapshot 재사용
 
 완료 기준은 [VALIDATION](VALIDATION.md)의 Main Gate다.

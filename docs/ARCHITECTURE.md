@@ -18,6 +18,10 @@ flowchart LR
 
 호스트는 질문 이해와 검색을 담당한다. Core는 계획, 안전 수집, 파싱, 점수, 저장, 보고서를 결정적으로 수행한다.
 
+Planner는 프로필의 base track catalog에서 필수 track을 먼저 선택하고, 질문 keyword·넓은 범위
+표현·CLI include/exclude에 따라 optional·conditional track을 결정한다. 활성 track 목록은
+결정적 run ID에 포함되며, 선택되지 않은 track은 gap 계산 대상이 아니다.
+
 ## Component
 
 ```mermaid
@@ -27,6 +31,7 @@ flowchart TB
     FLOW --> COL["collector.py"]
     FLOW --> PAR["parsers.py"]
     FLOW --> EVI["evidence.py"]
+    FLOW --> BRIEF["briefing.py"]
     FLOW --> REP["reporting.py"]
     PLAN --> DB["storage.py"]
     COL --> DB
@@ -44,9 +49,9 @@ flowchart TB
 ├─ project.json
 ├─ research.db
 ├─ profiles/
-├─ runs/<run-id>/{plan.json,result.json,report.md}
+├─ runs/<run-id>/{plan.json,result.json,brief.json,report.md,report.html}
 ├─ sources/<source-id>/documents/<document-id>/snapshots/<snapshot-id>/
-└─ reports/
+└─ reports/<run-id>.{md,html}
 ```
 
 ID:
@@ -56,6 +61,10 @@ ID:
 - `snapshot_id`: source ID + document hash
 - `passage_id`: snapshot ID + locator + text
 - `citation_id`: run ID + track ID + passage ID
+
+`brief.json`은 사람이 편집할 수 있는 보고서 입력층이다. `FACT`와 `INFERENCE`는 저장된
+`citation_id`가 있어야 하며, 검증을 통과한 brief만 Markdown과 독립형 HTML로 렌더링한다.
+HTML은 외부 JavaScript·CSS·폰트 없이 동작하고 원문 URL과 로컬 snapshot을 함께 연결한다.
 
 ## 데이터 모델
 

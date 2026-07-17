@@ -7,6 +7,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
+from psr_core.briefing import (
+    build_default_brief,
+    load_brief,
+    validate_brief,
+)
 from psr_core.collector import CollectionError, collect
 from psr_core.evidence import compose_citations
 from psr_core.models import (
@@ -17,7 +22,7 @@ from psr_core.models import (
     StoredDocument,
 )
 from psr_core.parsers import DocumentParseError, parse_document
-from psr_core.reporting import build_result_payload, render_markdown
+from psr_core.reporting import build_result_payload, render_html, render_markdown
 from psr_core.storage import ProjectStore
 
 
@@ -221,14 +226,44 @@ def execute_run(
         collected_sources=collected_count,
         deduplicated_count=deduplicated_count,
     )
+    brief = validate_brief(
+        build_default_brief(plan=plan, citations=citations, gaps=gaps),
+        citation_ids=(citation.id for citation in citations),
+    )
     markdown = render_markdown(
         plan=plan,
         payload=payload,
         citations=citations,
         gaps=gaps,
         failures=failures,
+        brief=brief,
     )
-    paths = store.write_run_outputs(plan.id, result=payload, markdown=markdown)
+    html = render_html(
+        plan=plan,
+        payload=payload,
+        citations=citations,
+        gaps=gaps,
+        failures=failures,
+        brief=brief,
+        local_snapshot_prefix="../../",
+    )
+    stable_html = render_html(
+        plan=plan,
+        payload=payload,
+        citations=citations,
+        gaps=gaps,
+        failures=failures,
+        brief=brief,
+        local_snapshot_prefix="../",
+    )
+    paths = store.write_run_outputs(
+        plan.id,
+        result=payload,
+        brief=brief,
+        markdown=markdown,
+        html=html,
+        stable_html=stable_html,
+    )
     store.set_run_status(plan.id, status)
     return RunResult(
         run_id=plan.id,
@@ -241,10 +276,20 @@ def execute_run(
         collected_sources=collected_count,
         report_path=paths["report_path"],
         result_path=paths["result_path"],
+        html_report_path=paths["report_html_path"],
+        brief_path=paths["brief_path"],
     )
 
 
-def rebuild_report(store: ProjectStore, run_id: str) -> Dict[str, str]:
+def rebuild_report(
+    store: ProjectStore,
+    run_id: str,
+    *,
+    output_format: str = "all",
+    brief_file: str | None = None,
+) -> Dict[str, str]:
+    if output_format not in {"md", "html", "all"}:
+        raise ValueError("output_format must be md, html, or all")
     plan = store.get_plan(run_id)
     record = store.run_record(run_id)
     raw_citations = store.list_citations(run_id=run_id)
@@ -278,6 +323,7 @@ def rebuild_report(store: ProjectStore, run_id: str) -> Dict[str, str]:
                 source_tier=item["source_tier"],
                 document_sha256=item["document_sha256"],
                 score=score,
+                local_snapshot_path=item.get("local_snapshot_path"),
             )
         )
     result_path = store.root / "runs" / run_id / "result.json"
@@ -305,14 +351,56 @@ def rebuild_report(store: ProjectStore, run_id: str) -> Dict[str, str]:
         )
         for value in payload.get("failures", [])
     ]
-    markdown = render_markdown(
-        plan=plan,
-        payload=payload,
-        citations=citations,
-        gaps=gaps,
-        failures=failures,
+    stored_brief_path = store.root / "runs" / run_id / "brief.json"
+    if brief_file:
+        brief_payload = load_brief(Path(brief_file))
+    elif stored_brief_path.exists():
+        brief_payload = load_brief(stored_brief_path)
+    else:
+        brief_payload = build_default_brief(plan=plan, citations=citations, gaps=gaps)
+    brief = validate_brief(
+        brief_payload,
+        citation_ids=(citation.id for citation in citations),
     )
-    return store.write_run_outputs(run_id, result=payload, markdown=markdown)
+    markdown = None
+    if output_format in {"md", "all"}:
+        markdown = render_markdown(
+            plan=plan,
+            payload=payload,
+            citations=citations,
+            gaps=gaps,
+            failures=failures,
+            brief=brief,
+        )
+    html = None
+    stable_html = None
+    if output_format in {"html", "all"}:
+        html = render_html(
+            plan=plan,
+            payload=payload,
+            citations=citations,
+            gaps=gaps,
+            failures=failures,
+            brief=brief,
+            local_snapshot_prefix="../../",
+        )
+        stable_html = render_html(
+            plan=plan,
+            payload=payload,
+            citations=citations,
+            gaps=gaps,
+            failures=failures,
+            brief=brief,
+            local_snapshot_prefix="../",
+        )
+    return store.write_run_outputs(
+        run_id,
+        result=payload,
+        brief=brief,
+        markdown=markdown,
+        html=html,
+        stable_html=stable_html,
+    )
 
 
 def _collect_and_parse(

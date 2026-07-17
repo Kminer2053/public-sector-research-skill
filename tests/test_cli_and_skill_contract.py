@@ -67,7 +67,48 @@ def test_cli_end_to_end(tmp_path: Path) -> None:
         run_id,
     )
     assert listed.returncode == 0
-    assert json.loads(listed.stdout)["items"]
+    listed_payload = json.loads(listed.stdout)
+    assert listed_payload["items"]
+    citation_id = listed_payload["items"][0]["id"]
+
+    brief_file = tmp_path / "brief.json"
+    brief_file.write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "title": "CLI 보고서",
+                "subtitle": "형식별 재생성 검증",
+                "executive_summary": [
+                    {
+                        "kind": "FACT",
+                        "text": "공식자료에서 확인한 내용",
+                        "citation_ids": [citation_id],
+                    }
+                ],
+                "key_findings": [],
+                "implications": [],
+                "recommendations": [],
+                "open_questions": [],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    rebuilt = _run(
+        "--project",
+        str(project),
+        "report",
+        "build",
+        run_id,
+        "--brief-file",
+        str(brief_file),
+        "--format",
+        "html",
+    )
+    assert rebuilt.returncode == 0
+    rebuilt_payload = json.loads(rebuilt.stdout)
+    assert Path(rebuilt_payload["report_html_path"]).exists()
+    assert "report_path" not in rebuilt_payload
 
     doctor = _run("--project", str(project), "doctor")
     assert doctor.returncode == 0
@@ -81,6 +122,29 @@ def test_cli_uninitialized_project_returns_json_error(tmp_path: Path) -> None:
     payload = json.loads(result.stderr)
     assert payload["status"] == "error"
     assert payload["code"] == "INPUT_ERROR"
+
+
+def test_cli_plan_accepts_explicit_track_selection(tmp_path: Path) -> None:
+    project = tmp_path / "project"
+    assert _run("project", "init", str(project), "--name", "tracks").returncode == 0
+
+    planned = _run(
+        "--project",
+        str(project),
+        "research",
+        "plan",
+        "공공 디지털서비스 접근성 의무와 실무 점검사항을 조사한다",
+        "--as-of",
+        "2026-07-17",
+        "--include-track",
+        "privacy",
+        "--exclude-track",
+        "government-policy",
+    )
+
+    assert planned.returncode == 0
+    track_ids = [track["id"] for track in json.loads(planned.stdout)["plan"]["tracks"]]
+    assert track_ids == ["law-regulation", "privacy"]
 
 
 def test_cli_commands_in_process(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -194,6 +258,7 @@ def test_skill_and_host_metadata_contract() -> None:
         / "agents"
         / "openai.yaml"
     ).read_text(encoding="utf-8")
+    assert 'display_name: "공공복리 · BOKRI"' in openai
     assert "$public-sector-research" in openai
 
     marketplace = json.loads(

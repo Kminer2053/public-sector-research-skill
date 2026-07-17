@@ -46,6 +46,18 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--max-sources", type=int, default=15)
     plan.add_argument("--max-bytes", type=int, default=50 * 1024 * 1024)
     plan.add_argument("--timeout", type=float, default=120.0)
+    plan.add_argument(
+        "--include-track",
+        action="append",
+        default=[],
+        help="repeatable track ID to activate even when its keywords do not match",
+    )
+    plan.add_argument(
+        "--exclude-track",
+        action="append",
+        default=[],
+        help="repeatable track ID to remove from this plan",
+    )
     run = research_commands.add_parser("run", help="collect supplied sources and build evidence")
     run.add_argument("run_id")
     run.add_argument(
@@ -70,6 +82,16 @@ def build_parser() -> argparse.ArgumentParser:
     report_commands = report.add_subparsers(dest="report_command", required=True)
     report_build = report_commands.add_parser("build")
     report_build.add_argument("run_id")
+    report_build.add_argument(
+        "--format",
+        choices=("md", "html", "all"),
+        default="all",
+        help="report format to write (default: all)",
+    )
+    report_build.add_argument(
+        "--brief-file",
+        help="validated brief.json with citation-linked facts, inferences, and recommendations",
+    )
 
     memory = commands.add_parser("memory", help="search local stored passages")
     memory_commands = memory.add_subparsers(dest="memory_command", required=True)
@@ -110,6 +132,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 max_sources=args.max_sources,
                 max_bytes=args.max_bytes,
                 timeout_seconds=args.timeout,
+                include_tracks=args.include_track,
+                exclude_tracks=args.exclude_track,
             )
             path = store.save_plan(plan)
             return _emit(
@@ -150,7 +174,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 }
             )
         if args.command == "report" and args.report_command == "build":
-            return _emit({"status": "ok", **rebuild_report(store, args.run_id)})
+            return _emit(
+                {
+                    "status": "ok",
+                    **rebuild_report(
+                        store,
+                        args.run_id,
+                        output_format=args.format,
+                        brief_file=args.brief_file,
+                    ),
+                }
+            )
         if args.command == "memory" and args.memory_command == "search":
             if args.limit < 1 or args.limit > 100:
                 raise ValueError("--limit must be 1..100")

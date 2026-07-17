@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import date
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Sequence
 
 from psr_core.models import ResearchPlan, ResearchTrack, StopConditions
 
@@ -18,6 +18,8 @@ def build_plan(
     max_sources: int,
     max_bytes: int,
     timeout_seconds: float,
+    include_tracks: Sequence[str] = (),
+    exclude_tracks: Sequence[str] = (),
 ) -> ResearchPlan:
     normalized = " ".join(question.split())
     if len(normalized) < 10 or len(normalized) > 4_000:
@@ -34,12 +36,12 @@ def build_plan(
     if timeout_seconds < 1 or timeout_seconds > 3_600:
         raise ValueError("timeout_seconds must be 1..3600")
 
-    tracks = list(profile["tracks"])
-    lowered = normalized.casefold()
-    for conditional in profile.get("conditional_tracks", []):
-        if any(str(keyword).casefold() in lowered for keyword in conditional["keywords"]):
-            tracks.append(conditional["track"])
-    tracks = _deduplicate_tracks(tracks)
+    tracks = _select_tracks(
+        profile,
+        question=normalized,
+        include_tracks=include_tracks,
+        exclude_tracks=exclude_tracks,
+    )
     research_tracks = [_track(track) for track in tracks]
     queries = [_query(normalized, as_of_date, track) for track in research_tracks]
     digest = hashlib.sha256(
@@ -51,6 +53,8 @@ def build_plan(
             + as_of_date.isoformat()
             + "\0"
             + normalized
+            + "\0"
+            + "\0".join(track.id for track in research_tracks)
         ).encode("utf-8")
     ).hexdigest()[:16]
     return ResearchPlan(
@@ -97,6 +101,73 @@ def _query(question: str, as_of_date: date, track: ResearchTrack) -> Dict[str, A
         "preferred_domains": track.preferred_domains,
         "preferred_source_tiers": track.source_tiers,
     }
+
+
+def _select_tracks(
+    profile: Dict[str, Any],
+    *,
+    question: str,
+    include_tracks: Sequence[str],
+    exclude_tracks: Sequence[str],
+) -> List[Dict[str, Any]]:
+    base_tracks = list(profile["tracks"])
+    conditional_rules = list(profile.get("conditional_tracks", []))
+    catalog = _deduplicate_tracks(
+        [*base_tracks, *(rule["track"] for rule in conditional_rules)]
+    )
+    catalog_ids = {str(track["id"]) for track in catalog}
+    included = _requested_track_ids(include_tracks, "include")
+    excluded = _requested_track_ids(exclude_tracks, "exclude")
+    overlap = included & excluded
+    if overlap:
+        raise ValueError(
+            "track IDs cannot be both included and excluded: "
+            + ", ".join(sorted(overlap))
+        )
+    unknown = (included | excluded) - catalog_ids
+    if unknown:
+        raise ValueError("unknown track IDs: " + ", ".join(sorted(unknown)))
+    profile_excluded = {
+        str(value) for value in profile.get("excluded_track_ids", [])
+    }
+    unavailable = included & profile_excluded
+    if unavailable:
+        raise ValueError(
+            "track IDs are disabled by the profile: "
+            + ", ".join(sorted(unavailable))
+        )
+
+    if "required_track_ids" in profile:
+        active = {str(value) for value in profile["required_track_ids"]}
+        broad_scope = _matches(question, profile.get("broad_scope_keywords", []))
+        for rule in profile.get("optional_track_rules", []):
+            if broad_scope or _matches(question, rule["keywords"]):
+                active.add(str(rule["track_id"]))
+    else:
+        # Legacy profiles keep the original contract: every base track is required.
+        active = {str(track["id"]) for track in base_tracks}
+
+    for rule in conditional_rules:
+        if _matches(question, rule["keywords"]):
+            active.add(str(rule["track"]["id"]))
+    active.update(included)
+    active.difference_update(profile_excluded)
+    active.difference_update(excluded)
+    if not active:
+        raise ValueError("track selection removed every research track")
+    return [track for track in catalog if str(track["id"]) in active]
+
+
+def _requested_track_ids(values: Sequence[str], label: str) -> set[str]:
+    result = {str(value).strip() for value in values}
+    if "" in result:
+        raise ValueError(f"--{label}-track must contain a non-empty track ID")
+    return result
+
+
+def _matches(question: str, keywords: Sequence[Any]) -> bool:
+    lowered = question.casefold()
+    return any(str(keyword).casefold() in lowered for keyword in keywords)
 
 
 def _deduplicate_tracks(tracks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

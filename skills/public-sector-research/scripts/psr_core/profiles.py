@@ -107,6 +107,58 @@ GOVERNMENT_PROFILE: Dict[str, Any] = {
             ],
         },
     ],
+    "required_track_ids": ["law-regulation", "government-policy"],
+    "optional_track_rules": [
+        {
+            "track_id": "procurement",
+            "keywords": [
+                "조달",
+                "계약",
+                "구매",
+                "입찰",
+                "제안요청서",
+                "procurement",
+            ],
+        },
+        {
+            "track_id": "privacy",
+            "keywords": [
+                "개인정보",
+                "데이터 보호",
+                "데이터 권리",
+                "학습 재사용",
+                "처리위탁",
+                "보유기간",
+                "파기",
+                "privacy",
+            ],
+        },
+        {
+            "track_id": "international-standards",
+            "keywords": [
+                "국제",
+                "국내외",
+                "해외",
+                "비교",
+                "표준",
+                "nist",
+                "iso",
+                "oecd",
+                "international",
+            ],
+        },
+    ],
+    "broad_scope_keywords": [
+        "종합",
+        "전반",
+        "전체",
+        "정책 수립",
+        "원칙 수립",
+        "전략 수립",
+        "도입 전략",
+        "거버넌스 체계",
+    ],
+    "excluded_track_ids": [],
     "conditional_tracks": [
         {
             "keywords": ["업체 종속", "vendor lock", "lock-in", "이전성", "데이터 반환"],
@@ -163,17 +215,29 @@ def built_in_profiles() -> List[Dict[str, Any]]:
 def install_builtin_profiles(profile_dir: Path) -> None:
     profile_dir.mkdir(parents=True, exist_ok=True)
     path = profile_dir / "government.json"
-    if not path.exists():
-        path.write_text(
-            json.dumps(GOVERNMENT_PROFILE, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if not _is_legacy_builtin_government(existing):
+            return
+    path.write_text(
+        json.dumps(GOVERNMENT_PROFILE, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 def load_profile(profile_dir: Path, profile_id: str) -> Dict[str, Any]:
     path = profile_dir / f"{profile_id}.json"
     if path.exists():
         payload = json.loads(path.read_text(encoding="utf-8"))
+        if profile_id == "government" and _is_legacy_builtin_government(payload):
+            payload = deepcopy(GOVERNMENT_PROFILE)
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
     elif profile_id == "government":
         payload = deepcopy(GOVERNMENT_PROFILE)
     else:
@@ -215,10 +279,116 @@ def _validate_profile(payload: Dict[str, Any]) -> None:
         if track_id in track_ids:
             raise ValueError(f"duplicate track id: {track_id}")
         track_ids.add(track_id)
-    for conditional in payload.get("conditional_tracks", []):
-        if not isinstance(conditional.get("keywords"), list) or not conditional["keywords"]:
-            raise ValueError("conditional track must contain keywords")
+    required_ids = _track_id_list(
+        payload,
+        "required_track_ids",
+        required="required_track_ids" in payload,
+    )
+    excluded_ids = _track_id_list(payload, "excluded_track_ids")
+    optional_ids = set()
+    optional_rules = payload.get("optional_track_rules", [])
+    if not isinstance(optional_rules, list):
+        raise ValueError("optional_track_rules must be a list")
+    if optional_rules and "required_track_ids" not in payload:
+        raise ValueError("optional_track_rules requires required_track_ids")
+    for rule in optional_rules:
+        track_id = _validate_track_rule(rule, "optional track")
+        if track_id in optional_ids:
+            raise ValueError(f"duplicate optional track rule: {track_id}")
+        optional_ids.add(track_id)
+    configured_ids = set(required_ids) | optional_ids | set(excluded_ids)
+    unknown_configured = configured_ids - track_ids
+    if unknown_configured:
+        raise ValueError(
+            "track activation references unknown IDs: "
+            + ", ".join(sorted(unknown_configured))
+        )
+    if set(required_ids) & optional_ids:
+        raise ValueError("required and optional track IDs must not overlap")
+    if set(required_ids) & set(excluded_ids):
+        raise ValueError("required and excluded track IDs must not overlap")
+    if optional_ids & set(excluded_ids):
+        raise ValueError("optional and excluded track IDs must not overlap")
+    if "required_track_ids" in payload and configured_ids != track_ids:
+        missing = track_ids - configured_ids
+        raise ValueError(
+            "track activation must classify every base track: "
+            + ", ".join(sorted(missing))
+        )
+    broad_scope_keywords = _keyword_list(payload, "broad_scope_keywords")
+    if broad_scope_keywords and "required_track_ids" not in payload:
+        raise ValueError("broad_scope_keywords requires required_track_ids")
+    conditional_ids = set()
+    conditional_tracks = payload.get("conditional_tracks", [])
+    if not isinstance(conditional_tracks, list):
+        raise ValueError("conditional_tracks must be a list")
+    for conditional in conditional_tracks:
+        if not isinstance(conditional, dict):
+            raise ValueError("conditional track must be an object")
+        _keyword_list(conditional, "keywords", required=True)
         _validate_track(conditional.get("track"))
+        track_id = str(conditional["track"]["id"])
+        if track_id in track_ids or track_id in conditional_ids:
+            raise ValueError(f"duplicate conditional track id: {track_id}")
+        conditional_ids.add(track_id)
+
+
+def _is_legacy_builtin_government(payload: Any) -> bool:
+    legacy = deepcopy(GOVERNMENT_PROFILE)
+    for field in (
+        "required_track_ids",
+        "optional_track_rules",
+        "broad_scope_keywords",
+        "excluded_track_ids",
+    ):
+        legacy.pop(field, None)
+    return payload == legacy
+
+
+def _track_id_list(
+    payload: Dict[str, Any],
+    field: str,
+    *,
+    required: bool = False,
+) -> List[str]:
+    value = payload.get(field, [])
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be a list")
+    result = [str(item).strip() for item in value]
+    if required and not result:
+        raise ValueError(f"{field} must not be empty")
+    if any(not item for item in result):
+        raise ValueError(f"{field} must contain non-empty track IDs")
+    if len(result) != len(set(result)):
+        raise ValueError(f"{field} must not contain duplicate track IDs")
+    return result
+
+
+def _validate_track_rule(rule: Any, label: str) -> str:
+    if not isinstance(rule, dict):
+        raise ValueError(f"{label} rule must be an object")
+    track_id = str(rule.get("track_id", "")).strip()
+    if not track_id:
+        raise ValueError(f"{label} rule must contain track_id")
+    _keyword_list(rule, "keywords", required=True)
+    return track_id
+
+
+def _keyword_list(
+    payload: Dict[str, Any],
+    field: str,
+    *,
+    required: bool = False,
+) -> List[str]:
+    value = payload.get(field, [])
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be a list")
+    result = [str(item).strip() for item in value]
+    if required and not result:
+        raise ValueError(f"{field} must not be empty")
+    if any(not item for item in result):
+        raise ValueError(f"{field} must contain non-empty keywords")
+    return result
 
 
 def _validate_track(track: Any) -> None:

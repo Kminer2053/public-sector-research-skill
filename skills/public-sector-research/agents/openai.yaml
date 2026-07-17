@@ -1,4 +1,4 @@
 interface:
-  display_name: "공공분야 근거조사"
-  short_description: "공식 원문을 로컬 근거로 축적하는 범용 조사 Skill"
-  default_prompt: "Use $public-sector-research to plan an official-source-first investigation, preserve passage-level evidence locally, and produce a reviewable Korean report."
+  display_name: "공공복리 · BOKRI"
+  short_description: "공식자료를 근거와 연결된 한국어 보고서로 만드는 공공업무 조사 Skill"
+  default_prompt: "Use $public-sector-research as 복리 to investigate this public-sector question with official sources and produce Korean Markdown and HTML reports with linked evidence."

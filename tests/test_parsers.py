@@ -25,6 +25,26 @@ def test_html_extracts_title_heading_and_passages() -> None:
     assert document.passages[0].locator == "html:block:1"
 
 
+def test_html_ignores_navigation_forms_and_footer_furniture() -> None:
+    body = """
+    <html><body>
+      <header><p>로그인 전체메뉴</p></header>
+      <nav><ul><li>정책</li><li>법령</li></ul></nav>
+      <main><h1>공식 지침</h1><p>공공기관은 위험관리 기준과 의무를 검토한다.</p></main>
+      <form><button>검색</button></form>
+      <footer><p>개인정보처리방침 관련사이트</p></footer>
+    </body></html>
+    """.encode()
+
+    document = parse_document(body, "text/html")
+    extracted = extracted_markdown(document)
+
+    assert "공공기관은 위험관리 기준과 의무를 검토한다." in extracted
+    assert "로그인" not in extracted
+    assert "관련사이트" not in extracted
+    assert "검색" not in extracted
+
+
 def test_json_uses_json_pointer_locators() -> None:
     body = json.dumps(
         {"title": "정책", "requirements": [{"name": "데이터 삭제"}]},

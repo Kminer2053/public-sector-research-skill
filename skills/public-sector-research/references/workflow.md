@@ -40,6 +40,10 @@ python3 <skill-directory>/scripts/psr.py --project <project> research plan \
   "<question>" --as-of YYYY-MM-DD --jurisdiction KR --profile government
 ```
 
+기본 프로필은 법령·정책 track을 항상 포함하고 조달·개인정보·국제표준은 질문 keyword에
+따라 활성화한다. 계획 범위를 직접 조정할 때는 `--include-track <id>` 또는
+`--exclude-track <id>`를 반복해 사용한다.
+
 계획은 다음을 포함한다.
 
 - 조사 track과 질문
@@ -49,7 +53,7 @@ python3 <skill-directory>/scripts/psr.py --project <project> research plan \
 - 완료 기준
 - 최대 출처·bytes·시간
 
-같은 질문·기준일·프로필은 같은 `run_id`를 생성해 불필요한 중복 계획을 줄인다.
+같은 질문·기준일·프로필·활성 track은 같은 `run_id`를 생성해 불필요한 중복 계획을 줄인다.
 
 ## 3. 출처 탐색
 
@@ -81,7 +85,10 @@ python3 <skill-directory>/scripts/psr.py --project <project> research run <run-i
 5. URL·문서 hash·Passage text 중복 제거
 6. Evidence Score 구성요소 계산
 7. SQLite와 원문 파일 저장
-8. `result.json`과 `report.md` 생성
+8. `result.json`, `brief.json`, `report.md`, `report.html` 생성
+
+기본 보고서는 원문 구간을 사용한 보수적 초안이다. 최종 한국어 보고서는
+[reporting.md](reporting.md)에 따라 `brief.json`을 작성하고 다시 생성한다.
 
 ## 5. 부분 실패
 

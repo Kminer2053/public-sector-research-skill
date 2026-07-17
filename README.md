@@ -1,11 +1,13 @@
 <div align="center">
 
-# Public Sector Research Agent
+# 공공복리 · BOKRI
 
-### 검색 결과가 아니라, 검토 가능한 근거를 남기는 공공분야 리서치 Skill
+### 공공분야의 복잡한 문제를 근거로 풀어주는 리서치 보조도구
 
-법령·정책·조달·개인정보·표준의 **공식 원문을 우선 조사**하고,<br>
-인용 구간·수집시점·원문 해시·신뢰도 설명을 사용자 PC에 함께 보존합니다.
+**복리**는 법령·정책·조달·평가·개인정보·표준의 공식 원문을 먼저 찾아<br>
+확인된 사실, 해석, 제안과 미확인 사항을 구분해 보고합니다.
+
+> 검색은 많지만 믿을 근거는 부족할 때, 복리에게 물어보세요.
 
 [![CI](https://github.com/Kminer2053/public-sector-research-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/Kminer2053/public-sector-research-skill/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg)](LICENSE)
@@ -15,8 +17,9 @@
 ![Report](https://img.shields.io/badge/report-한국어-1D4ED8)
 [![GitHub stars](https://img.shields.io/github/stars/Kminer2053/public-sector-research-skill?style=social)](https://github.com/Kminer2053/public-sector-research-skill/stargazers)
 
+[복리 소개](#복리는-어떤-도구인가요) ·
+[업무 활용 예시](#복리에게-이렇게-물어보세요) ·
 [5분 시작](#5분-시작) ·
-[업무 활용 예시](#이런-업무에-사용하세요) ·
 [작동 방식](#어떻게-작동하나요) ·
 [데이터와 안전](#내-자료는-어디에-저장되나요) ·
 [로드맵](#현재-범위와-로드맵)
@@ -24,15 +27,26 @@
 </div>
 
 > [!IMPORTANT]
+> 이름은 다음처럼 구분합니다.
+>
+> - **공공복리**: 제품명
+> - **BOKRI**: 영문명
+> - **복리**: 대화에서 편하게 부르는 에이전트 이름
+> - **복리 조사관**: 문서와 보고서에서 사용하는 공식 역할명
+> - `public-sector-research`, `psr`: 기존 설치와 호출을 위한 기술 식별자
+>
+> 따라서 사용자는 “복리야, 이 과제를 조사해줘”라고 요청하고, 시스템은
+> `$public-sector-research` Skill과 `psr` CLI를 사용합니다. 기술 식별자는 호환성을 위해 변경하지 않습니다.
+>
 > 현재 `main`은 **MCP 서버가 아니라 범용 Agent Skill과 로컬 CLI**입니다.
 > 로그인·공개 서버 없이 Codex, Claude Code 또는 일반 CLI에서 먼저 사용할 수 있습니다.
 > MCP adapter와 공개 서비스는 검증된 Core를 바탕으로 별도 제품 브랜치에서 개발합니다.
 
-## 30초 요약
+## 복리는 어떤 도구인가요?
 
 공공분야 조사는 “그럴듯한 답”보다 **누가, 언제, 어느 문서의 어느 구간에서 그렇게 말했는지**가 중요합니다.
 
-Public Sector Research Agent는 AI가 찾은 자료를 그대로 요약하지 않습니다.
+공공복리의 **복리 조사관**은 AI가 찾은 자료를 그대로 요약하지 않습니다. 복잡한 업무 질문을 조사 가능한 쟁점으로 나누고, 공식 원문에서 근거를 확보한 뒤 사람이 다시 확인할 수 있는 보고서로 정리합니다.
 
 1. 업무 질문을 법령·정책·조달·개인정보·표준 등 조사 쟁점으로 나눕니다.
 2. 공식기관 원문을 우선 탐색하도록 검색계획을 만듭니다.
@@ -43,14 +57,16 @@ Public Sector Research Agent는 AI가 찾은 자료를 그대로 요약하지 �
 7. 다음 조사에서는 저장된 근거를 먼저 검색해 불필요한 재수집을 줄입니다.
 
 ```text
-AI가 웹에서 공식 출처를 찾습니다
+담당자가 복리에게 업무 질문을 건넵니다
                   ↓
-Skill이 원문을 수집·구조화합니다
+복리가 쟁점을 나누고 공식 출처를 찾습니다
                   ↓
-근거 구간과 한계를 사람이 검토합니다
+원문·인용 구간·수집시점과 한계를 남깁니다
                   ↓
-보고서·규정·체크리스트 작성에 재사용합니다
+담당자가 보고서·규정·체크리스트에 활용합니다
 ```
+
+복리 조사관은 답을 단정하는 자동 결재자가 아닙니다. **확인된 사실은 근거와 함께 보여주고, 해석과 제안은 별도로 표시하며, 모르는 것은 모른다고 남기는 조사 보조자**입니다.
 
 ## 이런 분께 특히 유용합니다
 
@@ -65,7 +81,7 @@ Skill이 원문을 수집·구조화합니다
 
 ## 기존 웹 검색과 무엇이 다른가요?
 
-| 일반적인 AI 웹 검색 | Public Sector Research Agent |
+| 일반적인 AI 웹 검색 | 공공복리 |
 |---|---|
 | 검색 결과를 읽고 바로 요약 | 조사계획을 먼저 만들고 공식 원문을 우선 확보 |
 | 링크 단위 출처 표시 | 문서 안의 **Passage 단위** 인용과 locator 저장 |
@@ -78,14 +94,41 @@ Skill이 원문을 수집·구조화합니다
 > **Evidence First, Opinion Later.**<br>
 > 의견을 빨리 만드는 것보다, 나중에 다시 확인할 수 있는 근거를 먼저 남깁니다.
 
-## 이런 업무에 사용하세요
+## 복리에게 이렇게 물어보세요
+
+전문적인 명령어를 외울 필요는 없습니다. 평소 동료에게 일을 부탁하듯 목적, 기준일, 대상 기관과 원하는 결과를 말하면 됩니다.
+
+### 법령·지침 현행성 확인
+
+```text
+복리야, 2026년 7월 17일 기준으로 공공기관 홈페이지와 모바일 서비스의
+장애인·고령자 접근성 의무를 조사해줘. 법률상 의무, 정부 지침,
+기술기준과 실무 점검사항을 나누고 공식 원문을 연결해줘.
+```
+
+### 정책·사례 벤치마킹
+
+```text
+복리야, 국내외 공공기관의 민원 대기시간 단축 사례를 조사해줘.
+보도기사보다 정부·기관 원문을 우선하고, 실제 성과가 확인된 사례와
+계획만 발표된 사례를 구분해줘.
+```
+
+### 평가·감사 대응자료 준비
+
+```text
+복리야, 이 사업계획과 관련된 정부 정책, 경영평가 지표와 감사 지적사례를
+조사해줘. 우리 기관에 직접 적용되는 근거와 참고자료를 구분하고
+확인하지 못한 항목도 따로 표시해줘.
+```
 
 ### 공공기관 AI 구매원칙
 
 ```text
-공공기관이 생성형 AI 서비스를 구매할 때
+복리야, 공공기관이 생성형 AI 서비스를 구매할 때
 데이터 권리, 학습 재사용, 기록 반환, 개인정보,
 업체 종속 방지 조건을 공식자료 중심으로 조사해줘.
+국제기구의 공공부문 구매 가이드도 함께 비교해줘.
 ```
 
 예상 조사 track:
@@ -100,22 +143,14 @@ Skill이 원문을 수집·구조화합니다
 ### 규정·컴플라이언스 검토
 
 ```text
-이 지침이 현재 시행 중인지, 적용대상은 누구인지,
+복리야, 이 지침이 현재 시행 중인지, 적용대상은 누구인지,
 법적 의무와 권고사항을 구분하고 근거 조항을 표시해줘.
-```
-
-### 정책·사례 벤치마킹
-
-```text
-국내외 공공기관의 AI 활용원칙을 비교하되
-보도기사보다 정부·기관 원문을 우선하고,
-우리 기관에 바로 적용하기 어려운 조건도 표시해줘.
 ```
 
 ### 기존 조사 재사용
 
 ```text
-이 프로젝트에서 이전에 조사한 개인정보·데이터 권리 근거를 먼저 찾고,
+복리야, 이 프로젝트에서 이전에 조사한 개인정보·데이터 권리 근거를 먼저 찾고,
 재사용 가능한 자료와 최신성 재확인이 필요한 자료를 나눠줘.
 ```
 
@@ -131,12 +166,16 @@ Skill이 원문을 수집·구조화합니다
 ├─ runs/<run-id>/
 │  ├─ plan.json                # 쟁점·검색어·완료조건
 │  ├─ result.json              # 처리 결과와 실패·공백
-│  └─ report.md                # 사람이 검토하는 Evidence Report
+│  ├─ brief.json               # 사실·해석·권고와 citation 연결
+│  ├─ report.md                # 편집·재사용하기 쉬운 Markdown 보고서
+│  └─ report.html              # 근거를 바로 열어보는 인터랙티브 보고서
 ├─ sources/<source-id>/documents/<document-id>/snapshots/<snapshot-id>/
 │  ├─ original.*               # 수집한 원문
 │  ├─ extracted.md             # 추출한 본문
 │  └─ metadata.json            # URL·수집시점·hash·content type
-└─ reports/<run-id>.md
+└─ reports/
+   ├─ <run-id>.md
+   └─ <run-id>.html
 ```
 
 보고서에는 다음이 표시됩니다.
@@ -147,6 +186,8 @@ Skill이 원문을 수집·구조화합니다
 - page·HTML block·JSON Pointer 등 원문 위치
 - SHA-256 원문 무결성 정보
 - Evidence Score 구성요소와 설명
+- 확인된 사실·해석·검토 권고의 구분과 연결된 citation
+- 보고서 목차·근거 팝업·공식 원문·수집 당시 원문 이동
 - 발행일 미확인, 수집 실패, 근거 부족 등 조사 공백
 - 재사용한 기존 snapshot과 새로 수집한 자료
 
@@ -161,7 +202,7 @@ flowchart LR
     E --> F["HTML·PDF·JSON·TEXT 파싱"]
     F --> G["중복 제거·Evidence Score"]
     G --> H["SQLite + 원문 Snapshot"]
-    H --> I["한국어 Evidence Report"]
+    H --> I["한국어 Markdown·HTML 근거보고서"]
     I --> J["사람 검토·후속 문서 작성"]
     H --> K["다음 조사에서 재사용"]
 ```
@@ -169,7 +210,7 @@ flowchart LR
 역할은 명확히 나뉩니다.
 
 - **AI 호스트**: 웹 검색, 브라우저 탐색, 공식 출처 후보 발견
-- **Public Sector Research Skill**: 조사계획, 출처 선택 원칙, 검토 절차
+- **복리 조사관** (`public-sector-research` Skill): 조사계획, 출처 선택 원칙, 근거 검토 절차
 - **로컬 `psr` Core**: 수집, 파싱, 저장, 점수화, 보고서 생성
 - **사용자**: 적용범위·현행성·상충 근거·최종 판단 검토
 
@@ -177,8 +218,8 @@ flowchart LR
 
 | 기능 | 현재 제공 내용 |
 |---|---|
-| Research Planner | 질문을 조사 track·근거 유형·검색어·완료조건으로 분해 |
-| Government Profile | 법령·정책·조달·개인정보·국제표준 공식자료 우선 |
+| Research Planner | 질문과 키워드에 맞는 track·근거 유형·검색어·완료조건 생성 |
+| Government Profile | 법령·정책은 기본, 조달·개인정보·국제표준은 관련 범위에서 활성화 |
 | Bounded Collection | HTTP(S), 공개주소, robots.txt, timeout, bytes, port 경계 |
 | Document Parsing | HTML·JSON·TEXT, 선택형 PDF Passage 추출 |
 | Evidence Index | Source·Document·Snapshot·Passage·Citation을 SQLite로 저장 |
@@ -186,7 +227,7 @@ flowchart LR
 | Deduplication | URL 정규화, 문서 SHA-256, Passage text 중복 제거 |
 | Partial Success | 일부 실패 시 성공 근거 보존, 실패와 공백 별도 표시 |
 | Project Memory | 저장된 Passage 검색, 최근 snapshot 기본 7일 재사용 |
-| Reporting | 한국어 Markdown·JSON 결과, 원문 locator와 hash 포함 |
+| Reporting | citation 검증 `brief.json`, 한국어 Markdown, 독립형 인터랙티브 HTML |
 | Portability | Codex metadata, Claude Code marketplace, 일반 Agent Skills 구조 |
 
 ## 5분 시작
@@ -202,12 +243,12 @@ python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-githu
   --path skills/public-sector-research
 ```
 
-설치 후 새 Codex 작업에서 다음처럼 요청합니다.
+설치 후 새 Codex 작업에서 다음처럼 요청합니다. 호출명은 기술 식별자를 사용하지만, 요청문에서는 자연스럽게 복리를 부르면 됩니다.
 
 ```text
 $public-sector-research를 사용해서
-공공기관 생성형 AI 구매 시 데이터 권리와
-업체 종속 방지 원칙을 조사해줘.
+복리야, 공공기관 생성형 AI 구매 시 데이터 권리와
+업체 종속 방지 원칙을 공식자료 중심으로 조사해줘.
 ```
 
 </details>
@@ -226,7 +267,7 @@ Claude Code에서 marketplace를 등록하고 Skill을 설치합니다.
 
 ```text
 Use the public-sector-research skill.
-공공기관 AI 구매 시 개인정보와 조달 기준을
+복리야, 공공기관 AI 구매 시 개인정보와 조달 기준을
 공식 원문 중심으로 조사해줘.
 ```
 
@@ -274,6 +315,18 @@ python3 skills/public-sector-research/scripts/psr.py \
 
 출력된 `run_id`, 조사 track, 추천 검색어를 검토합니다.
 
+좁은 질문에는 법령·정책 track만 기본 포함되고 조달·개인정보·국제표준은 관련 키워드가
+있을 때 활성화됩니다. 범위를 직접 조정하려면 반복 가능한 옵션을 사용합니다.
+
+```bash
+python3 skills/public-sector-research/scripts/psr.py \
+  --project ./example-project \
+  research plan \
+  "공공 디지털서비스 접근성 의무를 조사하라" \
+  --include-track privacy \
+  --exclude-track government-policy
+```
+
 ### 4. 공식 출처 수집·보고서 생성
 
 AI 호스트가 찾은 공식 URL을 `sources.jsonl`에 기록합니다.
@@ -290,7 +343,22 @@ python3 skills/public-sector-research/scripts/psr.py \
   --sources-file sources.jsonl
 ```
 
-완료 후 `.psr/runs/<run-id>/report.md`를 검토합니다.
+완료 후 `.psr/runs/<run-id>/report.html`에서 핵심 내용과 근거 이동을 확인하고,
+편집 가능한 결과가 필요하면 같은 폴더의 `report.md`를 사용합니다.
+
+기본 `brief.json`은 원문을 짧게 정리한 보수적 초안입니다. `result.json`의 citation ID를
+사용해 사실·해석·권고를 편집한 뒤 두 보고서를 함께 다시 만들 수 있습니다.
+
+```bash
+python3 skills/public-sector-research/scripts/psr.py \
+  --project ./example-project \
+  report build <run-id> \
+  --brief-file ./example-project/.psr/runs/<run-id>/brief.json \
+  --format all
+```
+
+`FACT`와 `INFERENCE`는 유효한 citation이 반드시 필요합니다. 존재하지 않는 citation ID가
+있으면 보고서를 생성하지 않아 출처와 연결되지 않은 주장이 결과에 섞이는 것을 막습니다.
 
 ## Evidence Score는 어떻게 보나요?
 
@@ -369,9 +437,9 @@ python3 skills/public-sector-research/scripts/psr.py --version
 현재 Main Gate:
 
 - Python 3.9·3.12 CI
-- 단위·통합 테스트 49개
+- 단위·통합 테스트 72개
 - branch 포함 테스트 커버리지 85% 이상
-- 정상 조사·snapshot 재사용·오프라인 검색 E2E
+- 정상 조사·snapshot 재사용·오프라인 검색·Markdown/HTML 재생성 E2E
 - 일부 출처 실패 시 `PARTIAL` 보존
 - Agent Skill 구조와 Claude marketplace 계약 검증
 
@@ -410,9 +478,9 @@ python3 skills/public-sector-research/scripts/psr.py --version
 
 <div align="center">
 
-**Research once. Review clearly. Reuse continuously.**
+**복잡한 공공업무, 복리가 근거부터 찾아드립니다.**
 
-공식 원문을 먼저 확보하고, 판단은 근거와 함께 남깁니다.
+검색한 내용을 말하는 데서 멈추지 않고, 다시 확인할 수 있는 근거를 남깁니다.
 
 [처음부터 시작하기](#5분-시작) ·
 [설계 문서 보기](docs/ARCHITECTURE.md) ·
