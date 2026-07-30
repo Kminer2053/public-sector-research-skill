@@ -21,7 +21,15 @@
 
 </div>
 
-![공공업무 조사 HTML 보고서 미리보기](docs/assets/report-preview.svg)
+<div align="center">
+
+<a href="showcase/video/full/final/bokri_walkthrough_60s.mp4">
+  <img src="docs/assets/bokri-preview.gif" alt="공공복리 리서치 Skill 소개 영상 미리보기" width="960">
+</a>
+<br>
+<sub>자동 재생 미리보기 · 화면을 누르면 60초 전체 소개 영상을 볼 수 있습니다.</sub>
+
+</div>
 
 > [!IMPORTANT]
 > 이름은 다음처럼 구분합니다.
