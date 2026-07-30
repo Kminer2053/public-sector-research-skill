@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-8354807e4b3ac95a5ef8",
+  "document_id": "doc-2f6c9c707118247b0829",
+  "snapshot_id": "snp-f2f6ab2ed75b3a1d1036",
+  "requested_locator": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=D010030000.Updated&nttId=11014",
+  "final_locator": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=D010030000.Updated&nttId=11014",
+  "retrieved_at": "2026-07-20T16:34:39Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "2f6c9c707118247b0829d42a4cbfcaf5b05f271a376b35255f3a6c37d99c832a",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:34:39 GMT",
+    "content-language": "en-US",
+    "content-type": "text/html;charset=utf-8"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "data-rights",
+    "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=D010030000.Updated&nttId=11014",
+    "path": null,
+    "title": "안전한 인공지능(AI) 데이터 활용을 위한 AI 프라이버시 리스크 관리 모델",
+    "publisher": "개인정보보호위원회",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2025-02-21"
+  }
+}

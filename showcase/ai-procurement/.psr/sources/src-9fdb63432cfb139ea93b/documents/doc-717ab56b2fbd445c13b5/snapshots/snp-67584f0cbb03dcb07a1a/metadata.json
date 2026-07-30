@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-9fdb63432cfb139ea93b",
+  "document_id": "doc-717ab56b2fbd445c13b5",
+  "snapshot_id": "snp-67584f0cbb03dcb07a1a",
+  "requested_locator": "https://www.gov.uk/guidance/managing-technical-lock-in-in-the-cloud",
+  "final_locator": "https://www.gov.uk/guidance/managing-technical-lock-in-in-the-cloud",
+  "retrieved_at": "2026-07-20T16:36:43Z",
+  "status": 200,
+  "media_type": "text/html; charset=utf-8",
+  "sha256": "717ab56b2fbd445c13b56d8306635f0871f8447a2b7fe992e9ee8a149cef8413",
+  "headers": {
+    "content-length": "105423",
+    "content-type": "text/html; charset=utf-8",
+    "etag": "W/\"717ab56b2fbd445c13b56d8306635f08\"",
+    "date": "Mon, 20 Jul 2026 16:36:43 GMT"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "vendor-lock-in",
+    "url": "https://www.gov.uk/guidance/managing-technical-lock-in-in-the-cloud",
+    "path": null,
+    "title": "Managing technical lock-in in the cloud",
+    "publisher": "UK Government Digital Service and Central Digital and Data Office",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2025-04-01"
+  }
+}

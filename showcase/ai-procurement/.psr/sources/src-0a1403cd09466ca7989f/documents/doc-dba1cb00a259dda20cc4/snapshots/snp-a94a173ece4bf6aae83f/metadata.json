@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-0a1403cd09466ca7989f",
+  "document_id": "doc-dba1cb00a259dda20cc4",
+  "snapshot_id": "snp-a94a173ece4bf6aae83f",
+  "requested_locator": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=26677&cbIdx=99852",
+  "final_locator": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=26677&cbIdx=99852",
+  "retrieved_at": "2026-07-20T16:36:43Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "dba1cb00a259dda20cc44a6e4b6e1549c70319765c2c3070116f883ce69335f9",
+  "headers": {
+    "content-type": "text/html;charset=utf-8",
+    "content-language": "ko-KR",
+    "content-length": "16911",
+    "date": "Mon, 20 Jul 2026 16:36:43 GMT"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "procurement",
+    "url": "https://nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=26677&cbIdx=99852",
+    "path": null,
+    "title": "공공부문 초거대 AI 도입·활용 가이드라인",
+    "publisher": "한국지능정보사회진흥원·디지털플랫폼정부위원회",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2024-04-23"
+  }
+}

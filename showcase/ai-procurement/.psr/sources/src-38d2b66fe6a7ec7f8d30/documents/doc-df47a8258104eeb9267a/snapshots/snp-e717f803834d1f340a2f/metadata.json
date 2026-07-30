@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-38d2b66fe6a7ec7f8d30",
+  "document_id": "doc-df47a8258104eeb9267a",
+  "snapshot_id": "snp-e717f803834d1f340a2f",
+  "requested_locator": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS289&mCode=D040070000&nttId=10977",
+  "final_locator": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS289&mCode=D040070000&nttId=10977",
+  "retrieved_at": "2026-07-20T16:36:03Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "df47a8258104eeb9267a422811601bc191faf7486cc2e1139ab06397a473a8ee",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:36:03 GMT",
+    "content-language": "en-US",
+    "content-type": "text/html;charset=utf-8"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "data-rights",
+    "url": "https://www.pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS289&mCode=D040070000&nttId=10977",
+    "path": null,
+    "title": "국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리 모델 제시",
+    "publisher": "개인정보보호위원회",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2024-12-19"
+  }
+}

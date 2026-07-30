@@ -1,0 +1,2577 @@
+<!DOCTYPE html>
+<html lang="ko"  style="overflow-y:hidden !important" ><!-- style="overflow-y:hidden !important" -->
+<head>
+	<meta charset="utf-8">
+	<title>개인정보보호위원회</title> 
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<!--<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />-->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0 maximum-scale=1, minium-scale=1"><!--  -->
+	<meta name="format-detection" content="telephone=no">
+    <meta name="description" content="개인정보보호위원회는 여러분들의 소중한 개인정보를 지키기 위한 파수꾼 입니다.">
+    
+	<link rel="shortcut icon" href="/np/resources/images/common/gov.ico">
+	<link rel="stylesheet" href="/np/datas/css/import.css">
+	
+	<script src="/np/resources/js/jquery-1.12.4.min.js?v=1.0.3"></script>
+	<script src="/np/resources/js/jquery-ui.min.js?v=1.0.3"></script>
+	<script src="/np/resources/js/ui.js??v=1.0.3"></script>
+	 <script src="/np/resources/js/swiper.min.js?v=1.0.3"></script>
+
+	<script src="/np/resources/js/jquery-latest.min.js?v=1.0.3"></script>
+	<script src="/np/resources/js/prefixfree.min.js?v=1.0.3"></script>
+	<script src="/np/resources/js/jquery.bxslider.min.js?v=1.0.3"></script>
+	<script src="/np/resources/js/UserScriptConf.js?v=1.0.3"></script>
+	    
+	<link  rel="stylesheet" href="/np/resources/css/jquery.bxslider.css?v=1.0.3">
+	<script src="/np/datas/js/common.js?v=1.0.4"></script>
+	<script src="/np/datas/js/slider.js?v=1.0.3"></script> 
+	<script src="/np/datas/js/kakao.min.js?v=1.0.3"></script>
+	<script src="/np/datas/js/kakao-2.3.0.min.js" integrity="sha384-70k0rrouSYPWJt7q9rSTKpiTfX6USlMYjZUtr1Du+9o4cGvhPAWxngdtVZDdErlh" crossorigin="anonymous"></script>
+        <script>
+          Kakao.init('5715d0c5c0727fbe0cafee893c92e8cb');
+        </script>
+	<!-- M -->
+	<script src="/np/datas/js/jquery-cookie.js?v=1.0.3"></script>
+	<script src="/np/datas/js/layout.js?v=1.0.3"></script>
+  	<!-- R -->
+		<!-- S -->
+			<script src="/np/datas/js/design.js?v=1.0.3"></script>
+			<link rel="stylesheet" href="/np/datas/css/board.css?v=1.0.3"> 
+			<link rel="stylesheet" href="/np/datas/css/common.css?v=1.0.3">
+			<link rel="stylesheet" href="/np/datas/css/subCommon.css?v=1.0.3"> 
+			<link rel="stylesheet" href="/np/datas/css/subContent.css?v=1.0.3">	
+			<link rel="stylesheet" href="/np/datas/css/subContentNew.css?v=1.0.3">		
+		<script>
+	 $(document).ready(function () {
+		 $('#PRK01').addClass('active');
+		 goKey("PRK01", "");
+
+		
+		 
+	});
+
+	function goKey(keycmd, param){
+
+		$.ajax({
+			type: 'post',
+			url: "/np/default/index.do",
+			dataType: "json",
+			data: {op:"list", keyCd:keycmd},	
+			success: function(data) {
+				
+				var resData = "";
+				let dataCnt = 0;
+				$.each(data, function(index, data){
+					if(param=="" || param ==null){
+						if(index<4){
+							resData +=setKeyData(data, index);
+							
+						}
+					}
+					else{
+						resData += setKeyData(data, index);
+					}
+					dataCnt++;
+				});
+				
+				$('#faqOpen').show();
+				if(param=="" || param ==null){
+					if(dataCnt<5){
+						$('#faqOpen').hide();
+						$('#faqClose').hide();
+					}
+					else{
+						$('#faqOpen').show();
+						$('#faqClose').hide();
+					}
+				}
+				else{
+					$('#faqOpen').hide();
+					$('#faqClose').show();
+				}
+					
+					
+				$('#keyword').empty();
+				$('#keyword').html(resData);
+				
+			}
+		});
+	}
+	
+
+	
+	function setKeyData(data, index){
+		let res = "";
+		res+="<li>";
+		if(index==4){
+			res+="<a class=\"focus\"" + "id=\'" +"faqMoreFocus"+index+"\'" + " href=\'"+data.keyLink+"\'>";
+		}else{
+			res+="<a id=\'" +"faqMoreFocus"+index+"\'" + " href=\'"+data.keyLink+"\'>";
+		}
+		
+		res+="<p class=\"faq_title\">"+ data.bbsNm;
+		res+="</p>";
+		res+="<p class=\"faq_txt\">"+ data.nttSj;
+		res+="</p>";
+		res+="</a>";
+		res+="</li>";
+		return res;
+	}
+	
+	function goKeyMore(param){
+		var activeId = $('.btn.sortButton.active').attr('id');
+		goKey(activeId, param);
+		
+		setTimeout(function(){
+			if(param=='ALL'){
+			var targetlink = $("#faqMoreFocus4");
+			targetlink.attr("tabindex",-1).focus();
+			}
+		},100);
+	}
+
+	
+	function shareSNS(sns) {
+	    var thisUrl = document.URL; /*encodeURI(encodeURIComponent(document.URL));*/
+	    var snsTitle = "개인정보보호위원회"; /*encodeURI(encodeURIComponent("개인정보보호위원회"));*/
+	    
+	    if(sns=='kakaotalk'){
+                Kakao.Share.sendScrap({
+                requestUrl: thisUrl,
+                });
+	    }
+	    else if ( sns == 'facebook' ) {
+	        var url = "https://www.facebook.com/sharer/sharer.php?u="+thisUrl;
+	        window.open(url, "", "width=486, height=286");
+	    }
+	    else if( sns == 'twitter' ) {
+	        var url = "https://twitter.com/share?url="+thisUrl+"&text="+snsTitle;
+	        window.open(url, "tweetPop", "width=486, height=286, scrollbars=yes");
+	    }
+	    else if( sns == 'naver' ) {
+	    	var url = "https://share.naver.com/web/shareView?url="+thisUrl+"&title="+snsTitle;
+	    	window.open(url);
+	    } 
+	}
+	
+    
+	</script>
+</head>
+
+<!--
+   	<button id="modalConfirmBtn" style="dispay:none;margin-top: 20px;background-color: white;color: white;border: none;padding: 10px 20px;border-radius: 5px;cursor: pointer;">확인</button> 
+	-->
+
+<!--  </div>
+</div>
+-->
+
+<body>
+	<div class="wrap">
+	    <!--SkipNvS-->
+		<div class="skipnav">
+        <a href="#gnb">주메뉴 바로가기</a>
+		<a href="#start_contents">본문 바로가기</a>
+		</div>
+	    <!--SkipNvE--><div class="headerArea">
+	<script>
+	$(window).load(function(){
+		var href = window.location.href
+		var url = new URL(href);
+		var mCodeParams = url.searchParams.get('mCode');
+		$('.firstMenu a.pcOnly').each(function(){
+			var link = location.origin + $(this).attr('href')
+			var linkUrl = new URL(link);
+			var likeCodeParams = linkUrl.searchParams.get('mCode');
+			if (mCodeParams && (mCodeParams.charAt() == likeCodeParams.charAt())){
+				$(this).addClass('active')
+			}
+		})
+	})
+</script>
+<div class="topBanner">
+		<div class="top_container">
+			<p class="topBanner__tit">
+			    <i>
+			        <img src="/np/resources/images/common/icon2.jpg" alt="전자정부 누리집 로고">
+			    </i>
+			   	 이 누리집은 대한민국 공식 전자정부 누리집입니다.
+			</p>
+			<div class="topBanner__right">
+				<ul class="sns_box">
+					<li><a href="https://www.youtube.com/pipcpr" target="_blank" title="유튜브 새창이동" class="btn__sns i_utube_b"><span class="blind">유튜브</span></a></li>
+					<li><a href="https://www.instagram.com/pipc.go.kr/" target="_blank" title="인스타그램 새창이동" class="btn__sns i_insta_b"><span class="blind">인스타그램</span></a></li>
+					<li><a href="https://www.facebook.com/pipc.go.kr" target="_blank" title="페이스북 새창이동" class="btn__sns i_facebook_b"><span class="blind">페이스북</span></a></li>
+					<li><a href="https://blog.naver.com/pipcpr" target="_blank" title="네이버블로그 새창이동" class="btn__sns i_blog_b"><span class="blind">네이버블로그</span></a></li>
+					<li><a href="https://x.com/PIPC_PR" target="_blank" title="X(트위터) 새창이동" class="btn__sns i_x_b"><span class="blind">X(트위터)</span></a></li>
+				</ul>
+				<div class="controll__box">
+					<button onclick="zoomInOut('plus');return false;" class="btn btn__size--up"><span class="blind">화면 확대</span></button>
+					<button onclick="zoomInOut('minus');return false;" class="btn btn__size--down"><span class="blind">화면 축소</span></button>
+					<dl>
+						<dt class="blind">확대수치</dt>
+						<dd class="zoomNum resetText">글자크기 100<span>%</span></dd>
+					</dl>
+				</div>
+				<ul class="topLanguage_box">
+					<li><div class="icon_global_01"><span class="blind">언어</span></div></li>
+					<li><a href="/np" class="lan_txt active">KOR</a></li>
+					<li><a href="/eng/index.do">ENG</a></li>
+				</ul>
+			</div>
+		</div>
+	</div>	
+
+	<div class="header">
+		<div class="container">
+			<div class="header__top clear">
+				<h1 class="logo"><a href="/np"><span class="blind">개인정보 보호위원회</span></a></h1>
+				<!-- <p class="header__title"><img src="/np/resources/images/common/logoSub.png" alt="다시 대한민국! 새로운 국민의 나라"></p> -->
+				<div class="header__memu">
+					<div class="header__search">
+						<label class="blind" for="T_search">통합검색</label>
+						<form name="tSchFrm" method="post" action="/np/default/srch.do" onsubmit="return false;">
+							<input type="text" title="통합검색어 입력" id="T_search" name="gloStr" placeholder="검색어를 입력해주세요" autocomplete="off" onKeypress="if(event.keyCode==13){goSearch();}" > 
+							<button type="button" onclick="goSearch();return false;" class="btn btn__search"><span class="blind">검색</span></button>
+						</form>
+					</div>
+				</div><!-- // header__memu -->
+				
+				<div class="mobile__menu">
+					<form name="tSchFrm2" method="post" action="/np/default/srch.do" onsubmit="return false;">
+						<button class="btn btn__menu"><span class="blind">메뉴열기</span></button>
+						<button onclick="goSearchM();return false;" class="btn btn__searchMenu"><span class="blind">검색</span></button>
+					</form>
+				</div>
+			</div><!-- // header__top -->
+			
+			<div class="header__gnb">
+				<div class="mobileTop">
+					<ul class="topLanguage_box">
+						<li><a href="/np" class="btn_home active"><span class="blind">Home</span></a></li>
+                        <li><div class="icon_global_01"><span class="blind">언어</span></div></li>
+                        <li><a href="/np" class="lan_txt active">KOR</a></li>
+                        <li><a href="/eng/index.do">ENG</a></li>
+					</ul>
+					<button class="btn mobileMene__close"><span class="blind">메뉴 닫기</span></button>
+				</div>
+				<div id="gnb" class="gnb" role="navigation">
+					<ul class="navListBox">
+						<li class="firstMenu">
+						<!--<li class="firstMenu">
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">위원회 소식</a>
+								<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS061&mCode=C010010000" class="pcOnly">위원회 소식</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS061&mCode=C010010000" target="_top" 
+																> 
+																<span>새소식</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS061&mCode=C010010000" target="_top"
+															>
+															<span>공지사항</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS208&mCode=C010020000" target="_top"
+															>
+															<span>채용</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS262&mCode=C010030000" target="_top"
+															>
+															<span>공시송달</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS258&mCode=C010040000" target="_top"
+															>
+															<span>결과의 공표</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS074&mCode=C020010000" target="_top" 
+																> 
+																<span>보도‧해명</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS074&mCode=C020010000" target="_top"
+															>
+															<span>보도자료</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS210&mCode=C020020000" target="_top"
+															>
+															<span>해명자료</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS211&mCode=C040020000" target="_top" 
+																> 
+																<span>정책홍보</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS211&mCode=C040020000" target="_top"
+															>
+															<span>사진뉴스</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS212&mCode=C040030000" target="_top"
+															>
+															<span>카드뉴스</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS213&mCode=C040050000" target="_top"
+															>
+															<span>정보그림(인포그래픽)</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS215&mCode=C040060000" target="_top"
+															>
+															<span>동영상뉴스</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=C050000000" target="_top" 
+																> 
+																<span>개인정보 보호 캠페인</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=C050010000" target="_top"
+															>
+															<span>내정보지킴이 캠페인</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">정책 · 법령</a>
+								<a href="/np/default/page.do?mCode=D010010000" class="pcOnly">정책 · 법령</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=D010010000" target="_top" 
+																> 
+																<span>법령정보</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=D010010000" target="_top"
+															>
+															<span>법령</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS216&mCode=D010020010" target="_top"
+															>
+															<span>훈령‧예규‧고시</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS217&mCode=D010030000" target="_top"
+															>
+															<span>안내서</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=D030010000" target="_top" 
+																> 
+																<span>국민정책</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=D030010000" target="_top"
+															>
+															<span>개인정보 열람 등 요구정책</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D030020010" target="_top"
+															>
+															<span>- 전송요구권(마이데이터 제도)</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D030030010" target="_top"
+															>
+															<span>개인정보 분쟁조정제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D030040000" target="_top"
+															>
+															<span>개인정보 유출신고제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D030050000" target="_top"
+															>
+															<span>개인정보 침해신고제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS288&&mCode=D030060000" target="_top"
+															>
+															<span>국민정책 자료실</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=D040010000" target="_top" 
+																> 
+																<span>기업정책</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=D040010000" target="_top"
+															>
+															<span>가명처리‧가명정보 결합제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D040020000" target="_top"
+															>
+															<span>인증제도(ISMS-P)</span>
+														</a></li>
+	                                   				<!--  -->
+												<li class="longTitle">
+														<a href="/np/default/page.do?mCode=D040050000" target="_top"
+															>
+															<span>기술 R&D · 표준화 로드맵(’26~’30)</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS289&mCode=D040070000" target="_top"
+															>
+															<span>기업정책 자료실</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=D050010010" target="_top" 
+																> 
+																<span>공공정책</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=D050010010" target="_top"
+															>
+															<span>기본계획‧시행계획</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D050020000" target="_top"
+															>
+															<span>개인정보 영향평가제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D050030000" target="_top"
+															>
+															<span>개인정보 침해요인 평가제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D050040000" target="_top"
+															>
+															<span>공공기관 개인정보보호수준 평가제도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS290&mCode=D050050000" target="_top"
+															>
+															<span>공공정책 자료실</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												</ol></li><li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS105&mCode=D060010000" target="_top" 
+																> 
+																<span>글로벌정책</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS105&mCode=D060010000" target="_top"
+															>
+															<span>국가별 정보</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D060020010" target="_top"
+															>
+															<span>해외 개인정보 감독기구 · 협의체</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS271&mCode=D060030010" target="_top"
+															>
+															<span>해외 개인정보 자료실</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=D060040000" target="_top"
+															>
+															<span>동등성 인정 침해신고</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												</ol></li><li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS231&mCode=D070010010" target="_top" 
+																> 
+																<span>자료실</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS231&mCode=D070010010" target="_top"
+															>
+															<span>결정문‧사례집</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS079&mCode=D070020000" target="_top"
+															>
+															<span>연차보고서</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS273&mCode=D070020010" target="_top"
+															>
+															<span>통계정보</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS120&mCode=D070030000" target="_top"
+															>
+															<span>세미나자료</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.prism.go.kr/" target="_blank"
+															 
+																class="siteNew"  title="연구보고서 새창이동"
+															>
+															<span>연구보고서</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=D080010010" target="_top" 
+																> 
+																<span>업무계획·국회</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=D080010010" target="_top"
+															>
+															<span>업무계획</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS261&mCode=D080020000" target="_top"
+															>
+															<span>국회 관련 정보</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">국정과제</a>
+								<a href="/np/default/page.do?mCode=G010020000" class="pcOnly">국정과제</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=G010020000" target="_top" 
+																> 
+																<span>국정성과</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=G010010000" target="_top"
+															>
+															<span>전체 목록</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=G010020000" target="_top"
+															>
+															<span>대표성과</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">심의 · 의결</a>
+								<a href="/np/default/page.do?mCode=E010010010" class="pcOnly">심의 · 의결</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=E010010010" target="_top" 
+																> 
+																<span>심의‧의결 안내</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=E010010010" target="_top"
+															>
+															<span>신청대상 및 방법</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=E010020000" target="_top"
+															>
+															<span>심의‧의결 절차</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=E010030000" target="_top"
+															>
+															<span>방청안내</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/minutes.do?mCode=E020010000&schTypeCd=1" target="_top" 
+																> 
+																<span>위원회 일정</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/minutes.do?mCode=E020010000&schTypeCd=1" target="_top"
+															>
+															<span>보호위원회</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/minutes.do?mCode=E020020000&schTypeCd=2" target="_top"
+															>
+															<span>제1소위원회</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/minutes.do?mCode=E020030000&schTypeCd=3" target="_top"
+															>
+															<span>제2소위원회</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/minutes.do?mCode=E020040000&schTypeCd=4" target="_top"
+															>
+															<span>구 위원회</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/agenda.do?mCode=E030010000" target="_top" 
+																> 
+																<span>위원회 결정</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/agenda.do?mCode=E030010000" target="_top"
+															>
+															<span>위원회 결정문</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/agenda.do?mCode=E030020000&isPre=Y" target="_top"
+															>
+															<span>구 위원회</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">정보공개</a>
+								<a href="/np/default/page.do?mCode=A010010000" class="pcOnly">정보공개</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=A010010000" target="_top" 
+																> 
+																<span>정보공개제도</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=A010010000" target="_top"
+															>
+															<span>정보공개 안내</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=A010020010" target="_top"
+															>
+															<span>비공개 기준</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/openInfo.do?mCode=A010030000" target="_top"
+															>
+															<span>정보목록</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.open.go.kr/com/login/memberLogin.do" target="_blank"
+															 
+																class="siteNew"  title="정보공개 청구 새창이동"
+															>
+															<span>정보공개 청구</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/anInfo.do?mCode=A030015000" target="_top" 
+																> 
+																<span>사전정보공표</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/anInfo.do?mCode=A030015000" target="_top"
+															>
+															<span>사전정보 공표목록</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS201&mCode=A030020000" target="_top"
+															>
+															<span>업무추진비</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS202&mCode=A030030000" target="_top"
+															>
+															<span>감사결과</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS203&mCode=A030040000" target="_top"
+															>
+															<span>반부패‧청렴자료</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS204&mCode=A030050000" target="_top"
+															>
+															<span>금지물품 현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS205&mCode=A030060000" target="_top"
+															>
+															<span>부패행위자 정보</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS206&mCode=A030070000" target="_top"
+															>
+															<span>공무용차량 이용현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS207&mCode=A030080000" target="_top"
+															>
+															<span>세입‧세출예산 운용현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS252&mCode=A030100000" target="_top"
+															>
+															<span>계약현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS264&mCode=A030110000" target="_top"
+															>
+															<span>행정기관 소속 위원회 현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS295&mCode=A030120000" target="_top"
+															>
+															<span>주요 평가 결과</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=A040010000" target="_top" 
+																> 
+																<span>공공데이터</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=A040010000" target="_top"
+															>
+															<span>공공데이터 개방</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=A050010000" target="_top" 
+																> 
+																<span>정책실명제</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=A050010000" target="_top"
+															>
+															<span>정책실명제 안내</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=A050020000" target="_top"
+															>
+															<span>국민신청실명제</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">국민참여</a>
+								<a href="/np/default/page.do?mCode=B010020000" class="pcOnly">국민참여</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=B010020000" target="_top" 
+																> 
+																<span>개인정보 미래포럼</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=B010020000" target="_top"
+															>
+															<span>미래포럼 소개</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B010030000" target="_top"
+															>
+															<span>2026 미래포럼 위원 소개</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B010040000" target="_top"
+															>
+															<span>2026 미래포럼 활동계획</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS255&mCode=B010060000" target="_top"
+															>
+															<span>2021-2025 미래포럼 주요활동</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS294&mCode=B010081000" target="_top"
+															>
+															<span>2026 미래포럼 주요활동</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS254&mCode=B010090000" target="_top"
+															>
+															<span>미래포럼 현장영상</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=B020010010" target="_top" 
+																> 
+																<span>민원마당</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=B020010010" target="_top"
+															>
+															<span>온라인 민원</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B020020010" target="_top"
+															>
+															<span>국민행복제안</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B020030010" target="_top"
+															>
+															<span>정책참여</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B020040010" target="_top"
+															>
+															<span>적극행정</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B020060000" target="_top"
+															>
+															<span>개인정보 분야 국민제안센터</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=B040010000" target="_top" 
+																> 
+																<span>규제혁신</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="https://www.better.go.kr/project.NewProjectTaskSlPL" target="_blank"
+															 
+																class="siteNew"  title="규제합리화 과제현황 새창이동"
+															>
+															<span>규제합리화 과제현황</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B040020000" target="_top"
+															>
+															<span>심사중인 규제법안</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.better.go.kr/ba.rgst.MiniRegulNLawSlPL" target="_blank"
+															 
+																class="siteNew"  title="규제법령 정보 새창이동"
+															>
+															<span>규제법령 정보</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.sinmungo.go.kr/" target="_blank"
+															 
+																class="siteNew"  title="규제건의 새창이동"
+															>
+															<span>규제건의</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.better.go.kr/" target="_blank"
+															 
+																class="siteNew"  title="규제정보포털 새창이동"
+															>
+															<span>규제정보포털</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B040060000" target="_top"
+															>
+															<span>규제입증 요청</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=B050010000" target="_top" 
+																> 
+																<span>신고센터</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=B050010000" target="_top"
+															>
+															<span>공익신고</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://ncp.clean.go.kr/cmn/secCtfcKMC.do?menuCode=acs&mapAcs=Y&insttCd=1790365" target="_blank"
+															 
+																class="siteNew"  title="부패행위신고 새창이동"
+															>
+															<span>부패행위신고</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.clean.go.kr/menu.es?mid=a10203000000" target="_blank"
+															 
+																class="siteNew"  title="청탁금지법위반 채용·비리 신고 새창이동"
+															>
+															<span>청탁금지법위반 채용·비리 신고</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.clean.go.kr/menu.es?mid=a10206000000" target="_blank"
+															 
+																class="siteNew"  title="행동강령위반 신고 새창이동"
+															>
+															<span>행동강령위반 신고</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B050050000" target="_top"
+															>
+															<span>보조금 부조리 신고센터</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.clean.go.kr/menu.es?mid=a10204000000" target="_blank"
+															 
+																class="siteNew"  title="공공재정 부정청구 등 신청 새창이동"
+															>
+															<span>공공재정 부정청구 등 신청</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=B050070000" target="_top"
+															>
+															<span>예산낭비 신고센터</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="https://www.safetyreport.go.kr" target="_blank"
+															 
+																class="siteNew"  title="안전신문고 새창이동"
+															>
+															<span>안전신문고</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">기업참여</a>
+								<a href="/np/default/page.do?mCode=I010010000" class="pcOnly">기업참여</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=I010010000" target="_top" 
+																> 
+																<span>혁신지원 원스톱 서비스</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=I010010000" target="_top"
+															>
+															<span>혁신지원 원스톱 서비스</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=I020010000" target="_top" 
+																> 
+																<span>사전적정성 검토제</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=I020010000" target="_top"
+															>
+															<span>사전적정성 검토제 개요</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=I020020000" target="_top"
+															>
+															<span>신청 대상 및 신청 방법</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS292&&mCode=I040010000" target="_top" 
+																> 
+																<span>개인정보 지식센터</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS292&&mCode=I040010000" target="_top"
+															>
+															<span>개인정보 지식센터</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<li class="">
+						<!--<li>
+							-->
+							<li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">위원회 소개</a>
+								<a href="/np/default/page.do?mCode=F010010010" class="pcOnly">위원회 소개</a>
+								<div class="navListArea">
+									<div class="container gnb_sub_menu_box">
+										<!-- 메뉴 이미지 -->
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="gnb_sub_menu_img_01"></div>
+	                                    </div><!-- // 메뉴 이미지 -->
+										<ol class="gnbList clear">
+											<!--  -->
+												<!--  -->
+												<li><a href="/np/default/page.do?mCode=F010010010" target="_top" 
+																> 
+																<span>개인정보보호위원회</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=F010010010" target="_top"
+															>
+															<span>기관소개</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=F010020000" target="_top"
+															>
+															<span>국정과제</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=F010040010" target="_top"
+															>
+															<span>위원장</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=F010050010" target="_top"
+															>
+															<span>부위원장</span>
+														</a></li>
+	                                   				<!--  -->
+												<!--  -->
+												<!--  -->
+												<li >
+														<a href="/np/default/intCommit.do?mCode=F010060000&typeCd=1" target="_top"
+															>
+															<span>위원</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/page.do?mCode=F010070000" target="_top"
+															>
+															<span>오시는 길</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=F060010000" target="_top" 
+																> 
+																<span>조직구성</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=F060010000" target="_top"
+															>
+															<span>조직도</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/intOrg.do?op=list&mCode=F060020000&page=1&schType=memNm&schStr=++" target="_top"
+															>
+															<span>직원찾기</span>
+														</a></li>
+	                                   				<!--  -->
+												</ol></li><li><a href="/np/default/page.do?mCode=F080010000" target="_top" 
+																> 
+																<span>분쟁조정위원회</span>
+															</a>
+	                               					<!--  -->
+												<ol><li >
+														<a href="/np/default/page.do?mCode=F080010000" target="_top"
+															>
+															<span>분쟁조정위원회 소개</span>
+														</a></li>
+	                                   				<!--  -->
+												<li >
+														<a href="/np/default/intCommit.do?mCode=F080020000&typeCd=2" target="_top"
+															>
+															<span>분쟁조정위원 소개</span>
+														</a></li>
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li>
+						<!-- <li class="firstMenu">
+								<a href="javascript:;" class="mobileOnly">법령11</a>
+								<a href="/np/default/page.do?mCode=G010000000" class="pcOnly">법령22</a>
+								<div class="navListArea" style="display: none;">
+									<div class="container gnb_sub_menu_box">
+										메뉴 이미지
+	                                    <div class="gnb_sub_menu_img_box">
+		                                    <div class="sub_txt_box">
+		                                    	<div class="sub_title_txt">법령33</div>
+		                                    	<p>개인정보보호위원회는 여러분들의 소중한 개인정보를 지키기 위한 파수꾼 입니다.</p>
+		                                    </div>
+	                                   		<div class="gnb_sub_menu_img_01"></div>
+	                                    </div>// 메뉴 이미지
+										<ol class="gnbList clear">
+											<li><a href="/np/default/page.do?mCode=G000000000" target="_top"> 
+																<span>법령정보</span>
+															</a>
+	                               					
+	                               					<ol>
+	                                   				<li>
+														<a href="/np/default/page.do?mCode=G010010000&amp;schTypeCd=3" target="_top">
+															<span>법령4</span>
+														</a></li>
+	                                   				<li>
+	                                   				<li>
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS216&mCode=G010020010&amp;schTypeCd=3" target="_top">
+															<span>훈령‧예규‧고시</span>
+														</a></li>
+	                                   				<li>
+														<a href="/np/cop/bbs/selectBoardList.do?bbsId=BS217&mCode=G010030000&amp;schTypeCd=3" target="_top">
+															<span>지침‧가이드라인</span>
+														</a></li>
+	                                   				<li>
+														<a href="http://world.moleg.go.kr&mCode=G010040000&amp;schTypeCd=3" target="_top">
+															<span>해외 국가법령</span>
+														</a></li>
+														
+														
+	                                   				</ol></li></ol>
+	                      			</div>
+	                      		</div>
+	                      	</li> -->
+						<li>
+							<a href="/np/default/sitemap.do?mCode=H040000000" class="pcOnly mu_sitemap" title="누리집안내"><span class="blind">누리집안내</span></a>
+						</li>
+							
+					</ul>
+					<div class="mobileBottom">
+						<ul class="sns_box">
+							<li><a href="https://www.youtube.com/pipcpr" target="_blank" title="유튜브 새창이동" class="btn__sns i_utube_w"><span class="blind">유튜브</span></a></li>
+							<li><a href="https://www.instagram.com/pipc.go.kr/" target="_blank" title="인스타그램 새창이동" class="btn__sns i_insta_w"><span class="blind">인스타그램</span></a></li>
+							<li><a href="https://www.facebook.com/pipc.go.kr" target="_blank" title="페이스북 새창이동" class="btn__sns i_facebook_w"><span class="blind">페이스북</span></a></li>
+							<li><a href="https://blog.naver.com/pipcpr" target="_blank" title="네이버블로그 새창이동" class="btn__sns i_blog_w"><span class="blind">네이버블로그</span></a></li>
+							<li><a href="https://x.com/PIPC_PR" target="_blank" title="X(트위터) 새창이동" class="btn__sns i_x_w"><span class="blind">X(트위터)</span></a></li>
+						</ul>
+					</div>
+				</div>
+			</div><!-- // header__gnb -->
+		</div><!-- // header container -->	
+	</div><!-- // header -->
+</div>
+	<div class="mainTopArea"></div>
+	<div class="breadcrumbs">
+        <div class="guideBox">
+            <ul class="subNav">
+                <li><a href='/np'><img src="/np/resources/images/subCommon/icon_nv_home.svg" alt="홈" onclick="location.href='/np';"></a></li>
+                <li><div><a href="/np/default/page.do?mCode=D010010000" target="_top">정책 · 법령<span class="sr-only">"접기,펼치기"</span></a></div></li><li><div><a href="/np/default/page.do?mCode=D040010000" target="_top">기업정책<span class="sr-only">"접기,펼치기"</span></a></div></li><li><div><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS289&mCode=D040070000" target="_top">기업정책 자료실<span class="sr-only">"접기,펼치기"</span></a></div></li></ul>
+			<div class="print_sns_share_box">
+				<button type="button" class="btn_print_pr" onclick="openPrint();return false;"><span></span>인쇄</button>
+				<button type="button" class="btn_sns_sh" aria-label="메뉴 열기" id="toggleIcon"><span></span>공유</button>
+				<div class="sns_share">
+					<ul>
+						<li><a href="javascript:;" class="icon_kakao" id="btnKakao" onclick="shareSNS('kakaotalk');return false;" target="_self" title="카카오톡 새창열림">카카오톡</a></li>
+						<li><a href="javascript:;" class="icon_facebook" onclick="shareSNS('facebook');return false;" target="_self" title="페이스북 새창열림">페이스북</a></li>
+						<li><a href="javascript:;" class="icon_naver" onclick="shareSNS('naver');return false;" target="_self" title="네이버 새창열림">네이버</a></li>
+						<li><a href="javascript:;" class="icon_twitter" onclick="shareSNS('twitter');return false;" target="_self" title="트위터 새창열림">트위터</a></li>
+					</ul>
+					<div class="url_copy_box">
+						<p>URL 링크</p>
+						<a href="javascript:;" class="btn_url_copy" onclick="urlCopy(this); return false;">복사하기</a>
+					</div>
+					<div class="mask_box"></div>
+				</div>
+			</div>
+        </div>
+    </div>
+    <!-- 컨텐츠 시작 -->
+    <div class="contents" id="start_contents">
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="contentsTitle">
+	<h2>-</h2>
+<ol class="subNavSlide snDepth1" style="display:none;">
+
+
+<li ><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS061&mCode=C010010000"><span>위원회 소식</span></a></li>
+
+<li class="focus"><a href="/np/default/page.do?mCode=D010010000"><span>정책 · 법령</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=G010020000"><span>국정과제</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=E010010010"><span>심의 · 의결</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=A010010000"><span>정보공개</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=B010020000"><span>국민참여</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=I010010000"><span>기업참여</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=F010010010"><span>위원회 소개</span></a></li>
+
+</ol>
+<ol class="subNavSlide snDepth2" style="display:none;">
+
+
+
+<li ><a href="/np/default/page.do?mCode=D010010000" ><span>법령정보</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/default/page.do?mCode=D030010000" ><span>국민정책</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li class="focus"><a href="/np/default/page.do?mCode=D040010000" ><span>기업정책</span></a></li>
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/default/page.do?mCode=D050010010" ><span>공공정책</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS105&mCode=D060010000" ><span>글로벌정책</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS231&mCode=D070010010" ><span>자료실</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/default/page.do?mCode=D080010010" ><span>업무계획·국회</span></a></li>
+
+
+
+
+
+
+
+
+
+</ol> 
+<ol class="subNavSlide snDepth3" style="display:none;">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<li ><a href="/np/default/page.do?mCode=D040010000" ><span>가명처리‧가명정보 결합제도</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=D040020000" ><span>인증제도(ISMS-P)</span></a></li>
+
+<li ><a href="/np/default/page.do?mCode=D040050000" ><span>기술 R&D · 표준화 로드맵(’26~’30)</span></a></li>
+
+<li class="focus"><a href="/np/cop/bbs/selectBoardList.do?bbsId=BS289&mCode=D040070000" ><span>기업정책 자료실</span></a></li>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</ol>
+
+</div>
+
+
+
+<script>
+$(document).ready(function(){
+	//
+	var html = $(".breadcrumbs .guideBox > ul").html().replaceAll(/<\/a>/gi,">");
+	var htmlTitle = "개인정보보호위원회 > "+html.replaceAll(/(<([^>]+)>)/gi, "").trim();
+	htmlTitle = htmlTitle.replaceAll(/\&amp\;/gi, "&");
+	htmlTitle = htmlTitle.replaceAll(/"/g, "");
+	htmlTitle = htmlTitle.replaceAll("접기,펼치기","");
+	console.log(htmlTitle);
+	//
+	if( htmlTitle.match(/>$/) ) htmlTitle = htmlTitle.slice(0,-1);
+	//
+	var indx = htmlTitle.lastIndexOf(">");
+	var curPgTitle = htmlTitle.substring(indx+1,1000);
+	curPgTitle = curPgTitle.replaceAll(/"/g, "");
+	curPgTitle = curPgTitle.replaceAll("접기,펼치기","");
+	//$(".contentsTitle > h3").html( htmlTitle );
+	$(".contentsTitle > h2").html( curPgTitle );
+	
+	//
+	var ht = htmlTitle.substring(0, htmlTitle.lastIndexOf(">") );
+	ht = curPgTitle + " | " + ht;
+	document.title = ht;
+	//
+	//$(".breadcrumbs .guideBox > ul li:not(:last) a").contents().unwrap();
+	$(".breadcrumbs .guideBox > ul li a").contents().unwrap();
+	$(".breadcrumbs .guideBox > ul li:nth-child(n+1)").contents().wrap("<a href='javascript:;' />");
+	$(".breadcrumbs .guideBox > ul > li:eq(1)").append( $(".contentsTitle .snDepth1") );
+	$(".breadcrumbs .guideBox > ul > li:eq(2)").append( $(".contentsTitle .snDepth2") );
+	$(".breadcrumbs .guideBox > ul > li:eq(3)").append( $(".contentsTitle .snDepth3") );
+	$(".breadcrumbs .guideBox > ul > li:eq(4)").append( $(".contentsTitle .snDepth4") );
+	$(".contentsTitle").show();
+	
+});
+</script>
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+<link href="/np/datas/css/egovbbsTemplate.css;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11" rel="stylesheet" type="text/css">
+<script src="/np/resources/js/EgovBBSMng.js;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11"></script>
+<script src="/np/resources/js/jquery-ui.js;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11"></script>
+
+
+
+
+
+
+
+
+<script>
+$(function() {
+        // 한국어 설정
+        $.datepicker.regional['ko'] = {
+            closeText: '닫기',
+            prevText: '이전',
+            nextText: '다음',
+            currentText: '오늘',
+            monthNames: ['1월','2월','3월','4월','5월','6월',
+            '7월','8월','9월','10월','11월','12월'],
+            monthNamesShort: ['1월','2월','3월','4월','5월','6월',
+            '7월','8월','9월','10월','11월','12월'],
+            dayNames: ['일','월','화','수','목','금','토'],
+            dayNamesShort: ['일','월','화','수','목','금','토'],
+            dayNamesMin: ['일','월','화','수','목','금','토'],
+            weekHeader: '주',
+            dateFormat: 'yy-mm-dd',
+            firstDay: 0,
+            isRTL: false,
+            showMonthAfterYear: true,
+            yearSuffix: '년'
+        };
+        $.datepicker.setDefaults($.datepicker.regional['ko']);
+
+        // Datepicker 초기화
+        $("#datepicker").datepicker({
+            changeYear: true,
+            yearRange: "c-100:c+10" // 현재 연도를 기준으로 -100년부터 +10년까지 설정
+        });
+    });
+
+$(document).ready(function(){
+	$("#datepicker").datepicker({
+		changeYear: true,
+		yearRange: "2014:2099"
+	});
+	
+	var str = document.title;
+	document.title = str +" > 상세보기";
+	
+});
+
+$( document ).ready(function(){
+        if ("" != "") {
+            alert("");
+        }
+        
+        $("input[name=mainAt]").attr("disabled",true);
+        $("input[name=keyCd]").attr("disabled",true);
+        $("input[name=noKeyCd]").attr("disabled",true);
+});
+    
+    function fn_egov_select_noticeList(pageNo) {
+    	if(pageNo=='') pageNo = '1';
+        document.frm.pageIndex.value = pageNo; 
+        document.frm.action = "/np/cop/bbs/selectBoardList.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11?mCode=D040070000";
+        document.frm.submit();  
+    }
+    
+    function fn_egov_delete_notice() {
+        if ("" == "true" && document.frm.password.value == '') {
+            alert('등록시 사용한 패스워드를 입력해 주세요.');
+            document.frm.password.focus();
+            return;
+        }
+        
+        if (confirm('confirm delete?')) {
+            document.frm.action = "/np/cop/bbs/deleteBoardArticle.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11";
+            document.frm.submit();
+        }   
+    }
+    
+    function fn_egov_select_noticeView(nttId) {
+        var frm = document.frm;		           
+        frm.nttId.value = nttId;
+        frm.action = "/np/cop/bbs/selectBoardArticle.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11?mCode=D040070000";
+        frm.submit();
+    }
+    
+    function fn_egov_moveUpdt_notice() {
+        if ("" == "true" && document.frm.password.value == '') {
+            alert('등록시 사용한 패스워드를 입력해 주세요.');
+            document.frm.password.focus();
+            return;
+        }
+
+        document.frm.action = "/np/cop/bbs/forUpdateBoardArticle.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11";
+        document.frm.submit();          
+    }
+    
+    function fn_egov_addReply() {
+        document.frm.action = "/np/cop/bbs/addReplyBoardArticle.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11";
+        document.frm.submit();          
+    }   
+    function sendComment(){
+    	var frm = document.frm;
+    	if(frm.contents.value==""){
+    		alert("등록할 코멘트를 입력해 주세요."); return;
+    	}
+    	if(frm.cmtId.value=='0') frm.action = "insertBoardComment.do";
+    	else frm.action = "updateBoardComment.do";
+    	//
+    	frm.submit();
+    }
+    function sendCommentUp(idx){
+    	var frm = document.frm;
+    	frm.contents.value = $(".cmBox"+idx+" p").text(); 
+    	frm.cmtId.value = idx;
+    }
+    function sendCommentDel(idx){
+    	var frm = document.frm;
+    	if(confirm("선택한 코멘트를 삭제하시겠습니까?")){
+    		frm.cmtId.value = idx;
+    		frm.action = "deleteBoardComment.do";
+    		frm.submit();
+    	}
+    }
+    
+
+    function previewFile(fileUrl) {
+        const previewContainer = document.getElementById('preview');
+        const fileExtension = fileUrl.split('.').pop().toLowerCase();
+
+        previewContainer.innerHTML = ''; // 이전 미리보기 내용을 지움
+
+        if (fileExtension === 'pdf') {
+            // PDF 파일의 경우 iframe을 사용하여 미리보기
+            const iframe = document.createElement('iframe');
+            iframe.src = fileUrl;
+            iframe.width = '100%';
+            iframe.height = '100%';
+            previewContainer.appendChild(iframe);
+        } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExtension)) {
+            // 이미지 파일의 경우 img 태그를 사용하여 미리보기
+            const img = document.createElement('img');
+            img.src = fileUrl;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            previewContainer.appendChild(img);
+        } else {
+            alert('미리보기를 지원하지 않는 파일 형식입니다.');
+        }
+    }
+</script>
+<!-- 2009.06.29 : 2단계 기능 추가  -->
+
+
+
+<!-- 2009.06.29 : 2단계 기능 추가  -->
+
+<noscript>자바스크립트를 지원하지 않는 브라우저에서는 일부 기능을 사용하실 수 없습니다.</noscript>    
+
+
+
+<!--div class="contentsTitle">
+	<h3>기업참여 자료실</h3>
+</div-->
+
+<div>
+
+
+
+
+<form name="frm" method="post" action="/np/cop/bbs/selectBoardList.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11">
+
+
+<div class="boardViewArea">
+<input type="hidden" name="pageIndex" value="1">
+<input type="hidden" name="searchCnd" value="">
+<input type="hidden" name="searchWrd" value="">
+<input type="hidden" name="bbsId" value="BS289" >
+<input type="hidden" name="nttId" value="10977" >
+<input type="hidden" name="parnts" value="0" >
+<input type="hidden" name="sortOrdr" value="60" >
+<input type="hidden" name="replyLc" value="0" >
+<input type="hidden" name="nttSj" value="국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리 모델 제시" >
+
+<input type="hidden" name="catCd"  value="">
+<input type="hidden" name="etc1"  value="">
+<input type="hidden" name="etc2"  value="">
+<input type="hidden" name="etc3"  value="">
+<!--input type="submit" id="invisible" class="invisible"/-->
+	<table class="tbView">
+        
+    	
+    
+    
+    
+    	
+	
+	
+			
+			<caption>기업참여 자료실 게시판 상세 페이지
+	    		<p>기업참여 자료실 게시판 상세페이지로 제목, 작성부서, 작성자, 작성일, 조회수, 내용, 첨부파일의  정보를 제공</p>
+	    	</caption>
+    	
+    	
+	
+
+	<colgroup>
+	    <col style="width:18%">
+	    <col style="width:32%">
+	    <col style="width:18%">
+	    <col style="width:32%">
+	</colgroup>
+	<tr> 
+		<th scope="row">제목</th>
+        <td colspan="3" class="txt_ct">
+         		        
+        
+	    
+	    
+         
+        국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리 모델 제시</td>
+	</tr>
+	<tr> 
+		
+	        
+	        
+				        
+		        <th scope="row">작성부서</th>
+		        <td>인공지능프라이버시팀</td>
+		        <th scope="row">작성자</th>
+		        <td></td>
+	        
+			
+        
+	</tr>
+	<tr>
+	   
+        <th scope="row">작성일</th>
+        <td>2024-12-19</td>
+        
+        
+        <th scope="row">조회수</th>
+        <td>2730</td>
+	</tr>
+	
+	
+	
+	
+	
+	
+	<tr> 
+		<th scope="row" style="word-break:keep-all; white-space:normal;">첨부파일 목록</th>
+		<td colspan="3">
+		    
+		        
+		    
+
+
+
+
+
+
+
+
+
+
+
+<script type="text/javascript">
+	function fn_egov_downFileCnv(atchFileId, fileSn, fileExtsn) {
+		window.open("/np/cmm/fms/FileDown.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11?atchFileId="+atchFileId+"&fileSn="+fileSn+"&fileExtsn="+fileExtsn+"&cnvCnt=");
+	}
+	
+	function fn_egov_deleteFile(atchFileId, fileSn) {
+		forms = document.getElementsByTagName("form");
+
+		for (var i = 0; i < forms.length; i++) {
+			if (typeof(forms[i].atchFileId) != "undefined" &&
+					typeof(forms[i].fileSn) != "undefined" &&
+					typeof(forms[i].fileListCnt) != "undefined") {
+				form = forms[i];
+			}
+		}
+		//form = document.forms[0];
+		form.atchFileId.value = atchFileId;
+		form.fileSn.value = fileSn;
+		form.action = "/np//fms/deleteFileInfs.do;jsessionid=GXfLCqYiGiMbn-+A5DYAI2D2.pips_home_jboss11";
+		form.submit();
+	}
+	
+	function fn_egov_check_file(flag) {
+		if (flag=="Y") {
+			document.getElementById('file_upload_posbl').style.display = "block";
+			document.getElementById('file_upload_imposbl').style.display = "none";			
+		} else {
+			document.getElementById('file_upload_posbl').style.display = "none";
+			document.getElementById('file_upload_imposbl').style.display = "block";
+		}
+	}
+</script>
+
+<input type="hidden" name="xmlPath" id="xmlPath" value=""/>
+<input type="hidden" name="type" id="type" value=""/>
+<input type="hidden" name="atchFileId" value="FILE_000000000559239">
+<input type="hidden" name="fileSn" >
+<input type="hidden" name="fileListCnt" value="3">
+<input type="hidden" name="cnvCnt" value="">
+
+      	
+      	      
+	       
+			     
+			   
+		       
+	       
+      		
+			
+			<!-- 변환 내역이 있을 경우, DocsConverter에서 변환된 PDF 파일이 다운로드. -->
+			
+				
+				
+					
+				       
+				       
+				       		
+						        <div class="download"><img src="/np/resources/images/board/file.png" alt="첨부파일"> (별첨) 안전한 인공지능(AI)·데이터 활용을 위한 AI 프라이버시 리스크 관리 모델(24.12.19.).pdf				
+						       	<!--(별첨) 안전한 인공지능(AI)·데이터 활용을 위한 AI 프라이버시 리스크 관리 모델(24.12.19.).pdf&nbsp;[2988102&nbsp;byte]-->
+						       	<span><a href="#LINK" onclick="javascript:fn_egov_downFile('FILE_000000000559239','0','pdf')" title="첨부파일 다운로드" class="downBtn" alt="(별첨) 안전한 인공지능(AI)·데이터 활용을 위한 AI 프라이버시 리스크 관리 모델(24.12.19.).pdf">다운로드</a></span>
+						       </div>
+					       
+				       
+			       
+				
+			
+	       	       
+        
+      	      
+	       
+			     
+			   
+		       
+	       
+      		
+			
+			<!-- 변환 내역이 있을 경우, DocsConverter에서 변환된 PDF 파일이 다운로드. -->
+			
+				
+				
+					
+				       
+				       
+				       		
+						        <div class="download"><img src="/np/resources/images/board/file.png" alt="첨부파일"> 241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).hwpx				
+						       	<!--241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).hwpx&nbsp;[1928889&nbsp;byte]-->
+						       	<span><a href="#LINK" onclick="javascript:fn_egov_downFile('FILE_000000000559239','1','hwpx')" title="첨부파일 다운로드" class="downBtn" alt="241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).hwpx">다운로드</a></span>
+						       </div>
+					       
+				       
+			       
+				
+			
+	       	       
+        
+      	      
+	       
+			     
+			   
+		       
+	       
+      		
+			
+			<!-- 변환 내역이 있을 경우, DocsConverter에서 변환된 PDF 파일이 다운로드. -->
+			
+				
+				
+					
+				       
+				       
+				       		
+						        <div class="download"><img src="/np/resources/images/board/file.png" alt="첨부파일"> 241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).pdf				
+						       	<!--241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).pdf&nbsp;[950739&nbsp;byte]-->
+						       	<span><a href="#LINK" onclick="javascript:fn_egov_downFile('FILE_000000000559239','2','pdf')" title="첨부파일 다운로드" class="downBtn" alt="241220 (조간) 국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리모델 제시(인공지능프라이버시팀).pdf">다운로드</a></span>
+						       </div>
+					       
+				       
+			       
+				
+			
+	       	       
+        
+        
+      
+
+		</td>
+	</tr>
+	
+	
+	<tr> 
+        <td colspan="4" class="tbl_cnts">
+        	<div>
+         	<p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><b style="text-size-adjust: 100%; -webkit-font-smoothing: antialiased;">국민이 신뢰할 수 있는 인공지능 시대를 위한 AI 프라이버시 리스크 관리 모델 제시</b></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><b style="text-size-adjust: 100%; -webkit-font-smoothing: antialiased;">- 개인정보위, 「안전한 인공지능(AI)·데이터 활용을 위한 AI 프라이버시 리스크 관리 모델」 공개</b></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><b style="text-size-adjust: 100%; -webkit-font-smoothing: antialiased;">- AI의 유형·용례 등 구체적 맥락에 따라 AI 기업 등이 자율적으로 프라이버시 리스크를 관리할 수 있도록 지원</b></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 인공지능(AI) 모델·시스템을 개발하거나 제공할 때 프라이버시 리스크를 체계적으로 관리할 수 있는 정부 차원의 모델이 제시되었다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 개인정보보호위원회(위원장 고학수, 이하 ‘개인정보위’)는 AI 기업이 자율적으로 프라이버시 리스크를 관리할 수 있도록 「안전한 인공지능(AI)·데이터 활용을 위한 AI 프라이버시 리스크 관리 모델」(이하 ‘리스크 관리 모델’)을 공개했다. 이러한 리스크 관리 모델에는 AI 생애주기에 걸친 프라이버시 리스크 관리의 방향과 원칙, 리스크 유형, 경감방안을 체계적으로 담았다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; AI 시대의 데이터 처리방식은 개인정보 유·노출 등 전형적 프라이버시 리스크는 물론 딥페이크로 인한 인격권 침해 등 새로운 리스크를 유발하고 있다. 이러한 리스크를 적정하게 관리하는 것은 정보주체의 보호뿐만 아니라 지속 가능하고 신뢰할 수 있는 AI를 위해 필수적이고, 리스크에 대한 체계적인 이해를 바탕으로 비례적, 합리적 경감조치를 취할 필요가 있다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 이에 따라 최근에 국내외 정부기관, 학계·연구계를 중심으로 AI 전반의 리스크에 대한 연구가 진행되고 리스크 관리 프레임워크가 마련되고 있지만 아직 초기 단계이다. 더구나, 프라이버시 리스크와 관련해서는 일선 현장에서 참고할 수 있는 정리된 자료가 부족했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 이에 개인정보위는 지난해 12월부터 「인공지능(AI) 프라이버시 민·관 정책협의회*」 리스크 평가 분과(2분과)의 논의를 중심으로 리스크 관리 모델을 마련했다. 리스크 관리 모델은 국내외 학계, 정부, 연구기관 등에서 논의되고 공감대가 형성되고 있는 AI 데이터 처리 특성, 프라이버시 리스크 유형, 리스크 경감방안 및 관리체계, 기업 사례 등을 집대성해 안내하는 자료로서, 본 안내서에서 제시되는 모든 개별조치의 이행이 반드시 요구되는 것은 아니다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; &nbsp;* 학계, 법조계, 산업계, 시민단체 등 인공지능(AI) 분야 차세대 전문가 32명으로 구성, 3개 분과(데이터 처리기준, 리스크 평가, 투명성 확보) 운영</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 리스크 관리 모델의 주요 내용은 다음과 같다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; ① AI 프라이버시 리스크 관리의 절차</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 먼저, AI 프라이버시 리스크 관리 절차이다. AI는 매우 다양한 맥락·목적으로 활용되고 있어, 데이터 요구사항(종류, 형태, 규모 등) 및 처리방식이 다르다. 따라서 리스크의 성격을 결정짓고 관리하기 위한 출발점으로 먼저 ①AI의 구체적 유형·용례를 파악한다. 이를 토대로 AI 유형·용례별로 구체적 ②리스크를 식별하고, 리스크 발생확률, 중대성, 우선순위, 수용가능성 등 ③정성적·정량적 리스크 측정을 수행할 수 있다. 이후, ④리스크에 비례하는 안전조치를 마련함으로써 리스크를 체계적으로 관리할 수 있다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 이러한 리스크 관리는 리스크의 조기 발견과 완화를 위해 개인정보 보호 중심 설계(PbD) 관점에서 AI 모델·시스템의 기획·개발 단계부터 이루어지는 것이 바람직하며, 이후 시스템 고도화 등 환경 변화에 따라 주기적·반복적으로 이루어지는 것이 권장된다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; ② AI 프라이버시 리스크의 유형</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 다음으로 프라이버시 맥락에서 AI 리스크 유형을 예시로 제시했다. 국내외 문헌조사, 기업 인터뷰 등을 통해 파악한 AI 기술의 고유한 특성과 기능 및 데이터 요구사항 등으로 인해 새롭게 나타나는 정보주체 권리침해, 그리고 개인정보 보호법 위반 리스크 등을 중점적으로 다뤘다.&nbsp;</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 구체적으로 AI의 생애주기(life-cycle)에 따라 AI 모델·시스템의 기획·개발 단계, 서비스 제공 단계에서 발생하는 리스크를 구분해 제시했으며, 서비스 제공 단계는 생성 AI와 판별 AI를 구분함으로써 AI 용례·유형에 따른 구체성을 더했다.&nbsp;</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; ③ AI 프라이버시 리스크의 경감방안</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 아울러, 리스크를 경감하기 위한 관리적, 기술적 안전조치도 안내했다. 다만 모든 경감조치를 필수적으로 취해야 하는 것은 아니며, 구체적으로 리스크를 식별하고 측정한 결과 등 개별 맥락에 따라 최적의 안전조치 조합을 마련하여 시행할 수 있도록 안내했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 먼저 관리적 안전 조치에는 ▲학습데이터 출처·이력 관리, ▲허용되는 이용방침 마련, ▲AI 프라이버시 레드팀을 통한 개인정보 침해유형 테스트 및 조치, ▲부적절한 답변 등에 대한 정보주체 신고방안 마련 등이 포함된다. 또한, 학습데이터에 민감한 정보가 포함될 개연성이 높거나 대규모 개인정보가 포함되는 경우 ▲개인정보 영향평가 수행도 권장된다.&nbsp;</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 다음으로 기술적 안전 조치에는 ▲AI 학습데이터 전처리(불필요한 데이터 삭제, 가명·익명화, 중복제거 등), ▲AI 모델 미세조정을 통한 안전장치 추가, ▲입력·출력 필터링 적용, ▲차분 프라이버시 기법의 적용 등이 포함된다. 한편, 한국어가 적용된 AI 모델의 특수성도 고려하기 위해 개인정보위는 한국어 언어모델 대상 프라이버시 리스크 경감기술 효과 분석을 위한 정책연구*를 진행하여 관련 연구가 부족한 상황에서 과학적 실증에 기반한 정책을 마련하기 위해 노력했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; &nbsp;* 정책연구 주요 내용은 리스크 관리 모델의 부록에서 확인할 수 있음</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; ④ AI 프라이버시 리스크의 관리 체계</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 마지막으로 리스크 관리체계를 제시했다. AI 환경에서는 개인정보보호, AI 거버넌스, 사이버보안, 안전·신뢰 등 다양한 디지털 거버넌스 요소가 상호연관된다. 이에 따라 전통적 프라이버시 거버넌스의 재편이 필요하며, 이때 개인정보 보호책임자(CPO)의 주도적 역할·책임감이 중시된다. 또한, 리스크에 대한 다각적·전문적 평가를 수행할 수 있는 담당조직을 구성하고, 체계적 리스크 관리를 보장하는 정책을 마련하는 것이 바람직하다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 아울러, AI 기업 등은 AI 밸류체인 내에서 당해 기업·기관의 권한 및 책임의 범위를 명확히 파악하고, 타 기업·기관과의 협력체계를 구체화함으로써 프라이버시 리스크 변화에 지속 대응하고 정보주체의 권리행사를 효과적으로 보장할 수 있다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 개인정보위는 추후 AI 기술 발전, 개인정보 관련 법령 제·개정, 글로벌 동향 등을 고려해 리스크 관리 모델을 지속적으로 업데이트할 계획이다. 또한, 소규모 조직, 스타트업 및 AI 개발 유형(미세조정, 검색증강(RAG) 등) 등 세부대상, 영역 등에 특화된 안내자료도 조만간 구체화될 예정이다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 이 밖에 개인정보위는 사전적정성 검토제, 규제샌드박스, 개인정보 안심구역 등 혁신지원제도를 통해 인공지능(AI) 기업과 수시로 소통하면서 기술의 발전 양상과 기업 애로사항을 모니터링하고, 이를 통해 축적된 사례와 경험을 토대로 AI 시대에 맞게 개인정보 보호법을 정비하는 작업도 추진할 예정이다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 이번 리스크 관리 모델 논의를 이끈 박상철 서울대 교수(민·관 정책협의회 리스크 평가 분과장)는 “전세계적으로 빠르게 발전하는 AI 기술과 기존 개인정보보호 규제 간에 간극과 긴장이 발생하고 있어 대응이 필요한 시점이다.”라며, “각계 전문가와 함께 세계적인 AI 거버넌스의 흐름과 실증 연구 결과들에 부합하는 유연하고 체계적인 프라이버시 리스크 관리체계를 제시했다는 점에서 의미가 있다.”라고 전했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 민·관 정책협의회의 공동의장인 배경훈 LG AI 연구원장은 “국제적 논의가 활발한 AI 프라이버시 분야에서 우리나라가 선도적으로 리스크 관리 모델을 개발한 것은 의미있는 성과”라며, “AI 기업 등이 혁신과 프라이버시 보호를 동시에 달성할 수 있도록 개인정보위의 지속적 지원을 부탁드린다.”라고 말했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">&nbsp; 고학수 개인정보위 위원장은 “개인정보, 비개인정보가 총체적으로 활용되고 기술 발전이 지속되는 AI 영역은 불확실성이 높기 때문에 일률적 규제보다는 합리적·비례적 관리를 통해 리스크를 총체적으로 최소화하는 것이 필요하다.”라며, “리스크 관리 모델이 AI 기업 등이 프라이버시 리스크를 이해하고 체계적으로 관리하는 데 도움이 되길 바란다.”라고 말했다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">* 기타 자세한 내용은 첨부파일을 확인해주시기 바랍니다.</p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;"><br style="margin: 0px; padding: 0px; text-size-adjust: 100%;"></p><p style="margin-bottom: 0px; text-size-adjust: 100%; -webkit-font-smoothing: antialiased; word-break: break-all; overflow-wrap: break-word; color: rgb(48, 48, 48); font-family: Montserrat, &quot;Noto Sans KR&quot;, sans-serif; font-size: 15px; letter-spacing: -0.32px;">- 담당자 : 인공지능프라이버시팀 임수연(02-2100-3078)</p>
+           	
+           	</div>
+        </td>
+	</tr>
+    
+	
+    
+	
+	</table>
+</div><!-- //boardViewArea -->
+	
+	<!-- 버튼 시작(상세지정 style로 div에 지정) -->
+	<div class="rightBox">
+	
+	<a href="#LINK" onclick="javascript:fn_egov_select_noticeList('1'); return false;" class="btn2">목록</a> 
+	</div>
+	<!-- 버튼 끝 -->
+	
+	<ul class="boardNav">
+	    <li>
+	        <dl>
+	            <dt>이전글</dt>
+	            <dd>
+	            
+	            <a href="javascript:;" onclick="fn_egov_select_noticeView(10976);return false;">합성데이터(Synthetic data) 안내서 발간</a>
+	            </dd>
+	        </dl>
+	    </li>
+	    <li>
+	        <dl>
+	            <dt>다음글</dt> 
+	            <dd>
+	            
+	            <a href="javascript:;" onclick="fn_egov_select_noticeView(10978);return false;">제4기 가명정보 결합 선도사례 선정</a>
+	            </dd>
+	        </dl>
+	    </li>
+	</ul>
+   
+</form>
+</div>
+        
+
+                </div>
+	<!-- //컨텐츠 끝 -->
+	<!-- satis 시작 -->
+	<div class="pageInfo">
+        <div class="satisfaction">
+            <p>해당 페이지의 만족도와 소중한 의견 남겨주세요.</p>
+            <form name="satisFrm" id="satisFrm" onSubmit="return false;">
+            	<input type="hidden" name="op" value="save" >
+            	<input type="hidden" name="siteIdx" value="1" >
+            	<input type="hidden" name="menuCd" value="D040070000" >
+                <ul>
+                    <li><input id="satisPoint1" name="satisPoint" type="radio" value="5" checked="checked"><label for="satisPoint1" title="매우만족">매우만족</label></li>
+                    <li><input id="satisPoint2" name="satisPoint" type="radio" value="4"><label for="satisPoint2" title="만족">만족</label></li>
+                    <li><input id="satisPoint3" name="satisPoint" type="radio" value="3"><label for="satisPoint3" title="보통">보통</label></li>
+                    <li><input id="satisPoint4" name="satisPoint" type="radio" value="2"><label for="satisPoint4" title="불만족">불만족</label></li>
+                    <li><input id="satisPoint5" name="satisPoint" type="radio" value="1"><label for="satisPoint5" title="매우불만족">매우불만족</label></li>
+                </ul>
+                <label for="satisComment" class="hide">의견남기기</label>
+				<input type="text" name="satisComment" id="satisComment" value="" title="의견 남기기(60자 내외)" placeholder="의견 남기기(60자 내외)">
+                <a href="javascript:;" onclick="regSatis('D040070000');return false;">등록</a>
+            </form>
+        </div>
+    </div>
+    <!-- //satis 끝 -->
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	<div class="infoService_Wrap">
+		<div class="container info_flex_box">
+			<div class="infoService_left_box">
+				<h2 class="infoService_title">개인정보보호위원회 정보서비스</h2>
+				<ul class="infoService_left_list_box">
+					
+						<li><a href="https://www.privacy.go.kr" target="_blank" title="개인정보 포털 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000555541&fileSn=0" alt="개인정보 포털"></span>
+								<p>개인정보 포털</p>
+							</a>
+						</li>
+					
+						<li><a href="https://www.kisa.or.kr" target="_blank" title="한국인터넷진흥원 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000555543&fileSn=0" alt="한국인터넷진흥원"></span>
+								<p>한국인터넷진흥원</p>
+							</a>
+						</li>
+					
+						<li><a href="https://www.kopico.go.kr/main/main.do" target="_blank" title="개인정보분쟁조정위원회 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000555547&fileSn=0" alt="개인정보분쟁조정위원회"></span>
+								<p>개인정보분쟁조정위원회</p>
+							</a>
+						</li>
+					
+						<li><a href=" https://privacy.kisa.or.kr" target="_blank" title="개인정보침해신고센터 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000555549&fileSn=0" alt="개인정보침해신고센터"></span>
+								<p>개인정보침해신고센터</p>
+							</a>
+						</li>
+					
+						<li><a href="http://dataprivacy.go.kr" target="_blank" title="가명정보지원플랫폼 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000557059&fileSn=0" alt="가명정보지원플랫폼"></span>
+								<p>가명정보지원플랫폼</p>
+							</a>
+						</li>
+					
+						<li><a href="https://www.onmydata.go.kr/" target="_blank" title="온마이데이터 새창열림" class="btn_info_le_ban">
+								<span><img src="/np/cmm/fms/getImage.do?atchFileId=FILE_000000000555547&fileSn=0" alt="온마이데이터"></span>
+								<p>온마이데이터</p>
+							</a>
+						</li>
+					
+				</ul>
+			</div>
+	
+			<div class="infoService_right_box">
+				<h2 class="infoService_title">해외 개인정보보호 사이트</h2>
+				<ul class="infoService_right_list_box">
+					<li>
+						<a href="https://globalprivacyassembly.org/" target="_blank" title="GPA 새창열림" class="btn_info_ri_ban">
+							<span><img src="/np/resources/images/common/btn_info_ri_01.png" alt="Global Privacy Assembly"></span>
+							<p><strong>GPA</strong>Global Privacy Assembly</p>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.privacyenforcement.net/" target="_blank" title="GPEN 새창열림" class="btn_info_ri_ban">
+							<span><img src="/np/resources/images/common/btn_info_ri_02.png" alt="Global Privacy Enforcement Network"></span>
+							<p><strong>GPEN</strong>Global Privacy Enforcement Network</p>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.appaforum.org/" target="_blank" title="APPA 새창열림" class="btn_info_ri_ban">
+							<span><img src="/np/resources/images/common/btn_info_ri_03.png" alt="Asia Pacific Privacy Authorities"></span>
+							<p><strong>APPA</strong>Asia Pacific Privacy Authorities</p>
+						</a>
+					</li>
+					<li>
+						<a href="https://www.coe.int/en/web/portal" target="_blank" title="CoE 새창열림" class="btn_info_ri_ban">
+							<span><img src="/np/resources/images/common/btn_info_ri_04.png" alt="Council of Europe"></span>
+							<p><strong>CoE</strong>Council of Europe</p>
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div><!-- // infoService -->
+	
+	
+
+    <div class="footer_Wrap">
+            <div class="footer_top_box">
+                <div class="container">
+                    <ul class="footer_menu_box">
+                        <li><a href="/np/default/page.do?mCode=H010000000" target="_blank" title="개인정보처리방침 새창열림">개인정보처리방침</a></li>
+						<li><a href="/np/default/page.do?mCode=F010070000" target="_blank" title="찾아오시는 길 새창열림">찾아오시는 길</a></li>
+                        <li><a href="/np/default/page.do?mCode=H030000000" target="_blank" title="도움말 새창열림">도움말</a></li>
+                        <li><a href="/np/default/sitemap.do?mCode=H040000000" target="_blank" title="누리집 안내 새창열림">누리집 안내</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer_bottom_box">
+                <div class="container">
+                    <div class="footer_info_box">
+                        <p class="address">주소 : (우)03171 서울특별시 종로구 세종대로 209 정부서울청사 개인정보보호위원회</p>
+                        <ul class="tellInfo">
+                            <li>개인정보침해신고 : 국번없이 118</li>
+                            <li>대표전화 : 02-2100-3025</li>
+                            <li>개인정보분쟁조정위원회 : 1833-6972</li>
+                            <li>법령해석지원센터 : 02-2100-3043</li>
+                            <li>월~금 9:00~18:00, 공휴일 제외</li>
+                        </ul>
+                        <div class="w3c">
+                            <a href="https://www.wa.or.kr/board/list.asp?search=link_url&amp;SearchString=www.pipc.go.kr&amp;BoardID=0006" title="웹접근성 인증평가원 새창으로 바로가기" target="_blank">
+                            <img src="/np/resources/images/common/w3c.png" alt="(사)한국장애인단체총연합회 한국웹접근성인증평가원 웹 접근성 우수사이트 인증마크(WA인증마크)">
+                            </a>
+                        </div>
+                        <p class="copyRight">Copyright ⓒ Personal Information Protection Commission. All right reserved.</p>
+                    </div>
+                </div>
+            </div>
+            <a href="#wrap" class="el_top"><span class="blind">맨위로 이동</span></a><!-- //TOP -->
+		</div><!-- // footer -->
+        
+    </div><!-- // wrap -->
+
+	<script>
+		// 상단 메인 슬라이드
+ 		var mainSwiper = new Swiper(".mainSwiper", {
+			slidesPerGroup: 1,
+			slidesPerView: 'auto',
+			centeredSlides: true,
+			spaceBetween: 100,
+			loop: true,
+			 autoplay: {
+				delay: 5000,
+				disableOnInteraction: false,
+			},
+			pagination: {
+				el: '.swiper-pagination-dot',
+				clickable: true,
+			},
+			on: {
+				slideChangeTransitionEnd: function(){
+					var i = $('.swiper-slide.swiper-slide-active').data('swiper-slide-index');
+					$('.page_number').text(i+1);
+				},
+			}, 
+		});
+        
+		
+ 	 	// 개인정보보호위원회 소식 슬라이드
+		var noticeSwiper = new Swiper('.noticeSwiper', {
+			spaceBetween: 40,
+			slidesPerView: 1,
+			loop: false, // 0606
+			touchRatio: 0 // 0624
+			
+		}); 
+
+		// 중간 슬라이드
+		var sideSwiper = new Swiper('.sideSwiper', {
+			loop: true,
+			autoplay: {
+				delay: 5000,
+			},
+			pagination : { 
+				el : '.swiper-paging',
+				clickable : true, 
+				type: "fraction",
+			},
+			navigation: {
+				nextEl: ".swiper-button-next",
+				prevEl: ".swiper-button-prev",
+			},
+		});	
+
+		// 슬라이드
+		slide_conroll();
+		function slide_conroll(){
+			var play = $('.mainSwiper .swiper__play');
+			var stop = $('.mainSwiper .swiper__stop');  
+			play.hide();
+			play.on('click',function(){
+				mainSwiper.autoplay.start();
+				$(this).hide();
+				stop.show();
+				return false;
+			})
+			stop.on('click',function(){
+				mainSwiper.autoplay.stop();
+				$(this).hide();
+				play.show();
+				return false;
+			});
+		};
+
+		slide_conroll2();
+		function slide_conroll2(){
+			var play = $('.sideSwiper .swiper__play');
+			var stop = $('.sideSwiper .swiper__stop');  
+			play.hide();
+			play.on('click',function(){
+				sideSwiper.autoplay.start();
+				$(this).hide();
+				stop.show();
+				return false;
+			})
+			stop.on('click',function(){
+				sideSwiper.autoplay.stop();
+				$(this).hide();
+				play.show();
+				return false;
+			});
+		};
+
+		function slide_conroll3(){
+			// faq 슬라이드 pc
+			var faqOptions = {
+				spaceBetween: 0, // 0629 변경
+				slidesPerView: 4, // 0629 변경
+				slidesPerGroup: 1, // 0629 변경
+				loop: true,
+				autoplay: {
+					delay: 3000,
+				},
+				pagination: {
+					el: '.faqSlidePc .swiper-pagination-count',
+					clickable: true,
+				},
+				
+				on: {
+					slideChangeTransitionEnd: function(){
+						var j = $('.faqSlidePc .swiper-slide-active').data('swiper-slide-index');
+						$('.faqSlidePc .page_number1').text(j+1);
+					},
+				},
+				breakpoints: {
+					1280:{
+						spaceBetween: 20,
+						slidesPerView: 1, // 0628
+					},
+					900:{
+						spaceBetween: 10,
+						slidesPerView: 2,
+					}
+				},
+			}
+			var faqSwiper = new Swiper('.faqSlidePc', faqOptions);
+			
+			var buletNum2 = $('.faqSlidePc .swiper-pagination-bullet').length;
+			
+			$('.faqSlidePc .totalNun').text(buletNum2); 
+
+			var play = $('.faqSlidePc .swiper__play');
+			var stop = $('.faqSlidePc .swiper__stop');
+			play.hide();
+			play.on('click',function(){
+				faqSwiper.autoplay.start();
+				$(this).hide();
+				stop.show();
+				return false;
+			})
+			stop.on('click',function(){
+				faqSwiper.autoplay.stop();
+				$(this).hide();
+				play.show();
+				return false;
+			});
+		};
+
+		slide_conroll4();
+		function slide_conroll4(){
+			var play = $('.noticeSwiper .swiper__play');
+			var stop = $('.noticeSwiper .swiper__stop');  
+			play.hide();
+			play.on('click',function(){
+				sideSwiper.autoplay.start();
+				$(this).hide();
+				stop.show();
+				return false;
+			})
+			stop.on('click',function(){
+				sideSwiper.autoplay.stop();
+				$(this).hide();
+				play.show();
+				return false;
+			});
+		};
+
+		function slide_conroll5(){
+			// faq 모바일 추가
+			var faqSwiper = new Swiper('.faqSlideM', {
+			
+				spaceBetween: 0, // 0629 변경
+				slidesPerView: 2, // 0629 변경
+				slidesPerGroup: 2, // 0629 변경
+				loop: true,
+				autoplay: {
+					delay: 1000,
+				},
+				pagination: {
+					el: '.faqSlideM .swiper-pagination-count',
+					clickable: true
+				},
+				on: {
+					slideChangeTransitionEnd: function(){
+						var m = $('.faqSlideM .swiper-slide-active').data('swiper-slide-index');
+						$('.faqSlideM .page_number2').text(m/2+ 1);
+					},
+				}
+			});
+			
+			var buletNum4 = $('.faqSlideM .swiper-pagination-bullet').length;
+
+			$('.faqSlideM .totalNun').text(buletNum4); 	
+			
+			var play = $('.faqSlideM .swiper__play');
+			var stop = $('.faqSlideM .swiper__stop');  
+			play.hide();
+			play.on('click',function(){
+				faqSwiper.autoplay.start();
+				$(this).hide();
+				stop.show();
+				return false;
+			})
+			stop.on('click',function(){
+				faqSwiper.autoplay.stop();
+				$(this).hide();
+				play.show();
+				return false;
+			});
+		};
+
+ 		slideTotal();
+		function slideTotal(){ // slide 전체개수
+			var buletNum = $('.mainSwiper .swiper-pagination-bullet').length;
+			var total = $('.mainSwiper .totalNun');
+			total.text(buletNum);
+		} 
+	</script></body>
+</html>
+

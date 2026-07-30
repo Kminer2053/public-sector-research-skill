@@ -130,6 +130,13 @@ def test_curated_brief_renders_both_formats_and_escapes_html(tmp_path: Path) -> 
     assert "검토 권고" in html
     assert "수집 당시 원문 보기" in html
     assert "https://cdn" not in html
+    assert "--content-max:1600px" in html
+    assert "grid-template-columns:180px minmax(0,1fr)" in html
+    assert "@media(max-width:1040px)" in html
+    assert "body{margin:0;font-size:17px;font-weight:500" in html
+    assert ".hero h1{white-space:nowrap}" in html
+    assert 'font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo"' in html
+    assert "font-synthesis:none" not in html
 
 
 def test_html_only_rebuild_returns_only_html_report_path(tmp_path: Path) -> None:

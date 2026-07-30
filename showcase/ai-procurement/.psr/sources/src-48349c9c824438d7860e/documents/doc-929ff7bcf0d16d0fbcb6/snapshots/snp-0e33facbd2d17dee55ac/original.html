@@ -1,0 +1,786 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+<script type="text/javascript" src="/js/nia_kor/snsFunc.js"></script>
+<script type="text/javaScript">
+//<!CDATA[[
+$(document).ready(function(){
+    var title = document.title;
+
+    var bbs_title, menu_title;
+    
+    menu_title = $('#menu_title').text();
+
+    if(menu_title == "AI활용사례"){
+    	$('#topCase').hide();
+    }
+    
+    
+    
+        
+        
+          bbs_title = "공공부문 AI 도입·활용 가이드(`26.5월 기준)";
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+    
+        
+        
+    
+    
+
+    if( title.indexOf("|") > 0){
+        var arr = title.split('|');
+        title = arr[0] + " > " + bbs_title + " | " + arr[1];
+        document.title = title;
+        }
+    
+    var data = { "@context": "http://www.schema.org", 
+            "@type": "WebPage", 
+            "name": $('#menu_title').text() + " - " + bbs_title ,
+            "url": window.location.href, 
+            "description": bbs_title + " 상세보기", 
+            "publisher": {
+                "@type": "WebSite",
+                "name": "NIA 한국지능정보사회진흥원"
+            }
+    };
+    var script = document.createElement('script'); 
+    script.type = "application/ld+json"; 
+    script.innerHTML = JSON.stringify(data); 
+    document.getElementsByTagName('head')[0].appendChild(script);
+
+});
+//고시/공고, 공지 코드 값.
+var deptCode = "";
+//이전글 다음글
+function doPrevNext(cbIdx, bcIdx){
+    /* document.bbsFVo.cbIdx.value = cbIdx; */
+    /* document.bbsFVo.bcIdx.value = bcIdx; */
+    if("" != deptCode ){
+        document.bbsFVo.action = "/site/nia_kor/ex/bbs/View.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?cbIdx="+cbIdx+"&bcIdx="+bcIdx+"&deptCode="+deptCode;
+    }else{
+        document.bbsFVo.action = "/site/nia_kor/ex/bbs/View.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?cbIdx="+cbIdx+"&bcIdx="+bcIdx;
+    }
+    document.bbsFVo.action = "/site/nia_kor/ex/bbs/View.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?cbIdx="+cbIdx+"&bcIdx="+bcIdx;
+    document.bbsFVo.submit();
+}
+
+//목록
+function doBbsFList(cbIdx){
+    /* document.bbsFVo.cbIdx.value = cbIdx; */
+    if("" != deptCode ){
+        document.bbsFVo.action = "/site/nia_kor/ex/bbs/List.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?cbIdx="+cbIdx+"&deptCode="+deptCode;
+    }else{
+        document.bbsFVo.action = "/site/nia_kor/ex/bbs/List.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?cbIdx="+cbIdx;
+    }
+    document.bbsFVo.submit();
+}
+
+//첨부파일 미리보기
+function goPreview(bcIdx, cbIdx, fileNo) {
+    document.previewForm.cbIdx.value = cbIdx;
+    document.previewForm.bcIdx.value = bcIdx;
+    document.previewForm.fileNo.value = fileNo;
+    document.previewForm.action = '/site/nia_kor/ex/preview.do';
+    document.previewForm.submit();
+}
+
+//권한 체크
+//  function doBoardAuthorChk(gbn){
+//       $.ajax({
+//          type: "GET",
+//          url: "/site/seocho/ex/bbs/BoardAuthorChkAx.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398",
+//          data : {"gbn" : gbn},
+//          dataType : "json",
+//          success:function(data){
+//              if(!data.flag){
+//                  if( data.msg != null && data.msg != "" ){
+//                      alert(data.msg);
+//                  }
+//                  if( data.returnUrl != null && data.returnUrl != "" ){
+//                      location.href = data.returnUrl;
+//                  }else{
+//                     return;
+//                 }
+//              }
+//           },
+//          error: function(xhr,status,error){
+//              alert(status);
+//          }
+//       });
+
+//  }
+//]]>
+</script>
+<!-- 첨부파일 미리보기 form -->
+<form id="previewForm" name="previewForm" target="_blank" method="post">
+    <input type="hidden" id="cbIdx" name="cbIdx"/>
+    <input type="hidden" id="bcIdx" name="bcIdx"/>
+    <input type="hidden" id="fileNo" name="fileNo"/>
+</form>
+<div class="detail_type01" id="sub_contentsArea2">
+    
+    <div class="tit_area">
+        
+            
+                
+                
+                    
+                    
+                    공공부문 AI 도입·활용 가이드(`26.5월 기준)
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+            
+                
+                
+            
+        
+    </div>
+    <div class="write_area">
+        <span class="src">
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                <em>2026.06.11</em>
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                <em>조회수 4521</em>
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+        </span>
+        <span class="writer">
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                <em>김토경</em>
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                <em>AI정부서비스팀</em>
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+            
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            
+        
+        </span>
+    </div>
+    
+    <div class="fileNew_area">
+        <ul>
+            
+                
+                    <li>
+                        <span class="file_nm"><a href="/common/board/Download.do?bcIdx=29526&cbIdx=37989&fileNo=1" title="다운로드">260526_공공부문_AI_도입·활용_가이드_개발시스템_매뉴얼.pdf</a> 
+                        
+                        </span>
+                        <span class="file_btn">
+                            
+                            <a href="https://www.nia.or.kr/common/board/Download.do?bcIdx=29526&cbIdx=37989&fileNo=1" title="다운로드">
+                                <span class="icon_download">
+                                    
+                                    <span class="hiddenTxt">260526_공공부문_AI_도입·활용_가이드_개발시스템_매뉴얼.pdf-다운로드</span>
+                                </span>
+                            </a>
+                            
+                            
+                                <a href="javascript:goPreview('29526','37989','1');" title="새창으로 첨부파일 미리보기">
+                                    <span class="icon_preview">
+                                        
+                                        <span class="hiddenTxt">260526_공공부문_AI_도입·활용_가이드_개발시스템_매뉴얼.pdf-미리보기</span>
+                                    </span>
+                                </a>
+                            
+                        </span>
+                    </li>
+                
+                    <li>
+                        <span class="file_nm"><a href="/common/board/Download.do?bcIdx=29526&cbIdx=37989&fileNo=2" title="다운로드">260529_공공부문_AI_도입_활용_가이드.pdf</a> 
+                        
+                        </span>
+                        <span class="file_btn">
+                            
+                            <a href="https://www.nia.or.kr/common/board/Download.do?bcIdx=29526&cbIdx=37989&fileNo=2" title="다운로드">
+                                <span class="icon_download">
+                                    
+                                    <span class="hiddenTxt">260529_공공부문_AI_도입_활용_가이드.pdf-다운로드</span>
+                                </span>
+                            </a>
+                            
+                            
+                                <a href="javascript:goPreview('29526','37989','2');" title="새창으로 첨부파일 미리보기">
+                                    <span class="icon_preview">
+                                        
+                                        <span class="hiddenTxt">260529_공공부문_AI_도입_활용_가이드.pdf-미리보기</span>
+                                    </span>
+                                </a>
+                            
+                        </span>
+                    </li>
+                
+            
+        </ul>
+    </div>
+    <div class="con_area">
+        
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                    <div>
+                            <p>본 가이드는 오는 8월 28일 시행 예정인 「인공지능 및 데이터 기반 행정 활성화에 관한 법률」에 선제적으로 대응하기 위해 마련되었습니다.</p> 
+<p>&nbsp;그동안 각 공공기관이 개별적으로 AI 인프라를 구축하면서 발생했던 예산 중복투자와 기술적 파편화 문제를 해결하고,&nbsp;</p> 
+<p>&nbsp;'범정부 AI 공통기반'을 우선적으로 활용하여 행정 효율화를 극대화하고자 합니다.&nbsp;</p> 
+<p><br></p> 
+<p>&nbsp;※ 범정부 AI 공통기반 : AI 서비스 구축에 필요한 AI 모델, GPU 등을 범부처가 공동활용할 수 있도록 구축한 AI 자원 도입&middot;활용 체계</p> 
+<p><br></p> 
+<p>[공공부문 AI 도입&middot;활용 가이드(`26.5월 기준) 주요 내용]</p> 
+<p>&#9312; AI서비스 컨셉 정의 : 행정 수요 분석을 통한 AI 도입 필요성 검토 후 서비스 정의 및 공통기반을 활용한 서비스 구현방안 검토</p> 
+<p>&#9313; 예산 수립 및 확보 : AI 도입 시 고려해야 할 비용 항목과 예산 편성 가이드라인 제시 및 공통기반 활용 시 필요한 비용 시뮬레이션 기능 안내</p> 
+<p>&#9314; 이용 계약 : 공통기반 활용을 위한 계약 절차 안내</p> 
+<p>&#9315; 서비스 구현 : 최신 AI 기술 트렌드를 반영하고 공통기반을 적용한 최적의 구현 방법론 제시</p> 
+<p>&#9316; 운영 및 고도화 : 서비스 배포 후 성능 모니터링 및 지속적인 데이터 업데이트 방안</p> 
+<p><br></p> 
+<p>해당 가이드 관련하여 문의사항이 있는 경우 아래 연락처로 문의주시기 바랍니다.</p> 
+<p>※ 문의처 : 한국지능정보사회진흥원 인공지능정부본부 AI정부서비스팀 대표전화 053-230-1938, 혹은 대표메일(gov-ai@nia.or.kr)</p>
+
+
+
+
+
+
+
+
+                    </div>
+                    <br/><br/><br/>
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+
+            
+                
+                
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+
+                
+                
+            
+        
+    </div>
+    <div class="sns_area">
+        <a href="javascript:twitterOpen('공공부문 AI 도입·활용 가이드(`26.5월 기준)');" class="sns_t" title="트위터로 현재글 공유 새창 바로가기">
+            <span class="icon_twitter"></span><span class="hiddenTxt">트위터</span>
+        </a>
+        <a href="javascript:facebookOpen('공공부문 AI 도입·활용 가이드(`26.5월 기준)')" class="sns_f" title="페이스북으로 현재글 공유 새창 바로가기">
+            <span class="icon_facebook"></span><span class="hiddenTxt">페이스북</span>
+        </a>
+        <a href="javascript:googlePlusOpen()" class="sns_g" title="구글 플러스로 현재글 공유 새창 바로가기">
+            <span class="icon_google"></span><span class="hiddenTxt">구글 플러스</span>
+        </a>
+        <a href="/site/nia_kor/common/Print.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398" class="sns_p" target="_blank" title="현재 페이지 인쇄">
+            <span class="icon_printer"></span><span class="hiddenTxt">인쇄</span>
+        </a>
+    </div>
+</div>
+
+
+<div class="buttonArea_type01">
+    <button type="button" class="medium theme_b" onclick="doBbsFList('37989', '29526');return false;">목록</button>
+</div>
+
+<form id="bbsFVo" name="bbsFVo" action="/site/nia_kor/ex/bbs/View.do;jsessionid=91BB2DD2E4A4773EA650A2921445C271.99a4be538a9406361398?bcIdx=29526&amp;cbIdx=37989" method="post">
+    
+    
+    <input id="searchKey" name="searchKey" type="hidden" value=""/>
+    <input id="pageIndex" name="pageIndex" type="hidden" value="1"/>
+    <input id="tgtTypeCd" name="tgtTypeCd" type="hidden" value=""/>
+    <input id="mode" name="mode" type="hidden" value=""/>
+    <input id="parentSeq" name="parentSeq" type="hidden" value="0"/>
+    <input id="answerDepth" name="answerDepth" type="hidden" value="0"/>
+    <input id="answerStep" name="answerStep" type="hidden" value="0"/>
+    <input id="deptCode" name="deptCode" type="hidden" value=""/>
+    <input id="fileMaxSize" name="fileMaxSize" type="hidden" value="100"/>
+    <input id="orderbyDiv" name="orderbyDiv" type="hidden" value="date"/>
+</form>
+
+<div class="view_pn">
+    <ul class="view_next">
+        
+        
+            
+            
+            <li>
+                <a>
+                    <i class="ion-chevron-up"><em>다음글</em></i>
+                    <span class="subject">다음 글이 없습니다.</span>
+                </a>
+            </li>
+            
+        
+        
+        
+            
+            <li>
+                <a href="javascript:" onclick="doPrevNext('37989', '29463');return false;">
+                    <i class="ion-chevron-down"><em>이전글</em></i>
+                    <span class="subject">
+                        「AI.GOV 해외동향」 2026-2호
+                    </span>
+                </a>
+            </li>
+            
+            
+        
+    </ul>
+</div>
+
