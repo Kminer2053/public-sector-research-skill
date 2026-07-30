@@ -1,0 +1,4 @@
+# Preserve collected source snapshots byte-for-byte and keep generated media out of text diffs.
+showcase/ai-procurement/.psr/sources/**/original.* -text -diff
+showcase/video/full/final/*.mp4 -text -diff
+showcase/video/full/final/*.png -text -diff

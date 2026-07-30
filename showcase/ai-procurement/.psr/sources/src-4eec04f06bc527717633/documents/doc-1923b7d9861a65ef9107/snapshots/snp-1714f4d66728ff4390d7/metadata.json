@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-4eec04f06bc527717633",
+  "document_id": "doc-1923b7d9861a65ef9107",
+  "snapshot_id": "snp-1714f4d66728ff4390d7",
+  "requested_locator": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11410",
+  "final_locator": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11410",
+  "retrieved_at": "2026-07-20T16:36:03Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "1923b7d9861a65ef91078ef49c132fcca61fce6af91a763e4db8dca17203bbd8",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:36:03 GMT",
+    "content-language": "en-US",
+    "content-type": "text/html;charset=utf-8"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "privacy",
+    "url": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS074&mCode=C020010000&nttId=11410",
+    "path": null,
+    "title": "생성형 인공지능(AI) 개발·활용 위한 개인정보 처리 기준 제시한다",
+    "publisher": "개인정보보호위원회",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2025-08-06"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "bokri-demo-video",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Playwright capture harness for the 60-second BOKRI walkthrough",
+  "dependencies": {
+    "playwright-core": "1.61.1"
+  }
+}

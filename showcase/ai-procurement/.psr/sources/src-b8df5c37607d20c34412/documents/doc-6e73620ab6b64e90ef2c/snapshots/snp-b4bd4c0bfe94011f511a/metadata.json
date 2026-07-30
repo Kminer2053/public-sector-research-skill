@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-b8df5c37607d20c34412",
+  "document_id": "doc-6e73620ab6b64e90ef2c",
+  "snapshot_id": "snp-b4bd4c0bfe94011f511a",
+  "requested_locator": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+  "final_locator": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+  "retrieved_at": "2026-07-20T16:34:41Z",
+  "status": 200,
+  "media_type": "application/pdf",
+  "sha256": "6e73620ab6b64e90ef2c04bf0e0d6246185a2f4b1b13cab0df494496cff89b6a",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:34:40 GMT",
+    "content-type": "application/pdf",
+    "content-length": "1174643",
+    "last-modified": "Mon, 24 Mar 2025 19:11:27 GMT",
+    "etag": "\"37d1e58af09cdb1:0\""
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "international-standards",
+    "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+    "path": null,
+    "title": "Artificial Intelligence Risk Management Framework: Generative Artificial Intelligence Profile",
+    "publisher": "National Institute of Standards and Technology",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2024-07-26"
+  }
+}

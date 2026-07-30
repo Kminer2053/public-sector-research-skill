@@ -78,6 +78,10 @@
 
 조사가 끝나면 Markdown과 함께 브라우저에서 바로 여는 HTML 보고서가 만들어집니다.
 
+> **실제 예시:** [공공기관 생성형 AI 도입 계약 검토사항](showcase/ai-procurement/.psr/reports/run-20260721-a8833fd01145cab7.md) ·
+> [HTML 보고서](showcase/ai-procurement/.psr/reports/run-20260721-a8833fd01145cab7.html) ·
+> [공공복리 60초 소개영상](showcase/video/full/final/bokri_walkthrough_60s.mp4)
+
 - 첫 화면에서 결론, 기준일, 공식자료 수, 미확인 항목을 확인
 - 목차를 눌러 원하는 부분으로 바로 이동
 - 문장 옆 `근거` 버튼으로 출처 문장과 점수 설명 확인

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-54dbc154134259979e65",
+  "document_id": "doc-054aa4ed555679c02f8b",
+  "snapshot_id": "snp-3bfc36916a57fcec70ce",
+  "requested_locator": "https://www.nist.gov/itl/ai-risk-management-framework",
+  "final_locator": "https://www.nist.gov/itl/ai-risk-management-framework",
+  "retrieved_at": "2026-07-20T16:36:04Z",
+  "status": 200,
+  "media_type": "text/html; charset=UTF-8",
+  "sha256": "054aa4ed555679c02f8b4adbd69ec791ca002bd3d5c6c8a865e2f3319e34bb13",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:36:04 GMT",
+    "content-type": "text/html; charset=UTF-8",
+    "content-language": "en",
+    "last-modified": "Mon, 20 Jul 2026 16:20:31 GMT"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "international-standards",
+    "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "path": null,
+    "title": "AI Risk Management Framework",
+    "publisher": "National Institute of Standards and Technology",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2024-07-26"
+  }
+}

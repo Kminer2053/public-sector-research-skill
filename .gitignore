@@ -4,6 +4,7 @@
 .ruff_cache/
 .mypy_cache/
 .venv/
+node_modules/
 __pycache__/
 *.py[cod]
 coverage.json
@@ -13,3 +14,22 @@ build/
 *.egg-info/
 .psr/
 tmp/
+
+# Local showcase build artifacts
+showcase/.venv/
+showcase/video/poc/
+showcase/video/full/clips/
+showcase/video/full/clips_raw/
+showcase/video/full/qa/
+showcase/video/full/final/*
+!showcase/video/full/final/bokri_walkthrough_60s.mp4
+!showcase/video/full/final/bokri_walkthrough_60s_contact.png
+
+# Publish one reviewable research example with its preserved source snapshots.
+!showcase/ai-procurement/.psr/
+showcase/ai-procurement/.psr/*
+!showcase/ai-procurement/.psr/reports/
+!showcase/ai-procurement/.psr/reports/run-20260721-a8833fd01145cab7.html
+!showcase/ai-procurement/.psr/reports/run-20260721-a8833fd01145cab7.md
+!showcase/ai-procurement/.psr/sources/
+!showcase/ai-procurement/.psr/sources/**

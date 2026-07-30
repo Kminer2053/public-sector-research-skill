@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-48349c9c824438d7860e",
+  "document_id": "doc-929ff7bcf0d16d0fbcb6",
+  "snapshot_id": "snp-0e33facbd2d17dee55ac",
+  "requested_locator": "https://www.nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=29526&cbIdx=37989",
+  "final_locator": "https://www.nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=29526&cbIdx=37989",
+  "retrieved_at": "2026-07-20T16:36:43Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "929ff7bcf0d16d0fbcb61ce60e4667e849d7a46c44986c92e6592f677078704c",
+  "headers": {
+    "content-type": "text/html;charset=utf-8",
+    "content-language": "ko-KR",
+    "content-length": "19645",
+    "date": "Mon, 20 Jul 2026 16:36:43 GMT"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "government-policy",
+    "url": "https://www.nia.or.kr/site/nia_kor/ex/bbs/View.do?bcIdx=29526&cbIdx=37989",
+    "path": null,
+    "title": "공공부문 AI 도입·활용 가이드(2026.5월 기준)",
+    "publisher": "한국지능정보사회진흥원",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2026-06-11"
+  }
+}

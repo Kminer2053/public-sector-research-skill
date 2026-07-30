@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-a1c56257f6d4b9ba6001",
+  "document_id": "doc-f193697ee97f24fd9731",
+  "snapshot_id": "snp-f42d9fe6793a46aea2e7",
+  "requested_locator": "https://law.go.kr/LSW/lsInfoP.do?lsiSeq=270351",
+  "final_locator": "https://law.go.kr/LSW/lsInfoP.do?lsiSeq=270351",
+  "retrieved_at": "2026-07-20T16:34:38Z",
+  "status": 200,
+  "media_type": "text/html;charset=UTF-8",
+  "sha256": "f193697ee97f24fd97316e5ccf89fcbd0c63d1587858e08d75ffe35ea399a836",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:34:38 GMT",
+    "content-language": "en-US",
+    "content-type": "text/html;charset=UTF-8"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "law-regulation",
+    "url": "https://law.go.kr/LSW/lsInfoP.do?lsiSeq=270351",
+    "path": null,
+    "title": "개인정보 보호법",
+    "publisher": "국가법령정보센터",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2026-03-10"
+  }
+}

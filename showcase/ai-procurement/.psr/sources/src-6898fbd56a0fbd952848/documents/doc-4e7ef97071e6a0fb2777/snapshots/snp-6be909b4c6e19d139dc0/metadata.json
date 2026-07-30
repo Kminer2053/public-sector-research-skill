@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src-6898fbd56a0fbd952848",
+  "document_id": "doc-4e7ef97071e6a0fb2777",
+  "snapshot_id": "snp-6be909b4c6e19d139dc0",
+  "requested_locator": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=G010030020&nttId=11439",
+  "final_locator": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=G010030020&nttId=11439",
+  "retrieved_at": "2026-07-20T16:34:38Z",
+  "status": 200,
+  "media_type": "text/html;charset=utf-8",
+  "sha256": "4e7ef97071e6a0fb27777e449a7bbce99c34e5ee009fe09fb04193b8070d69b2",
+  "headers": {
+    "date": "Mon, 20 Jul 2026 16:34:38 GMT",
+    "content-language": "en-US",
+    "content-type": "text/html;charset=utf-8"
+  },
+  "warnings": [],
+  "source": {
+    "track_id": "privacy",
+    "url": "https://pipc.go.kr/np/cop/bbs/selectBoardArticle.do?bbsId=BS217&mCode=G010030020&nttId=11439",
+    "path": null,
+    "title": "생성형 인공지능(AI) 개발·활용을 위한 개인정보 처리 안내서",
+    "publisher": "개인정보보호위원회",
+    "source_tier": "OFFICIAL_PRIMARY",
+    "published_at": "2025-08-22"
+  }
+}
